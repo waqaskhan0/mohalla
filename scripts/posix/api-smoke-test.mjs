@@ -1524,6 +1524,161 @@ async function main() {
     }
   }
 
+  console.log('\n--- search, including cross-script (EPIC-08) ---');
+  {
+    const searcher = await onboard(Date.now() + 88);
+    const hidden = await onboard(Date.now() + 99);
+
+    // Two posts about the same thing, one in each script.
+    await post('/posts', { body: 'ہمارے محلے میں پانی کی سپلائی بند ہے' }, searcher.token);
+    await post('/posts', { body: 'hamare mohalle mein pani ki supply band hai' }, searcher.token);
+    await post('/posts', { body: 'بجلی کا مسئلہ تین دن سے جاری ہے' }, searcher.token);
+    const blockedPost = await (
+      await post('/posts', { body: 'پانی کے بارے میں ایک اور پوسٹ' }, hidden.token)
+    ).json();
+
+    const searchPosts = async (q, token) => {
+      const r = await get(`/search/posts?q=${encodeURIComponent(q)}`, token);
+      return { status: r.status, body: await r.json() };
+    };
+
+    // ---- SEARCH-FR-003's acceptance criterion, over HTTP -------------
+    {
+      const r = await searchPosts('pani', searcher.token);
+      const bodies = (r.body?.results ?? []).map((x) => x.body);
+      check('GET /search/posts works', r.status === 200, `status ${r.status}`);
+      check(
+        'A ROMAN QUERY FINDS THE URDU POST (SEARCH-FR-003 AC)',
+        bodies.some((b) => b.includes('پانی')),
+        `${bodies.length} results`,
+      );
+      check(
+        'and the Roman post too',
+        bodies.some((b) => b.includes('pani')),
+      );
+    }
+    {
+      const r = await searchPosts('پانی', searcher.token);
+      const bodies = (r.body?.results ?? []).map((x) => x.body);
+      check(
+        'AN URDU QUERY FINDS THE ROMAN POST (the reverse criterion)',
+        bodies.some((b) => b.includes('pani')),
+        `${bodies.length} results`,
+      );
+    }
+    {
+      const r = await searchPosts('paani', searcher.token);
+      check(
+        'a spelling variant still finds it (BR-042 common variants)',
+        (r.body?.results?.length ?? 0) > 0,
+        `${r.body?.results?.length} results`,
+      );
+    }
+    {
+      const r = await searchPosts('bijli', searcher.token);
+      check(
+        'Roman "bijli" finds the Urdu بجلی post',
+        (r.body?.results ?? []).some((x) => x.body.includes('بجلی')),
+      );
+    }
+
+    // ---- people search --------------------------------------------------
+    {
+      await send('PATCH', '/me/profile', { displayName: 'عائشہ خان' }, searcher.token);
+      const byRoman = await get('/search/people?q=ayesha', searcher.token);
+      const rb = await byRoman.json();
+      check(
+        'A ROMAN NAME FINDS AN URDU DISPLAY NAME (SEARCH-FR-001)',
+        byRoman.status === 200 && (rb?.results ?? []).some((p) => p.displayName === 'عائشہ خان'),
+        `status ${byRoman.status} results ${rb?.results?.length}`,
+      );
+
+      const byUrdu = await get(`/search/people?q=${encodeURIComponent('عائشہ')}`, searcher.token);
+      const ub = await byUrdu.json();
+      check(
+        'and the Urdu query finds it too',
+        (ub?.results ?? []).some((p) => p.displayName === 'عائشہ خان'),
+      );
+
+      const byUsername = await get(`/search/people?q=${searcher.handle}`, searcher.token);
+      const nb = await byUsername.json();
+      check(
+        'an exact username is found (SEARCH-FR-001)',
+        (nb?.results ?? []).some((p) => p.username === searcher.handle),
+      );
+
+      check(
+        'results carry the public projection, not raw rows',
+        rb?.results?.[0]?.username !== undefined && rb?.results?.[0]?.phone === undefined,
+      );
+    }
+
+    // ---- exclusions -----------------------------------------------------
+    {
+      await send('PUT', `/users/${hidden.userId}/block`, undefined, searcher.token);
+
+      const r = await searchPosts('پانی', searcher.token);
+      check(
+        'A BLOCKED AUTHOR’S POST IS NOT FOUND (SEARCH-FR-002)',
+        (r.body?.results ?? []).every((x) => x.id !== blockedPost?.id),
+      );
+
+      const people = await get(`/search/people?q=${hidden.handle}`, searcher.token);
+      const pb = await people.json();
+      check(
+        'AND A BLOCKED USER IS NOT FOUND BY THEIR EXACT USERNAME (SEARCH-FR-001 AC)',
+        (pb?.results ?? []).every((p) => p.userId !== hidden.userId),
+        `${pb?.results?.length} results`,
+      );
+
+      await send('DELETE', `/users/${hidden.userId}/block`, undefined, searcher.token);
+    }
+    {
+      const deleted = await (
+        await post('/posts', { body: 'یہ پوسٹ حذف ہو جائے گی pani' }, searcher.token)
+      ).json();
+      await send('DELETE', `/posts/${deleted.id}`, undefined, searcher.token);
+
+      const r = await searchPosts('pani', searcher.token);
+      check(
+        'a DELETED post is not found by its own text',
+        (r.body?.results ?? []).every((x) => x.id !== deleted.id),
+      );
+    }
+
+    // ---- the empty-vs-broken distinction (SEARCH-FR-003 E2/E3) ---------
+    {
+      const r = await searchPosts('zzzznotathing', searcher.token);
+      check(
+        'no results is a 200 with an empty list, not an error',
+        r.status === 200 && r.body?.results?.length === 0,
+        `status ${r.status} results ${r.body?.results?.length}`,
+      );
+    }
+    {
+      const r = await get('/search/posts?q=a', searcher.token);
+      const body = await r.json();
+      check(
+        'A ONE-CHARACTER QUERY IS REFUSED WITH THE MINIMUM STATED (E2)',
+        r.status === 400 && body?.error?.code === 'SEARCH_QUERY_TOO_SHORT',
+        `status ${r.status} code ${body?.error?.code}`,
+      );
+      check(
+        'and the message says what the minimum is',
+        /at least 2/.test(String(body?.error?.message)),
+        String(body?.error?.message),
+      );
+    }
+    {
+      const anon = await get('/search/posts?q=pani');
+      check(
+        'search routes are guarded like everything else',
+        anon.status === 401,
+        `status ${anon.status}`,
+      );
+    }
+  }
+
   console.log('\n--- no secret leaves the server ---');
   {
     const r = await post('/login', { phone, password: 'synthetic-Wrong-Passw0rd' });
