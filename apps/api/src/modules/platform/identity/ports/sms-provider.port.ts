@@ -16,8 +16,14 @@ export interface SmsMessage {
   /** Canonical E.164. Normalize BEFORE calling - adapters do not normalize. */
   readonly to: string;
   readonly body: string;
-  /** Ties delivery back to the request that caused it. */
-  readonly correlationId?: string;
+  /**
+   * Ties delivery back to the request that caused it.
+   *
+   * Explicitly `| undefined` because `exactOptionalPropertyTypes` is enabled:
+   * the caller genuinely may pass an absent correlation id, and the port should
+   * say so rather than the strictness being relaxed to hide it.
+   */
+  readonly correlationId?: string | undefined;
 }
 
 export type SmsSendResult =
