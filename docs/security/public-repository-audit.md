@@ -68,6 +68,36 @@ with indirection would make the local setup harder without reducing any real ris
 
 ### 🟠 PD-001 — non-fictional phone number used as an OpenAPI example
 
+> ## PD-001 STATUS (classified 3 September 2026, on repository-owner instruction)
+>
+> **SYNTHETICALLY GENERATED / SANITIZED / NO KNOWN PERSONAL-DATA SOURCE /
+> NO CURRENT HISTORY REMEDIATION REQUIRED**
+>
+> | Field | Value |
+> |---|---|
+> | Path | `docs/architecture/contracts/openapi-v1.yaml` (line 114) |
+> | Commits | present in the 14 commits preceding the sanitization commit |
+> | Data category | Mobile telephone number used as an API example |
+> | Belongs to a real person? | **No known data subject.** Generated during Stage 4 documentation authoring |
+> | Synthetic / example data? | **Yes** — not copied from any employee, beneficiary, partner, client, application user, production or staging database, contact list, or any external personal-data source |
+> | Already public and approved? | The repository is public; publication authorization remains an open governance item |
+> | Current exposure | **Working tree: sanitized.** Value remains in Git history |
+> | Recommended treatment | **No history rewrite at this time.** Reassess immediately if evidence emerges that the value belongs to a real person |
+> | Secret rotation | **Not required** — this is not a credential |
+>
+> **Why it was still unsafe:** the value visually resembled a valid Pakistani
+> mobile number and could theoretically coincide with a real one. That is the
+> defect — realism, not provenance.
+>
+> **Standing rule going forward:** never use a realistic complete mobile number
+> as a public documentation sample. Use an unmistakable placeholder such as
+> `+92 3XX XXXXXXX`, or a structured synthetic fixture value that cannot be
+> mistaken for a real person's contact data.
+>
+> The original value is **not reproduced** in documentation, output, commit
+> messages, issues or pull requests.
+
+
 | | |
 |---|---|
 | **Location** | `docs/architecture/contracts/openapi-v1.yaml:114` |
@@ -75,7 +105,7 @@ with indirection would make the local setup harder without reducing any real ris
 | **Present in** | working tree **and all 14 commits** |
 | **Severity** | 🟠 Medium — a **plausibly routable** Pakistani mobile number published in a public repository |
 | **Why it is a finding** | Addendum **§24** requires the OpenAPI document to use **synthetic examples** and contain no real phone numbers; **§5** requires fixtures to be **visibly fictional**. Unlike `+923001234567` (an obvious sequential placeholder), this value is not visibly fictional and could belong to a real person. |
-| **Status** | ✅ **Fixed in the current tree** — replaced with the visibly-fictional `+923001234567`, matching the placeholder already used in `packages/validation`. |
+| **Status** | ✅ **Fixed in the current tree** (classification above) — replaced with the visibly-fictional `+923001234567`, matching the placeholder already used in `packages/validation`. |
 | **History** | ⚠️ **Still present in Git history.** Per addendum §2 and §4.8, **history was NOT rewritten** — that requires explicit owner approval. See §7. |
 
 **Whether the number belongs to a real person is unknown** — it was generated during Stage 4
