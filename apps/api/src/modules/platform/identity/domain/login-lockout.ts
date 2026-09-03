@@ -73,3 +73,28 @@ export function checkLoginLockout(
   if (counts.source >= LOGIN_MAX_FAILURES_PER_SOURCE) return { reason: 'SOURCE', until };
   return null;
 }
+
+// ---------------------------------------------------------------- administrators
+/**
+ * Administrators get a LOWER threshold than users: five, against ten
+ * (09-authentication-authorization.md §147, ADMIN-FR lockout row).
+ *
+ * The population is tiny and known, and every one of them can act on other
+ * people's accounts. Ten failed attempts against an administrator is not
+ * somebody fumbling their own password; it is an attack, and the cost of
+ * making a real moderator wait thirty minutes is far below the cost of
+ * letting the guessing continue.
+ */
+export const ADMIN_LOGIN_MAX_FAILURES = 5;
+
+/**
+ * ABSOLUTE session lifetime for the admin console (SEC-024) — not an idle
+ * window.
+ *
+ * The opposite choice from user sessions, for the opposite reason. A user
+ * session slides because signing out an actively-used personal phone is
+ * hostile and pushes people to re-enter passwords, which is how credentials
+ * get phished. An admin console left open on an unattended desk is itself the
+ * risk, so the session ends on schedule however busy the moderator is.
+ */
+export const ADMIN_SESSION_ABSOLUTE_MS = 8 * 60 * 60 * 1000; // 8 hours
