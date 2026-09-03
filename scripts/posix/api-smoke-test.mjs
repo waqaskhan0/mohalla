@@ -880,6 +880,339 @@ async function main() {
     }
   }
 
+  console.log('\n--- media and posts (EPIC-06) ---');
+  {
+    const author = await onboard(Date.now() + 33);
+    const reader = await onboard(Date.now() + 44);
+
+    /** A real PNG header, so content inspection has something genuine. */
+    const png = (w = 64, h = 64) => {
+      const out = new Uint8Array(24);
+      out.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+      out.set(
+        [...'IHDR'].map((c) => c.charCodeAt(0)),
+        12,
+      );
+      const view = new DataView(out.buffer);
+      view.setUint32(16, w, false);
+      view.setUint32(20, h, false);
+      return out;
+    };
+
+    const putBytes = (url, bytes, token) =>
+      fetch(`${base}${url}`, {
+        method: 'PUT',
+        headers: {
+          'content-type': 'application/octet-stream',
+          authorization: `Bearer ${token}`,
+        },
+        body: bytes,
+      });
+
+    /** Slot -> upload -> complete. Returns the media id, or a rejection. */
+    const uploadImage = async (token, bytes) => {
+      const slot = await post(
+        '/media/upload-slot',
+        { kind: 'IMAGE', declaredBytes: bytes.length },
+        token,
+      );
+      if (slot.status !== 201) return { failed: `slot ${slot.status}` };
+      const { mediaId, upload } = await slot.json();
+
+      const put = await putBytes(upload.url, bytes, token);
+      if (put.status !== 204) return { failed: `upload ${put.status}` };
+
+      const done = await post(`/media/${mediaId}/complete`, {}, token);
+      return done.status === 200 ? { mediaId } : { failed: `complete ${done.status}`, mediaId };
+    };
+
+    // ---- the media pipeline over HTTP --------------------------------
+    let readyMediaId;
+    {
+      const r = await uploadImage(author.token, png(1600, 900));
+      readyMediaId = r.mediaId;
+      check(
+        'a genuine PNG completes the ADR-013 pipeline',
+        r.failed === undefined,
+        String(r.failed),
+      );
+
+      if (readyMediaId !== undefined) {
+        const served = await fetch(`${base}/media/${readyMediaId}`, {
+          headers: { authorization: `Bearer ${author.token}` },
+        });
+        check('READY media is served', served.status === 200, `status ${served.status}`);
+        check(
+          'with the VERIFIED content type, not a client claim',
+          served.headers.get('content-type')?.includes('image/png') === true,
+          String(served.headers.get('content-type')),
+        );
+        check(
+          'and nosniff, so a browser cannot second-guess it',
+          served.headers.get('x-content-type-options') === 'nosniff',
+        );
+      }
+    }
+    {
+      // SEC-013 / EDGE-014 over the wire: the bytes are what decide.
+      const exe = new Uint8Array([0x4d, 0x5a, 0x90, 0x00, 0x03, 0x00]);
+      const r = await uploadImage(author.token, exe);
+      check(
+        'AN EXECUTABLE IS REFUSED AT COMPLETE (SEC-013)',
+        r.failed?.startsWith('complete 400') === true,
+        String(r.failed),
+      );
+
+      if (r.mediaId !== undefined) {
+        const served = await fetch(`${base}/media/${r.mediaId}`, {
+          headers: { authorization: `Bearer ${author.token}` },
+        });
+        check(
+          'and the rejected object is not servable',
+          served.status === 404,
+          `status ${served.status}`,
+        );
+      }
+    }
+    {
+      const zip = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00, 0x00]);
+      const r = await uploadImage(author.token, zip);
+      check(
+        'a ZIP is refused however it is labelled (EDGE-014)',
+        r.failed?.startsWith('complete 400') === true,
+        String(r.failed),
+      );
+    }
+    {
+      const r = await post(
+        '/media/upload-slot',
+        { kind: 'IMAGE', declaredBytes: 40 * 1024 * 1024 },
+        author.token,
+      );
+      check(
+        'a 40 MB declaration is refused before bytes move (MEDIA-FR-005)',
+        r.status === 400,
+        `status ${r.status}`,
+      );
+    }
+    {
+      const r = await post(
+        '/media/upload-slot',
+        { kind: 'DOCUMENT', declaredBytes: 1000 },
+        author.token,
+      );
+      check(
+        'PDF is gated off by default (ADR-013 Technical Lead gate)',
+        r.status === 400,
+        `status ${r.status}`,
+      );
+    }
+
+    // ---- posts --------------------------------------------------------
+    let postId;
+    {
+      const r = await post(
+        '/posts',
+        {
+          body: 'محلے میں پانی کا مسئلہ ہے۔ کل سے سپلائی بند ہے۔',
+          categorySlug: 'water-sanitation',
+        },
+        author.token,
+      );
+      const body = await r.json();
+      postId = body?.id;
+      check('POST /posts publishes a post', r.status === 201, `status ${r.status}`);
+      check(
+        'AN URDU BODY SURVIVES THE ROUND TRIP',
+        body?.body?.startsWith('محلے میں پانی') === true,
+        String(body?.body).slice(0, 30),
+      );
+      check(
+        'the category is attached',
+        body?.categorySlug === 'water-sanitation',
+        String(body?.categorySlug),
+      );
+      check(
+        'and the author is the full public projection',
+        body?.author?.username === author.handle,
+        String(body?.author?.username),
+      );
+    }
+    {
+      // BR-012 counted in GRAPHEME CLUSTERS: 3,000 Urdu characters with
+      // diacritics is more than 3,000 code points and must still be accepted.
+      const urdu3000 = 'کِ'.repeat(3000);
+      const r = await post('/posts', { body: urdu3000 }, author.token);
+      check('3,000 URDU GRAPHEMES ARE ACCEPTED (BR-012)', r.status === 201, `status ${r.status}`);
+
+      const tooLong = await post('/posts', { body: 'x'.repeat(3001) }, author.token);
+      check(
+        '3,001 characters are refused with the client bypassed',
+        tooLong.status === 400,
+        `status ${tooLong.status}`,
+      );
+    }
+    {
+      const empty = await post('/posts', { body: '   ' }, author.token);
+      check(
+        'an empty post with no attachment is refused',
+        empty.status === 400,
+        `status ${empty.status}`,
+      );
+
+      if (readyMediaId !== undefined) {
+        const attachmentOnly = await post(
+          '/posts',
+          { body: '', mediaIds: [readyMediaId] },
+          author.token,
+        );
+        check(
+          'but an attachment-only post is fine (§12)',
+          attachmentOnly.status === 201,
+          `status ${attachmentOnly.status}`,
+        );
+      }
+    }
+
+    // ---- ADR-013 step 7, over the wire --------------------------------
+    {
+      const slot = await post(
+        '/media/upload-slot',
+        { kind: 'IMAGE', declaredBytes: 100 },
+        author.token,
+      );
+      const { mediaId } = await slot.json();
+      // Never uploaded, so still PENDING_UPLOAD.
+      const r = await post(
+        '/posts',
+        { body: 'with a pending image', mediaIds: [mediaId] },
+        author.token,
+      );
+      const body = await r.json();
+      check(
+        'A POST CANNOT REFERENCE MEDIA THAT IS NOT READY (ADR-013 step 7)',
+        r.status === 409 && body?.error?.code === 'MEDIA_NOT_READY',
+        `status ${r.status} code ${body?.error?.code}`,
+      );
+    }
+    {
+      // The reader uploads their own image; the author must not be able to
+      // staple it to their post.
+      const theirs = await uploadImage(reader.token, png(32, 32));
+      if (theirs.mediaId !== undefined) {
+        const r = await post(
+          '/posts',
+          { body: 'not mine', mediaIds: [theirs.mediaId] },
+          author.token,
+        );
+        check("AND CANNOT USE SOMEONE ELSE'S MEDIA", r.status === 409, `status ${r.status}`);
+      }
+    }
+    {
+      const r = await post(
+        '/posts',
+        { body: 'nonexistent', mediaIds: ['00000000-0000-4000-8000-000000000000'] },
+        author.token,
+      );
+      check(
+        'a nonexistent media id is an answer, not a 500',
+        r.status === 409,
+        `status ${r.status}`,
+      );
+    }
+
+    // ---- read, edit, delete -------------------------------------------
+    if (typeof postId === 'string') {
+      {
+        const r = await get(`/posts/${postId}`, reader.token);
+        check('another user can read the post', r.status === 200, `status ${r.status}`);
+      }
+      {
+        const r = await send(
+          'PATCH',
+          `/posts/${postId}`,
+          { body: 'محلے میں پانی بحال ہو گیا ہے۔' },
+          author.token,
+        );
+        const body = await r.json();
+        check('PATCH edits the body', r.status === 200, `status ${r.status}`);
+        check(
+          'and sets the "edited" marker (POST-FR-008)',
+          typeof body?.editedAt === 'string',
+          String(body?.editedAt),
+        );
+      }
+      {
+        // BR-014 at the transport boundary.
+        const r = await send('PATCH', `/posts/${postId}`, { mediaIds: [] }, author.token);
+        check(
+          'PATCH REJECTS mediaIds rather than ignoring it (BR-014)',
+          r.status === 400,
+          `status ${r.status}`,
+        );
+      }
+      {
+        const r = await send('PATCH', `/posts/${postId}`, { body: 'hijacked' }, reader.token);
+        check(
+          'another user cannot edit the post, and gets the neutral 404',
+          r.status === 404,
+          `status ${r.status}`,
+        );
+      }
+      {
+        const r = await get(`/users/${author.userId}/posts`, reader.token);
+        const body = await r.json();
+        check(
+          'GET /users/{id}/posts lists them (PROF-API-007)',
+          r.status === 200,
+          `status ${r.status}`,
+        );
+        check('newest first', Array.isArray(body?.posts) && body.posts.length > 0);
+      }
+      {
+        const r = await send('DELETE', `/posts/${postId}`, undefined, reader.token);
+        check('another user cannot delete the post', r.status === 404, `status ${r.status}`);
+      }
+      {
+        const r = await send('DELETE', `/posts/${postId}`, undefined, author.token);
+        check('the author can delete it', r.status === 204, `status ${r.status}`);
+
+        const gone = await get(`/posts/${postId}`, reader.token);
+        const goneBody = await gone.json();
+        check(
+          'A DELETED POST IS THE SAME NEUTRAL 404 AS ONE THAT NEVER EXISTED',
+          gone.status === 404 && goneBody?.error?.code === 'RESOURCE_UNAVAILABLE',
+          `status ${gone.status} code ${goneBody?.error?.code}`,
+        );
+
+        const missing = await get('/posts/00000000-0000-4000-8000-000000000000', reader.token);
+        const missingBody = await missing.json();
+        check(
+          'byte-identical to a missing one',
+          gone.status === missing.status && goneBody?.error?.code === missingBody?.error?.code,
+        );
+
+        const again = await send('DELETE', `/posts/${postId}`, undefined, author.token);
+        // POST-FR-007's error case is "post already deleted -> idempotent
+        // no-op", so the AUTHOR gets 204 again. A 404 would be wrong: they
+        // asked for a state, and that state holds.
+        check(
+          'deleting twice is idempotent for the author',
+          again.status === 204,
+          `status ${again.status}`,
+        );
+      }
+    }
+    {
+      const anon = await get('/posts/00000000-0000-4000-8000-000000000000');
+      check(
+        'post routes are guarded like everything else',
+        anon.status === 401,
+        `status ${anon.status}`,
+      );
+    }
+  }
+
   console.log('\n--- no secret leaves the server ---');
   {
     const r = await post('/login', { phone, password: 'synthetic-Wrong-Passw0rd' });

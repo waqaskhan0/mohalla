@@ -102,6 +102,13 @@ class InMemoryMedia implements MediaRepository {
     return this.rows.get(id) ?? null;
   }
 
+  async findByQuarantineKey(key: string): Promise<MediaRecord | null> {
+    for (const row of this.rows.values()) {
+      if (row.quarantineKey === key) return row;
+    }
+    return null;
+  }
+
   async markProcessing(id: string): Promise<boolean> {
     const row = this.rows.get(id);
     // Mirrors the guarded UPDATE: only PENDING_UPLOAD advances, so two

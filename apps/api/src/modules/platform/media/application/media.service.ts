@@ -194,6 +194,24 @@ export class MediaService {
     return { status: 'READY', media: ready };
   }
 
+  /**
+   * Accept bytes into quarantine (the local storage adapter's upload path).
+   *
+   * Deliberately does NOT inspect. Quarantine exists precisely so unvalidated
+   * bytes have somewhere to land that is never served; inspection happens at
+   * `completeUpload`, which is also where a rejection can delete the object.
+   *
+   * Only writes against a key that belongs to a real PENDING_UPLOAD slot, so a
+   * caller cannot invent a key and place bytes anywhere they like.
+   */
+  async acceptQuarantinedBytes(quarantineKey: string, bytes: Uint8Array): Promise<boolean> {
+    const media = await this.repo.findByQuarantineKey(quarantineKey);
+    if (media === null || media.state !== 'PENDING_UPLOAD') return false;
+
+    await this.storage.writeQuarantined(quarantineKey, bytes);
+    return true;
+  }
+
   /** Read a served object, for MED-API-003. Only READY media is servable. */
   async readServed(mediaId: string): Promise<{ bytes: Uint8Array; mime: string } | null> {
     const media = await this.repo.findById(mediaId);

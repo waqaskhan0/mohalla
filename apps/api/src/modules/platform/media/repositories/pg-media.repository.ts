@@ -74,6 +74,12 @@ export class PgMediaRepository implements MediaRepository {
     return row ? toMedia(row) : null;
   }
 
+  async findByQuarantineKey(key: string, client?: PoolClient): Promise<MediaRecord | null> {
+    const r = await this.q<Row>(client, 'SELECT * FROM media WHERE quarantine_key = $1', [key]);
+    const row = r.rows[0];
+    return row ? toMedia(row) : null;
+  }
+
   async markProcessing(id: string, client?: PoolClient): Promise<boolean> {
     // The state guard is IN the UPDATE, not a read-then-write. Two concurrent
     // completions therefore cannot both start an inspection - exactly one

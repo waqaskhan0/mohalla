@@ -80,6 +80,33 @@ const schema = z.object({
   SOCKET_IO_PATH: z.string().startsWith('/').default('/realtime'),
 
   /**
+   * Where the local media adapter keeps its two prefixes.
+   *
+   * Development and CI only. The frozen stack is S3-compatible object storage
+   * behind a CDN (ADR-012); this exists because Stage 6 provisions nothing
+   * paid, and it keeps quarantine and served bytes in SEPARATE directories so
+   * the security boundary is the same shape it will be in production.
+   */
+  MEDIA_LOCAL_ROOT: z.string().min(1).default('.media'),
+
+  /**
+   * Whether PDF attachments are accepted (ADR-013).
+   *
+   * ADR-013 puts PDF behind a Technical Lead gate on the selected
+   * inspection/sanitisation capability, and is explicit that if no practical
+   * safe mechanism fits V1, PDF is CUT rather than SEC-013 weakened.
+   *
+   * DEFAULTS TO FALSE, and that default is the point: enabling PDF must be a
+   * decision somebody makes and records, not one inherited by whoever copies
+   * an environment file. POST-FR-005, MEDIA-FR-003 and MEDIA-FR-004 are all
+   * Should, so this costs no Must requirement.
+   */
+  MEDIA_ALLOW_PDF: z
+    .union([z.literal('true'), z.literal('false')])
+    .default('false')
+    .transform((v) => v === 'true'),
+
+  /**
    * How many reverse proxies sit in front of this process (SEC-007).
    *
    * Express only derives `req.ip` from `X-Forwarded-For` when `trust proxy` is

@@ -30,6 +30,15 @@ export interface MediaRepository {
   findById(id: string, client?: PoolClient): Promise<MediaRecord | null>;
 
   /**
+   * Resolve a quarantine key back to its row.
+   *
+   * Used by the local upload path to confirm the key belongs to a real
+   * PENDING_UPLOAD slot - so a caller cannot invent a key and write bytes
+   * wherever they like.
+   */
+  findByQuarantineKey(key: string, client?: PoolClient): Promise<MediaRecord | null>;
+
+  /**
    * Move to PROCESSING, but only from PENDING_UPLOAD.
    *
    * @returns false when the row was in another state — which means a duplicate
