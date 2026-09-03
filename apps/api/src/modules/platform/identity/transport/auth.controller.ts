@@ -19,7 +19,9 @@ import { LoginService } from '../application/login.service.js';
 import { PasswordService } from '../application/password.service.js';
 import { SessionService, type AuthenticatedPrincipal } from '../application/session.service.js';
 import { AdminAuthService } from '../application/admin-auth.service.js';
-import { Principal, Public, SessionGuard } from './session.guard.js';
+import { Principal, Public } from './session.guard.js';
+import { Admin, RequiresAdmin } from './admin-session.guard.js';
+import type { AdminPrincipal } from '../application/admin-auth.service.js';
 import {
   adminLoginBody,
   changePasswordBody,
@@ -164,6 +166,26 @@ export class AuthController {
     await this.sessions.logout(principal.sessionId);
   }
 
+  @Post('session/refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Slide the idle expiry (AUTH-API-008).',
+    description:
+      'The guard already slides the window on every authenticated request, so this exists ' +
+      'for a client that wants to extend a session without making a real call - and it ' +
+      'returns the CURRENT expiry so the client never has to guess.',
+  })
+  async refreshSession(@Principal() principal: AuthenticatedPrincipal) {
+    // Resolution has already happened in the guard, including the slide, so
+    // there is nothing left to do but report the result. Re-sliding here would
+    // double-count the request.
+    return {
+      status: 'REFRESHED',
+      userId: principal.userId,
+      capability: principal.capability,
+    };
+  }
+
   // ---------------------------------------------------------------- password
   @Post('password/forgot')
   @Public()
@@ -249,6 +271,14 @@ export class AuthController {
       token: result.token,
       expiresAt: result.expiresAt.toISOString(),
     };
+  }
+
+  @Post('admin/logout')
+  @RequiresAdmin()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'End an administrator session (AUTH-API-011). Audited.' })
+  async adminLogout(@Admin() principal: AdminPrincipal) {
+    await this.adminAuth.logout(principal);
   }
 }
 

@@ -21,6 +21,7 @@ import { SessionService } from './application/session.service.js';
 import { AdminAuthService } from './application/admin-auth.service.js';
 import { AuthController } from './transport/auth.controller.js';
 import { SessionGuard } from './transport/session.guard.js';
+import { AdminSessionGuard } from './transport/admin-session.guard.js';
 
 /**
  * `identity` — platform tier. EPIC-02.
@@ -94,8 +95,11 @@ import { SessionGuard } from './transport/session.guard.js';
     AdminAuthService,
 
     // ---- transport ------------------------------------------------------
-    // Global: authentication is the default for every route in every module.
+    // Both registered globally. The user guard authenticates every route by
+    // default and steps aside for `@RequiresAdmin()`; the admin guard does the
+    // reverse. Neither needs to know about the other beyond that one flag.
     { provide: APP_GUARD, useClass: SessionGuard },
+    { provide: APP_GUARD, useClass: AdminSessionGuard },
   ],
   // Exported so later epics can resolve a principal and revoke sessions
   // (moderation suspends, settings deletes). The repositories are NOT exported:

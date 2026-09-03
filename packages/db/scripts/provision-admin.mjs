@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { Client } from 'pg';
 
 /**
  * ADMINISTRATOR PROVISIONING — MECHANISM ONLY.
@@ -23,11 +23,16 @@ import { spawnSync } from 'node:child_process';
  * outside development, and even in development it only demonstrates the shape
  * using dev/test data.
  *
- * The `admins` table does not exist yet — it is owned by the `identity` module
- * and is created by that module's migration, in that module's epic. So this
- * script currently validates its inputs and its guards, prints exactly what it
- * WOULD do, and stops. That is the correct amount of mechanism for Stage 5:
- * everything except the part that needs a table that Stage 5 does not create.
+ * STATUS AS OF EPIC-02: the `admins` table now EXISTS (migration 0003), so the
+ * only remaining blocker is the governance one — OD-020 has still not named a
+ * technical owner. That distinction matters, because the two blocks are not
+ * interchangeable: a missing table is something an engineer can fix, while a
+ * missing accountable human is not, and creating an administrator that belongs
+ * to nobody is worse than having none.
+ *
+ * So this still validates its inputs and its guards, prints exactly what it
+ * WOULD do, and stops. It is not unblocked here, because agreeing that an
+ * organization has authorized something is not an engineering decision.
  */
 
 const args = Object.fromEntries(
@@ -73,17 +78,34 @@ if (!/^[a-z0-9_]{3,30}$/.test(username)) {
   fail('username must be 3–30 chars of [a-z0-9_]');
 }
 
-// ---- guard 4: the table this needs does not exist in Stage 5 -------------
+// ---- guard 4: report readiness without acting on it ---------------------
 const url = process.env.MIGRATION_DATABASE_URL ?? process.env.ADMIN_DATABASE_URL;
-let adminsTableExists = false;
-if (url) {
-  const check = spawnSync(
-    'psql',
-    [url, '-tAc', "SELECT to_regclass('public.admins') IS NOT NULL"],
-    { encoding: 'utf8' },
-  );
-  adminsTableExists = check.status === 0 && check.stdout.trim() === 't';
+
+/**
+ * Does the table exist?
+ *
+ * Asked through the `pg` client the repo already depends on, NOT by shelling
+ * out to `psql`. The original shelled out, and on a host without the psql
+ * binary a missing TOOL was indistinguishable from a missing TABLE - so this
+ * script reported `adminsTableExists: false` long after migration 0003 created
+ * it. A diagnostic that quietly reports the wrong thing is worse than one that
+ * admits it cannot tell, hence the three-way answer below.
+ */
+async function adminsTablePresent() {
+  if (!url) return null; // no credential: genuinely unknown
+  const client = new Client({ connectionString: url });
+  try {
+    await client.connect();
+    const r = await client.query("SELECT to_regclass('public.admins') IS NOT NULL AS present");
+    return r.rows[0]?.present === true;
+  } catch {
+    return null; // unreachable: unknown, not absent
+  } finally {
+    await client.end().catch(() => undefined);
+  }
 }
+
+const adminsTableExists = await adminsTablePresent();
 
 console.log(
   JSON.stringify(
@@ -91,12 +113,18 @@ console.log(
       mechanism: 'admin-provisioning-cli',
       wouldCreate: { username, displayName, ownedBy: ownerHandle },
       passwordPolicy: 'set out-of-band via the identity module; never passed on the CLI',
-      adminsTableExists,
-      action: adminsTableExists
-        ? 'ready — but this is Stage 5: no admin is created here'
-        : 'the admins table does not exist yet (identity module, its own epic)',
+      adminsTableExists: adminsTableExists ?? 'unknown — no reachable database credential',
+      action:
+        adminsTableExists === true
+          ? 'schema ready — still BLOCKED on OD-020 naming the technical owner'
+          : adminsTableExists === false
+            ? 'the admins table does not exist yet — run the migrations'
+            : 'could not determine schema state; set MIGRATION_DATABASE_URL to check',
       created: false,
-      note: 'Stage 5 builds the mechanism only. No administrator account is created.',
+      note:
+        'The mechanism exists and the schema is in place. No administrator is created because ' +
+        'OD-020 has not named an accountable owner (DEP-016) - a governance block, not a ' +
+        'technical one, and not one an engineer may clear.',
     },
     null,
     2,

@@ -263,9 +263,6 @@ async function main() {
 
   console.log('\n--- admin login is a separate store (SEC-020) ---');
   {
-    // The user's own credential must not open the admin console. There is no
-    // provisioned administrator in this run, so this also confirms an unknown
-    // address and a wrong credential look the same.
     const r = await post('/admin/login', { email: `${randomUUID()}@example.invalid`, password });
     const body = await r.json();
     check(
@@ -274,6 +271,131 @@ async function main() {
       `status ${r.status} code ${body?.error?.code}`,
     );
   }
+
+  // A SYNTHETIC administrator row, seeded with the MIGRATION credential and
+  // removed afterwards.
+  //
+  // This is NOT provisioning. The real path is the technical owner's CLI, which
+  // remains blocked on OD-020 naming an accountable owner - a governance block
+  // no engineer may clear. This is test data in a local database, and it exists
+  // because the section 14 matrix requires proving that a user credential
+  // cannot open the admin console and vice versa, which cannot be shown without
+  // one administrator to try it against.
+  //
+  // It uses MIGRATION_DATABASE_URL, not the API's own connection, because
+  // migration 0007 removed INSERT on `admins` from the runtime role: an
+  // application-level flaw must not be able to mint an administrator. Seeding
+  // here through the owner credential is the same route a real provisioning run
+  // would take, so the test exercises the privilege boundary rather than
+  // pretending it is not there.
+  const adminEmail = `smoke-${randomUUID()}@example.invalid`;
+  const adminPassword = 'synthetic-Admin-Smoke-Passw0rd';
+
+  const { PASSWORD_HASHER } =
+    await import('../../apps/api/dist/modules/platform/identity/ports/password-hasher.port.js');
+  const hasher = app.get(PASSWORD_HASHER, { strict: false });
+
+  const migrationUrl = process.env.MIGRATION_DATABASE_URL;
+  let owner;
+  let adminInserted = false;
+
+  if (migrationUrl === undefined) {
+    console.log('  SKIP  admin round-trip - MIGRATION_DATABASE_URL not set');
+  } else {
+    const { Client } = await import('pg');
+    owner = new Client({ connectionString: migrationUrl });
+    await owner.connect();
+
+    // Confirm the boundary really is in force before relying on it. If the
+    // runtime role can still insert here, migration 0007 has regressed and this
+    // must be loud rather than silently still passing.
+    const { DatabaseService } = await import('../../apps/api/dist/database/database.service.js');
+    const runtimeDb = app.get(DatabaseService, { strict: false });
+    let runtimeCouldInsert = false;
+    try {
+      await runtimeDb.query(
+        'INSERT INTO admins (id, email, password_hash, state) VALUES ($1,$2,$3,$4)',
+        [randomUUID(), `leak-${randomUUID()}@example.invalid`, 'x', 'ACTIVE'],
+      );
+      runtimeCouldInsert = true;
+    } catch {
+      runtimeCouldInsert = false;
+    }
+    check(
+      'THE RUNTIME ROLE CANNOT CREATE AN ADMINISTRATOR (migration 0007)',
+      !runtimeCouldInsert,
+      runtimeCouldInsert ? 'INSERT on admins succeeded as runtime_app' : 'refused',
+    );
+
+    await owner.query(
+      'INSERT INTO admins (id, email, password_hash, state, display_name) VALUES ($1,$2,$3,$4,$5)',
+      [randomUUID(), adminEmail, await hasher.hash(adminPassword), 'ACTIVE', 'Smoke Admin'],
+    );
+    adminInserted = true;
+  }
+
+  if (adminInserted) {
+    let adminToken;
+    {
+      const r = await post('/admin/login', { email: adminEmail, password: adminPassword });
+      const body = await r.json();
+      adminToken = body?.token;
+      check(
+        'a real administrator can sign in',
+        r.status === 200 && typeof adminToken === 'string',
+        `status ${r.status}`,
+      );
+
+      // SEC-024: 8 hours ABSOLUTE, not the 60-day user idle window.
+      const hours = (new Date(body?.expiresAt).getTime() - Date.now()) / 3_600_000;
+      check(
+        'the admin session is ~8 hours, not 60 days',
+        hours > 7.9 && hours < 8.1,
+        `${hours.toFixed(2)}h`,
+      );
+    }
+
+    if (typeof adminToken === 'string') {
+      const asUser = await post('/logout', {}, adminToken);
+      check(
+        'AN ADMIN TOKEN DOES NOT WORK AS A USER SESSION',
+        asUser.status === 401,
+        `status ${asUser.status}`,
+      );
+
+      const out = await post('/admin/logout', {}, adminToken);
+      check('admin logout accepts the admin session', out.status === 204, `status ${out.status}`);
+
+      const again = await post('/admin/logout', {}, adminToken);
+      check(
+        'the admin session is dead after logout',
+        again.status === 401,
+        `status ${again.status}`,
+      );
+    }
+
+    {
+      const r = await post('/admin/login', { email: adminEmail, password });
+      check(
+        'a USER password does not open the admin console',
+        r.status === 401,
+        `status ${r.status}`,
+      );
+    }
+    {
+      const r = await post('/login', { phone, password: adminPassword });
+      check(
+        'AN ADMIN PASSWORD DOES NOT OPEN A USER SESSION',
+        r.status === 401,
+        `status ${r.status}`,
+      );
+    }
+
+    // Remove the synthetic row so repeated runs leave nothing behind.
+    await owner.query('DELETE FROM admins WHERE email = $1', [adminEmail]);
+  }
+
+  if (owner !== undefined) await owner.end().catch(() => undefined);
 
   console.log('\n--- no secret leaves the server ---');
   {

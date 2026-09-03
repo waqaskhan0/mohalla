@@ -11,6 +11,7 @@ import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { IdentityErrorCode } from '@mohalla/contracts';
 import { SessionService, type AuthenticatedPrincipal } from '../application/session.service.js';
+import { REQUIRES_ADMIN } from './admin-session.guard.js';
 
 /**
  * Where the resolved principal is parked for the request's lifetime.
@@ -97,6 +98,15 @@ export class SessionGuard implements CanActivate {
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     if (ctx.getType() !== 'http') return true;
+
+    // An admin route is not this guard's business. Its credential lives in a
+    // different store (SEC-020), so requiring a USER session here would 401
+    // every administrator before AdminSessionGuard ever ran.
+    const requiresAdmin = this.reflector.getAllAndOverride<boolean>(REQUIRES_ADMIN, [
+      ctx.getHandler(),
+      ctx.getClass(),
+    ]);
+    if (requiresAdmin === true) return true;
 
     const isPublic = this.reflector.getAllAndOverride<boolean>(PUBLIC_ROUTE, [
       ctx.getHandler(),
