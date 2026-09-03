@@ -51,6 +51,31 @@ const schema = z.object({
   APP_VERSION: z.string().default('0.0.0'),
   GIT_COMMIT: z.string().default('unknown'),
 
+  // ---- identity / EPIC-02 ------------------------------------------------
+  //
+  // Argon2id (SEC-001). Defaults are BENCHMARKED on the development host to
+  // ~236 ms per hash; see adapters/argon2-password-hasher.ts. They are
+  // host-specific and MUST be re-benchmarked on the production host once one is
+  // selected (ADR-016 / OD-019) - a slower instance makes login painful, a
+  // faster one weakens the hash. Bounds below reject anything under the OWASP
+  // floor rather than letting a typo silently weaken hashing.
+  ARGON2_MEMORY_KIB: z.coerce.number().int().min(19_456).max(1_048_576).default(98_304),
+  ARGON2_ITERATIONS: z.coerce.number().int().min(2).max(20).default(3),
+  ARGON2_PARALLELISM: z.coerce.number().int().min(1).max(16).default(1),
+
+  /**
+   * Pepper for identifier hashing (BR-036).
+   *
+   * No default, and no fallback: hashing the ban list with an empty or guessed
+   * key would make it reversible. In development the value is any 32+ char
+   * string; in production it is generated once and NEVER rotated, because
+   * rotating it silently unbans every banned identifier.
+   */
+  IDENTIFIER_HASH_PEPPER: z
+    .string({ error: 'IDENTIFIER_HASH_PEPPER is required' })
+    .min(32, 'IDENTIFIER_HASH_PEPPER must be at least 32 characters')
+    .default('development-only-pepper-not-for-production-use'),
+
   /** Socket.IO mount path. Namespaced so it cannot collide with a REST route. */
   SOCKET_IO_PATH: z.string().startsWith('/').default('/realtime'),
 });
