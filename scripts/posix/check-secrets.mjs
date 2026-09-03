@@ -12,7 +12,15 @@ import { readFileSync, statSync } from 'node:fs';
  * scanning. It is designed to have no false negatives on the patterns it knows
  * and to be quiet otherwise.
  */
-const PATTERNS = [
+/**
+ * High-confidence patterns. Each matches a value whose SHAPE is issued by a
+ * specific provider, so a match is a real credential with near-certainty.
+ *
+ * These are NOT allowlistable. A comment saying "example" next to a live AWS
+ * key does not make it an example, and the one time that assertion is wrong is
+ * the time it matters.
+ */
+const STRONG_PATTERNS = [
   [/-----BEGIN (?:RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----/, 'private key block'],
   [/\bAKIA[0-9A-Z]{16}\b/, 'AWS access key id'],
   [/\bghp_[A-Za-z0-9]{36}\b/, 'GitHub personal access token'],
@@ -21,13 +29,28 @@ const PATTERNS = [
   [/"private_key"\s*:\s*"-----BEGIN/, 'service account JSON'],
   [/\bxox[baprs]-[A-Za-z0-9-]{10,}\b/, 'Slack token'],
   [/\bsk-[A-Za-z0-9]{32,}\b/, 'generic secret key'],
+];
+
+/**
+ * Heuristic patterns. These match a NAME next to a quoted value, which is a
+ * guess about intent rather than a recognisable credential. Only these may be
+ * suppressed by ALLOWED, because only these have genuine false positives.
+ */
+const WEAK_PATTERNS = [
   [
     /(?:password|passwd|secret|api[_-]?key|token)\s*[:=]\s*['"][^'"\s]{12,}['"]/i,
     'hardcoded credential',
   ],
 ];
 
-/** Values that look like credentials but are deliberate templates. */
+/**
+ * Values that trip a HEURISTIC pattern but are deliberate templates or test
+ * fixtures. Each entry requires the author to have stated intent in the line
+ * itself, which is the point: the allowance is a claim someone made on the
+ * record, not a silent exemption.
+ *
+ * These never suppress a STRONG_PATTERNS match.
+ */
 const ALLOWED = [
   /CHANGE_ME/,
   /mohalla_local_dev_only/,
@@ -47,6 +70,14 @@ const ALLOWED = [
   // credential. `password: 'realsecret'` has a space after the colon and is
   // still caught.
   /(?:^|\s):'[A-Za-z_][A-Za-z0-9_]*'/,
+
+  // Test fixtures. The addendum requires deterministic SYNTHETIC test data, so
+  // a fixture password is expected to exist - but it must SAY it is one.
+  //
+  // Narrow on purpose: the marker has to appear inside the quoted VALUE, not in
+  // a nearby comment, so it cannot be attached to a real credential without
+  // altering that credential and breaking it.
+  /['"][^'"\s]*synthetic[^'"\s]*['"]/i,
 ];
 
 /** Files whose whole job is to describe secrets without containing them. */
@@ -89,11 +120,21 @@ for (const file of tracked) {
 
   const lines = content.split('\n');
   lines.forEach((line, i) => {
-    if (ALLOWED.some((r) => r.test(line))) return;
-    for (const [re, what] of PATTERNS) {
+    // Checked FIRST and without any allowlist: a provider-shaped credential is
+    // a finding no matter what the line claims about itself.
+    for (const [re, what] of STRONG_PATTERNS) {
       if (re.test(line)) {
         findings.push({ file, line: i + 1, what });
-        break;
+        return;
+      }
+    }
+
+    if (ALLOWED.some((r) => r.test(line))) return;
+
+    for (const [re, what] of WEAK_PATTERNS) {
+      if (re.test(line)) {
+        findings.push({ file, line: i + 1, what });
+        return;
       }
     }
   });

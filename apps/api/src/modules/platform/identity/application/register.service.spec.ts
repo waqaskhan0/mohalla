@@ -14,9 +14,12 @@ import type { StructuredLogger } from '../../../../common/logging/structured.log
  */
 
 const PEPPER = 'p'.repeat(48);
+// Deterministic synthetic fixture. The literal carries the word "synthetic"
+// because the secret guard only allows a heuristic credential match when the
+// VALUE itself says it is test data - see scripts/posix/check-secrets.mjs.
 const VALID: RegisterCommand = {
   phone: '+923001234567',
-  password: 'goodPassword1',
+  password: 'synthetic-Passw0rd',
   dateOfBirth: '1995-06-15',
   termsVersion: 'terms-2026-01',
 };
