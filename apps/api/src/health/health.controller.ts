@@ -6,6 +6,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { FoundationErrorCode } from '@mohalla/contracts';
+import { Public } from '../modules/platform/identity/transport/session.guard.js';
 import { HealthService } from './health.service.js';
 
 /**
@@ -29,6 +30,11 @@ import { HealthService } from './health.service.js';
  */
 @ApiTags('health')
 @Controller('health')
+// Authentication is the default for every route (the session guard is global),
+// so health MUST opt out explicitly. A liveness or readiness probe carries no
+// bearer token; a guarded /health/ready returns 401, the orchestrator concludes
+// the process is unhealthy, and no traffic is ever routed to a working service.
+@Public()
 export class HealthController {
   constructor(private readonly health: HealthService) {}
 

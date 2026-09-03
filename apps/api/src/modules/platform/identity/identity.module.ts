@@ -1,25 +1,105 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ENV } from '../../../config/env.token.js';
+import type { Env } from '../../../config/env.js';
+import { AuditModule } from '../audit/audit.module.js';
+import { IdentifierHasher } from './domain/identifier-hash.js';
+import { CLOCK, SystemClock } from './ports/clock.port.js';
+import { PASSWORD_HASHER } from './ports/password-hasher.port.js';
+import { SMS_PROVIDER } from './ports/sms-provider.port.js';
+import { Argon2PasswordHasher } from './adapters/argon2-password-hasher.js';
+import { FakeSmsProvider } from './adapters/fake-sms-provider.js';
+import { IDENTITY_REPOSITORY } from './repositories/identity.repository.port.js';
+import { PgIdentityRepository } from './repositories/pg-identity.repository.js';
+import { ADMIN_IDENTITY_REPOSITORY } from './repositories/admin-identity.repository.port.js';
+import { PgAdminIdentityRepository } from './repositories/pg-admin-identity.repository.js';
+import { RegisterService } from './application/register.service.js';
+import { OtpService } from './application/otp.service.js';
+import { LoginService } from './application/login.service.js';
+import { PasswordService } from './application/password.service.js';
+import { SessionService } from './application/session.service.js';
+import { AdminAuthService } from './application/admin-auth.service.js';
+import { AuthController } from './transport/auth.controller.js';
+import { SessionGuard } from './transport/session.guard.js';
 
 /**
- * `identity` - platform tier.
+ * `identity` — platform tier. EPIC-02.
  *
- * STAGE 5 FOUNDATION SHELL. Intentionally empty.
+ * Holds phone numbers, dates of birth and password hashes: the highest privacy
+ * risk in the system. No service here returns a raw identifier to a caller
+ * outside this module — `AuthenticatedPrincipal` carries only ids and a
+ * capability (PRIV-002/003).
  *
- * No controller, provider, entity, route or business rule exists here yet.
- * The shell exists so that the module boundary, the tier it belongs to and the
- * dependency-direction check are all in place and enforced *before* any feature
- * is written.
+ * `DatabaseModule` is `@Global()`, so `ENV`, `StructuredLogger` and
+ * `DatabaseService` are ambient and are deliberately NOT imported here: adding
+ * that import edge is exactly what the global module exists to avoid.
  *
- * Requirements owned by this module are listed in
- * `docs/architecture/06-backend-modules.md`. Implementation begins in the epic
- * that owns it - not in Stage 5.
+ * THE SESSION GUARD IS REGISTERED GLOBALLY, via `APP_GUARD`.
  *
- * Holds phone, email, DOB and password hashes - the highest privacy risk in the system. No service here may return a raw identifier to any caller outside this module.
+ * Every route in the application is authenticated unless it opts out with
+ * `@Public()`. Registered per-controller instead, the failure mode of
+ * forgetting would be an OPEN endpoint; registered globally, it is a dead one
+ * that fails loudly in the first test that calls it. With fifteen modules still
+ * to come, that difference is the entire point of doing it here.
  */
 @Module({
-  imports: [],
-  controllers: [],
-  providers: [],
-  exports: [],
+  imports: [AuditModule],
+  controllers: [AuthController],
+  providers: [
+    // ---- clock ----------------------------------------------------------
+    SystemClock,
+    { provide: CLOCK, useExisting: SystemClock },
+
+    // ---- adapters -------------------------------------------------------
+    {
+      provide: PASSWORD_HASHER,
+      // Parameters come from configuration, not from the class default, so a
+      // production host can be re-benchmarked without a code change (SEC-001).
+      useFactory: (env: Env) =>
+        new Argon2PasswordHasher({
+          memoryCost: env.ARGON2_MEMORY_KIB,
+          timeCost: env.ARGON2_ITERATIONS,
+          parallelism: env.ARGON2_PARALLELISM,
+        }),
+      inject: [ENV],
+    },
+    {
+      provide: IdentifierHasher,
+      useFactory: (env: Env) => new IdentifierHasher(env.IDENTIFIER_HASH_PEPPER),
+      inject: [ENV],
+    },
+    {
+      // DEP-002: no SMS provider is selected, and the public-repository
+      // addendum forbids sending to a real recipient from CI. The deterministic
+      // fake is the ONLY adapter that exists; a real one is chosen in EPIC-11.
+      provide: SMS_PROVIDER,
+      useClass: FakeSmsProvider,
+    },
+
+    // ---- repositories ---------------------------------------------------
+    // Two SEPARATE ports, bound to two separate adapters (SEC-020). Keeping
+    // them distinct here is what makes "authenticate against the wrong store"
+    // a compile error rather than a review question.
+    PgIdentityRepository,
+    { provide: IDENTITY_REPOSITORY, useExisting: PgIdentityRepository },
+    PgAdminIdentityRepository,
+    { provide: ADMIN_IDENTITY_REPOSITORY, useExisting: PgAdminIdentityRepository },
+
+    // ---- application ----------------------------------------------------
+    RegisterService,
+    OtpService,
+    LoginService,
+    PasswordService,
+    SessionService,
+    AdminAuthService,
+
+    // ---- transport ------------------------------------------------------
+    // Global: authentication is the default for every route in every module.
+    { provide: APP_GUARD, useClass: SessionGuard },
+  ],
+  // Exported so later epics can resolve a principal and revoke sessions
+  // (moderation suspends, settings deletes). The repositories are NOT exported:
+  // nothing outside identity may read a password hash or an identifier row.
+  exports: [SessionService, AdminAuthService],
 })
 export class IdentityModule {}

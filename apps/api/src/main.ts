@@ -1,20 +1,20 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import helmet from 'helmet';
-import { IoAdapter } from '@nestjs/platform-socket.io';
 import { writeFileSync } from 'node:fs';
 import { AppModule } from './app.module.js';
+import { configureApp } from './configure-app.js';
 import { loadEnv } from './config/env.js';
 import { StructuredLogger } from './common/logging/structured.logger.js';
-import { RequestLoggingInterceptor } from './common/logging/request-logging.interceptor.js';
-import { AllExceptionsFilter } from './common/errors/all-exceptions.filter.js';
 
 /**
  * API entry point.
  *
- * STAGE 5 FOUNDATION. Serves three health endpoints and a Socket.IO ping.
- * No product route exists.
+ * Owns only what belongs to the PROCESS: reading configuration, creating the
+ * app, publishing the OpenAPI document, binding the port and shutdown hooks.
+ * How the application itself behaves lives in `configureApp`, so that a test
+ * can boot an identical one.
  */
 async function bootstrap(): Promise<void> {
   // Validate configuration before the framework starts, so a misconfigured
@@ -22,57 +22,18 @@ async function bootstrap(): Promise<void> {
   const env = loadEnv();
   const logger = new StructuredLogger('api', env.LOG_LEVEL);
 
-  const app = await NestFactory.create(AppModule, { logger, bufferLogs: false });
-
-  // Socket.IO transport. NestJS does not apply the IoAdapter automatically
-  // merely because @nestjs/platform-socket.io is installed - it must be set
-  // explicitly, or the gateway silently never mounts (both the namespace and
-  // the default /socket.io path return 404). The foundation ping proved this by
-  // failing until the adapter was set.
-  app.useWebSocketAdapter(new IoAdapter(app));
-
-  // ---- security headers -------------------------------------------------
-  // The API serves JSON to an Android client and to the admin console; it
-  // renders no HTML of its own, so a restrictive default CSP costs nothing and
-  // removes a class of mistake if an error page ever does render markup.
-  app.use(
-    helmet({
-      contentSecurityPolicy: {
-        useDefaults: false,
-        directives: {
-          'default-src': ["'none'"],
-          'frame-ancestors': ["'none'"],
-          'base-uri': ["'none'"],
-        },
-      },
-      // Sent only over HTTPS by the platform; harmless locally.
-      hsts: { maxAge: 31_536_000, includeSubDomains: true },
-      referrerPolicy: { policy: 'no-referrer' },
-      crossOriginResourcePolicy: { policy: 'same-site' },
-    }),
-  );
-
-  // ---- CORS -------------------------------------------------------------
-  // Explicit allow-list, never `*`. Empty list = no cross-origin browser
-  // access, which is the correct default: the Android client is not a browser,
-  // and the admin console is served from its own origin.
-  app.enableCors({
-    origin: env.CORS_ALLOWED_ORIGINS.length > 0 ? env.CORS_ALLOWED_ORIGINS : false,
-    credentials: true,
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Correlation-Id'],
-    exposedHeaders: ['X-Correlation-Id'],
-    maxAge: 600,
+  // Typed as the Express application because `trust proxy` below is an Express
+  // setting. The untyped `create` returns the platform-agnostic interface, on
+  // which `set` does not exist.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    logger,
+    bufferLogs: false,
   });
 
-  // ---- cross-cutting ----------------------------------------------------
-  app.useGlobalFilters(new AllExceptionsFilter(logger));
-  app.useGlobalInterceptors(new RequestLoggingInterceptor(logger));
-
-  // Per-argument zod validation is applied at the handler with
-  // `ZodValidationPipe`. No global body pipe is registered because the
-  // foundation has no request body to validate - registering one now would be
-  // configuration with nothing to act on.
+  // Transport, proxy handling, security headers, CORS, the error envelope and
+  // request logging. Extracted so a smoke or e2e test boots the SAME
+  // application this does - see configure-app.ts for why that matters.
+  configureApp(app, env, logger);
 
   // ---- OpenAPI ----------------------------------------------------------
   const doc = SwaggerModule.createDocument(
@@ -113,9 +74,9 @@ async function bootstrap(): Promise<void> {
       environment: env.NODE_ENV,
       version: env.APP_VERSION,
       commit: env.GIT_COMMIT,
-      routes: ['GET /health', 'GET /health/live', 'GET /health/ready'],
       socketPath: env.SOCKET_IO_PATH,
-      note: 'foundation only - no product route exists',
+      trustProxyHops: env.TRUST_PROXY_HOPS,
+      epics: ['EPIC-02 authentication and sessions'],
     }),
     'bootstrap',
   );

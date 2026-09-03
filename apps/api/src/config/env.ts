@@ -78,6 +78,31 @@ const schema = z.object({
 
   /** Socket.IO mount path. Namespaced so it cannot collide with a REST route. */
   SOCKET_IO_PATH: z.string().startsWith('/').default('/realtime'),
+
+  /**
+   * How many reverse proxies sit in front of this process (SEC-007).
+   *
+   * Express only derives `req.ip` from `X-Forwarded-For` when `trust proxy` is
+   * set, and this MUST be stated rather than guessed, because both mistakes are
+   * real and opposite:
+   *
+   *   TOO LOW  - behind a load balancer, every request reports the balancer's
+   *              address. The per-source login lockout then counts the whole
+   *              internet as one client: 50 failed logins from anywhere lock
+   *              out every user at once.
+   *   TOO HIGH - with no proxy in front, `X-Forwarded-For` is a header the
+   *              client sets. An attacker rotates it freely and the per-source
+   *              limit stops existing.
+   *
+   * A hop COUNT rather than `true`: `true` trusts the entire chain, so the
+   * left-most (client-supplied) entry can win. The count says "trust exactly
+   * the hops I actually operate".
+   *
+   * Defaults to 0 - no proxy - because that is the only safe assumption for a
+   * value nobody has set. It is set per deployment when the topology is known
+   * (still open: no production host is selected in Stage 6).
+   */
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(8).default(0),
 });
 
 export type Env = z.infer<typeof schema>;

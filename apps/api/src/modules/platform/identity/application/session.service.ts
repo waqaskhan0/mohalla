@@ -1,10 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { DatabaseService } from '../../../../database/database.service.js';
 import { StructuredLogger } from '../../../../common/logging/structured.logger.js';
 import { hashSessionToken, isSessionLive, slidExpiry } from '../domain/session-token.js';
 import { authOutcomeFor, type UserState } from '../domain/user-state.js';
-import type { Clock } from '../ports/clock.port.js';
-import type { IdentityRepository } from '../repositories/identity.repository.port.js';
+import { CLOCK, type Clock } from '../ports/clock.port.js';
+import {
+  IDENTITY_REPOSITORY,
+  type IdentityRepository,
+} from '../repositories/identity.repository.port.js';
 
 /**
  * Who is making this request, and what may they do.
@@ -46,8 +49,8 @@ export type ResolveSessionResult =
 export class SessionService {
   constructor(
     private readonly db: DatabaseService,
-    private readonly repo: IdentityRepository,
-    private readonly clock: Clock,
+    @Inject(IDENTITY_REPOSITORY) private readonly repo: IdentityRepository,
+    @Inject(CLOCK) private readonly clock: Clock,
     private readonly logger: StructuredLogger,
   ) {}
 

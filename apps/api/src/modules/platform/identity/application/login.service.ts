@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { DatabaseService } from '../../../../database/database.service.js';
 import { StructuredLogger } from '../../../../common/logging/structured.logger.js';
@@ -7,18 +7,21 @@ import { tryNormalizePakistaniMobile } from '../domain/phone-number.js';
 import { authOutcomeFor } from '../domain/user-state.js';
 import { LOGIN_FAILURE_WINDOW_MS, checkLoginLockout } from '../domain/login-lockout.js';
 import { issueSessionToken, sessionsToEvict } from '../domain/session-token.js';
-import type { Clock } from '../ports/clock.port.js';
-import type { PasswordHasher } from '../ports/password-hasher.port.js';
-import type { IdentityRepository } from '../repositories/identity.repository.port.js';
+import { CLOCK, type Clock } from '../ports/clock.port.js';
+import { PASSWORD_HASHER, type PasswordHasher } from '../ports/password-hasher.port.js';
+import {
+  IDENTITY_REPOSITORY,
+  type IdentityRepository,
+} from '../repositories/identity.repository.port.js';
 
 export interface LoginCommand {
   phone: string;
   password: string;
   /** Opaque label the user sees in their device list. Never a fingerprint. */
-  deviceLabel?: string;
+  deviceLabel?: string | undefined;
   /** Source address, hashed before storage. Absent when unavailable. */
-  sourceAddress?: string;
-  correlationId?: string;
+  sourceAddress?: string | undefined;
+  correlationId?: string | undefined;
 }
 
 /** What the client may act on. Anything else is the one uniform failure. */
@@ -76,10 +79,10 @@ export class LoginService {
 
   constructor(
     private readonly db: DatabaseService,
-    private readonly repo: IdentityRepository,
-    private readonly hasher: PasswordHasher,
+    @Inject(IDENTITY_REPOSITORY) private readonly repo: IdentityRepository,
+    @Inject(PASSWORD_HASHER) private readonly hasher: PasswordHasher,
     private readonly identifierHasher: IdentifierHasher,
-    private readonly clock: Clock,
+    @Inject(CLOCK) private readonly clock: Clock,
     private readonly logger: StructuredLogger,
   ) {}
 

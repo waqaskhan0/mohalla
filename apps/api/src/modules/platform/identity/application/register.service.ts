@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { DatabaseService } from '../../../../database/database.service.js';
 import { StructuredLogger } from '../../../../common/logging/structured.logger.js';
@@ -6,18 +6,21 @@ import { IdentifierHasher } from '../domain/identifier-hash.js';
 import { checkPassword } from '../domain/password-policy.js';
 import { generateOtpCode, hashOtpCode, otpExpiryFrom } from '../domain/otp.js';
 import { tryNormalizePakistaniMobile } from '../domain/phone-number.js';
-import type { Clock } from '../ports/clock.port.js';
-import type { PasswordHasher } from '../ports/password-hasher.port.js';
-import type { SmsProvider } from '../ports/sms-provider.port.js';
-import type { IdentityRepository } from '../repositories/identity.repository.port.js';
+import { CLOCK, type Clock } from '../ports/clock.port.js';
+import { PASSWORD_HASHER, type PasswordHasher } from '../ports/password-hasher.port.js';
+import { SMS_PROVIDER, type SmsProvider } from '../ports/sms-provider.port.js';
+import {
+  IDENTITY_REPOSITORY,
+  type IdentityRepository,
+} from '../repositories/identity.repository.port.js';
 
 export interface RegisterCommand {
   phone: string;
   password: string;
   dateOfBirth: string;
   termsVersion: string;
-  accountType?: 'INDIVIDUAL' | 'ORGANIZATION';
-  correlationId?: string;
+  accountType?: 'INDIVIDUAL' | 'ORGANIZATION' | undefined;
+  correlationId?: string | undefined;
 }
 
 /**
@@ -60,11 +63,11 @@ export type RegisterResult =
 export class RegisterService {
   constructor(
     private readonly db: DatabaseService,
-    private readonly repo: IdentityRepository,
-    private readonly hasher: PasswordHasher,
+    @Inject(IDENTITY_REPOSITORY) private readonly repo: IdentityRepository,
+    @Inject(PASSWORD_HASHER) private readonly hasher: PasswordHasher,
     private readonly identifierHasher: IdentifierHasher,
-    private readonly sms: SmsProvider,
-    private readonly clock: Clock,
+    @Inject(SMS_PROVIDER) private readonly sms: SmsProvider,
+    @Inject(CLOCK) private readonly clock: Clock,
     private readonly logger: StructuredLogger,
   ) {}
 

@@ -4,8 +4,9 @@ import { HealthModule } from './health/health.module.js';
 import { RealtimeModule } from './realtime/realtime.module.js';
 import { CorrelationMiddleware } from './common/correlation/correlation.middleware.js';
 
-// The 17 module shells defined in docs/architecture/06-backend-modules.md
-// section 4. Every one is registered and every one is empty.
+// The 17 modules defined in docs/architecture/06-backend-modules.md section 4.
+// Every one is registered; `identity` and `audit` are implemented (EPIC-02) and
+// the rest are still shells awaiting their epic.
 import { IdentityModule } from './modules/platform/identity/identity.module.js';
 import { LocalizationModule } from './modules/platform/localization/localization.module.js';
 import { MediaModule } from './modules/platform/media/media.module.js';
@@ -27,12 +28,19 @@ import { AdminOpsModule } from './modules/admin/admin-ops/admin-ops.module.js';
 /**
  * Root application module.
  *
- * All 17 module shells are registered so the boundary set is complete and the
- * dependency-direction check has something real to verify. They export nothing
- * and provide nothing, so registering them cannot create a coupling.
+ * All 17 modules are registered so the boundary set is complete and the
+ * dependency-direction check has something real to verify. The unimplemented
+ * ones export nothing and provide nothing, so registering them cannot create a
+ * coupling.
  *
- * The only routes served are the three health endpoints, plus the Socket.IO
- * foundation ping.
+ * NOTE ON ORDER: `IdentityModule` registers the session guard as an `APP_GUARD`,
+ * which applies to EVERY route in every module listed here - including health,
+ * which therefore opts out with `@Public()`. Authentication is the default and
+ * opting out is explicit, so a new controller that forgets is closed rather
+ * than open.
+ *
+ * Routes served: the auth endpoints (EPIC-02), the three health endpoints, and
+ * the Socket.IO foundation ping.
  */
 @Module({
   imports: [

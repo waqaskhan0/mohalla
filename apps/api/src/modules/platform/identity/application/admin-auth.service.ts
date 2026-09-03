@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { DatabaseService } from '../../../../database/database.service.js';
 import { StructuredLogger } from '../../../../common/logging/structured.logger.js';
@@ -11,16 +11,22 @@ import {
   LOGIN_FAILURE_WINDOW_MS,
   LOGIN_LOCKOUT_MS,
 } from '../domain/login-lockout.js';
-import type { Clock } from '../ports/clock.port.js';
-import type { PasswordHasher } from '../ports/password-hasher.port.js';
-import type { AdminIdentityRepository } from '../repositories/admin-identity.repository.port.js';
-import type { IdentityRepository } from '../repositories/identity.repository.port.js';
+import { CLOCK, type Clock } from '../ports/clock.port.js';
+import { PASSWORD_HASHER, type PasswordHasher } from '../ports/password-hasher.port.js';
+import {
+  ADMIN_IDENTITY_REPOSITORY,
+  type AdminIdentityRepository,
+} from '../repositories/admin-identity.repository.port.js';
+import {
+  IDENTITY_REPOSITORY,
+  type IdentityRepository,
+} from '../repositories/identity.repository.port.js';
 
 export interface AdminLoginCommand {
   email: string;
   password: string;
-  sourceAddress?: string;
-  correlationId?: string;
+  sourceAddress?: string | undefined;
+  correlationId?: string | undefined;
 }
 
 export type AdminLoginResult =
@@ -70,13 +76,13 @@ export class AdminAuthService {
 
   constructor(
     private readonly db: DatabaseService,
-    private readonly admins: AdminIdentityRepository,
+    @Inject(ADMIN_IDENTITY_REPOSITORY) private readonly admins: AdminIdentityRepository,
     /** Shared only for the login-attempt history, which is kind-scoped. */
-    private readonly attempts: IdentityRepository,
-    private readonly hasher: PasswordHasher,
+    @Inject(IDENTITY_REPOSITORY) private readonly attempts: IdentityRepository,
+    @Inject(PASSWORD_HASHER) private readonly hasher: PasswordHasher,
     private readonly identifierHasher: IdentifierHasher,
     private readonly audit: AuditService,
-    private readonly clock: Clock,
+    @Inject(CLOCK) private readonly clock: Clock,
     private readonly logger: StructuredLogger,
   ) {}
 

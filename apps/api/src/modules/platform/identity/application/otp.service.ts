@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { DatabaseService } from '../../../../database/database.service.js';
 import { StructuredLogger } from '../../../../common/logging/structured.logger.js';
@@ -13,21 +13,24 @@ import {
   type OtpPurpose,
 } from '../domain/otp.js';
 import { tryNormalizePakistaniMobile } from '../domain/phone-number.js';
-import type { Clock } from '../ports/clock.port.js';
-import type { SmsProvider } from '../ports/sms-provider.port.js';
-import type { IdentityRepository } from '../repositories/identity.repository.port.js';
+import { CLOCK, type Clock } from '../ports/clock.port.js';
+import { SMS_PROVIDER, type SmsProvider } from '../ports/sms-provider.port.js';
+import {
+  IDENTITY_REPOSITORY,
+  type IdentityRepository,
+} from '../repositories/identity.repository.port.js';
 
 export interface VerifyOtpCommand {
   phone: string;
   code: string;
   purpose: OtpPurpose;
-  correlationId?: string;
+  correlationId?: string | undefined;
 }
 
 export interface ResendOtpCommand {
   phone: string;
   purpose: OtpPurpose;
-  correlationId?: string;
+  correlationId?: string | undefined;
 }
 
 /**
@@ -68,10 +71,10 @@ export type ResendOtpResult = { status: 'ACCEPTED' } | { status: 'INVALID_INPUT'
 export class OtpService {
   constructor(
     private readonly db: DatabaseService,
-    private readonly repo: IdentityRepository,
+    @Inject(IDENTITY_REPOSITORY) private readonly repo: IdentityRepository,
     private readonly identifierHasher: IdentifierHasher,
-    private readonly sms: SmsProvider,
-    private readonly clock: Clock,
+    @Inject(SMS_PROVIDER) private readonly sms: SmsProvider,
+    @Inject(CLOCK) private readonly clock: Clock,
     private readonly logger: StructuredLogger,
   ) {}
 
