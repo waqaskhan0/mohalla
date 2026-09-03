@@ -413,6 +413,38 @@ async function main() {
 
   if (owner !== undefined) await owner.end().catch(() => undefined);
 
+  /**
+   * Register, verify, sign in, claim a handle and create a profile.
+   *
+   * Returns a fully onboarded user, because that is what every social-graph
+   * check needs and repeating six requests inline would bury the assertions.
+   */
+  const onboard = async (seed) => {
+    const { SMS_PROVIDER } =
+      await import('../../apps/api/dist/modules/platform/identity/ports/sms-provider.port.js');
+    const provider = app.get(SMS_PROVIDER, { strict: false });
+
+    const number = syntheticPhone(seed);
+    await post('/register', {
+      phone: number,
+      password,
+      dateOfBirth: '1995-06-15',
+      termsVersion: terms,
+    });
+    const otp = provider?.lastTo?.(number)?.body?.match(/\b(\d{6})\b/)?.[1];
+    await post('/otp/verify', { phone: number, code: otp, purpose: 'REGISTRATION' });
+
+    const login = await post('/login', { phone: number, password });
+    const token = (await login.json())?.token;
+
+    const handle = `u${String(seed).slice(-9)}`;
+    await post('/me/username', { username: handle }, token);
+    await post('/me/profile', { displayName: `Person ${handle}` }, token);
+
+    const me = await (await get('/me', token)).json();
+    return { token, userId: me?.userId, handle, phone: number };
+  };
+
   console.log('\n--- profiles: the full onboarding flow (EPIC-04) ---');
   {
     // A fresh verified account, so this section does not depend on the state
@@ -651,6 +683,203 @@ async function main() {
     }
   }
 
+  console.log('\n--- social graph: follows and blocking (EPIC-05) ---');
+  {
+    const alice = await onboard(Date.now() + 11);
+    const bob = await onboard(Date.now() + 22);
+    check(
+      'two onboarded users for the social checks',
+      typeof alice.userId === 'string' && typeof bob.userId === 'string',
+    );
+
+    // ---- follow ------------------------------------------------------
+    {
+      const r = await send('PUT', `/users/${bob.userId}/follow`, undefined, alice.token);
+      check('PUT /users/{id}/follow exists and succeeds', r.status === 204, `status ${r.status}`);
+
+      const again = await send('PUT', `/users/${bob.userId}/follow`, undefined, alice.token);
+      check(
+        'A REPEAT FOLLOW IS IDEMPOTENT (EDGE-015)',
+        again.status === 204,
+        `status ${again.status}`,
+      );
+
+      // SOCIAL-FR-001 AC: exactly one relationship, count unchanged.
+      const bobProfile = await (await get(`/users/${bob.userId}`, alice.token)).json();
+      check(
+        'THE FOLLOWER COUNT IS 1 AFTER TWO IDENTICAL FOLLOWS',
+        bobProfile?.followerCount === 1,
+        `followerCount ${bobProfile?.followerCount}`,
+      );
+
+      const aliceProfile = await (await get(`/users/${alice.userId}`, bob.token)).json();
+      check(
+        'and the following count moved too',
+        aliceProfile?.followingCount === 1,
+        `followingCount ${aliceProfile?.followingCount}`,
+      );
+    }
+    {
+      const r = await send('PUT', `/users/${alice.userId}/follow`, undefined, alice.token);
+      check('a self-follow is refused (BR-019)', r.status === 400, `status ${r.status}`);
+    }
+
+    // ---- lists -------------------------------------------------------
+    {
+      const r = await get(`/users/${bob.userId}/followers`, alice.token);
+      const body = await r.json();
+      check(
+        'GET followers returns full profiles, not bare ids',
+        r.status === 200 && body?.users?.[0]?.username !== undefined,
+        `status ${r.status}`,
+      );
+      check(
+        'and alice is in the list',
+        body?.users?.some((u) => u.userId === alice.userId) === true,
+      );
+    }
+    {
+      const r = await get(`/users/${alice.userId}/following`, alice.token);
+      const body = await r.json();
+      check(
+        'GET following lists the accounts followed',
+        body?.users?.some((u) => u.userId === bob.userId) === true,
+      );
+    }
+    {
+      const r = await get('/suggestions', alice.token);
+      const body = await r.json();
+      check(
+        'GET /suggestions works with no interests selected',
+        r.status === 200,
+        `status ${r.status}`,
+      );
+      check(
+        'and never suggests self or an account already followed',
+        body?.users?.every((u) => u.userId !== alice.userId && u.userId !== bob.userId) === true,
+      );
+    }
+
+    // ---- unfollow ----------------------------------------------------
+    {
+      const r = await send('DELETE', `/users/${bob.userId}/follow`, undefined, alice.token);
+      check('DELETE removes the follow', r.status === 204, `status ${r.status}`);
+
+      const bobProfile = await (await get(`/users/${bob.userId}`, alice.token)).json();
+      check(
+        'the count went back down (PROFILE-FR-009)',
+        bobProfile?.followerCount === 0,
+        `followerCount ${bobProfile?.followerCount}`,
+      );
+
+      const again = await send('DELETE', `/users/${bob.userId}/follow`, undefined, alice.token);
+      check(
+        'an unfollow with no relationship is idempotent',
+        again.status === 204,
+        `status ${again.status}`,
+      );
+    }
+
+    // ---- blocking, and BR-024 ----------------------------------------
+    {
+      // Re-establish follows in BOTH directions, so the removal is visible.
+      await send('PUT', `/users/${bob.userId}/follow`, undefined, alice.token);
+      await send('PUT', `/users/${alice.userId}/follow`, undefined, bob.token);
+
+      const before = await (await get(`/users/${bob.userId}`, alice.token)).json();
+      check(
+        'both directions established',
+        before?.followerCount === 1,
+        `followerCount ${before?.followerCount}`,
+      );
+
+      const r = await send('PUT', `/users/${bob.userId}/block`, undefined, alice.token);
+      check('PUT /users/{id}/block exists and succeeds', r.status === 204, `status ${r.status}`);
+
+      // ---- the whole point of EPIC-05 -------------------------------
+      const asAlice = await get(`/users/${bob.userId}`, alice.token);
+      check(
+        'THE BLOCKER CANNOT SEE THE BLOCKED PROFILE',
+        asAlice.status === 404,
+        `status ${asAlice.status}`,
+      );
+
+      const asBob = await get(`/users/${alice.userId}`, bob.token);
+      check(
+        'AND THE BLOCKED USER CANNOT SEE THE BLOCKER (BR-025, mutual in effect)',
+        asBob.status === 404,
+        `status ${asBob.status}`,
+      );
+
+      const body = await asBob.json();
+      check(
+        'the refusal is the SAME neutral code as a missing profile',
+        body?.error?.code === 'RESOURCE_UNAVAILABLE',
+        String(body?.error?.code),
+      );
+
+      const missing = await get('/users/00000000-0000-4000-8000-000000000000', bob.token);
+      const missingBody = await missing.json();
+      check(
+        'blocked and never-existed are indistinguishable over the wire',
+        asBob.status === missing.status && body?.error?.code === missingBody?.error?.code,
+      );
+
+      // BR-024: follows removed in both directions, in the same transaction.
+      const bobsFollowers = await get(`/users/${bob.userId}/followers`, bob.token);
+      const bf = await bobsFollowers.json();
+      check(
+        'BLOCKING REMOVED THE FOLLOWS IN BOTH DIRECTIONS (BR-024)',
+        bf?.users?.some((u) => u.userId === alice.userId) !== true,
+      );
+
+      // And a follow across the block is refused, neutrally.
+      const crossFollow = await send('PUT', `/users/${bob.userId}/follow`, undefined, alice.token);
+      check(
+        'a follow across a block is refused with a neutral 404 (BR-023)',
+        crossFollow.status === 404,
+        `status ${crossFollow.status}`,
+      );
+
+      // The blocked user is not told, and cannot enumerate.
+      const bobsBlockList = await (await get('/me/blocks', bob.token)).json();
+      check(
+        'THE BLOCKED USER IS NOT TOLD - their own block list is empty',
+        Array.isArray(bobsBlockList?.blocks) && bobsBlockList.blocks.length === 0,
+        JSON.stringify(bobsBlockList?.blocks),
+      );
+
+      const alicesBlockList = await (await get('/me/blocks', alice.token)).json();
+      check(
+        'the blocker sees their own list',
+        alicesBlockList?.blocks?.[0]?.blockedUserId === bob.userId,
+        JSON.stringify(alicesBlockList?.blocks),
+      );
+    }
+
+    // ---- unblocking ---------------------------------------------------
+    {
+      const r = await send('DELETE', `/users/${bob.userId}/block`, undefined, alice.token);
+      check('DELETE lifts the block', r.status === 204, `status ${r.status}`);
+
+      const visible = await get(`/users/${bob.userId}`, alice.token);
+      check('and the profile is visible again', visible.status === 200, `status ${visible.status}`);
+
+      const followers = await (await get(`/users/${bob.userId}/followers`, alice.token)).json();
+      check(
+        'UNBLOCKING DOES NOT RESTORE THE FOLLOWS',
+        followers?.users?.some((u) => u.userId === alice.userId) !== true,
+      );
+
+      const again = await send('DELETE', `/users/${bob.userId}/block`, undefined, alice.token);
+      check('unblocking twice is idempotent', again.status === 204, `status ${again.status}`);
+    }
+    {
+      const r = await send('PUT', `/users/${alice.userId}/block`, undefined, alice.token);
+      check('a self-block is refused', r.status === 400, `status ${r.status}`);
+    }
+  }
+
   console.log('\n--- no secret leaves the server ---');
   {
     const r = await post('/login', { phone, password: 'synthetic-Wrong-Passw0rd' });
@@ -663,19 +892,19 @@ async function main() {
 
   await app.close();
 
-  console.log('\n═══════════════════ AUTH SMOKE SUMMARY ═══════════════════');
+  console.log('\n═══════════════════ API SMOKE SUMMARY ═══════════════════');
   console.log(
     `  ${results.length - failures} passed · ${failures} failed · ${results.length} total`,
   );
   if (failures > 0) {
-    console.log('\nAUTH SMOKE: FAILED');
+    console.log('\nAPI SMOKE: FAILED');
     process.exit(1);
   }
-  console.log('\nAUTH SMOKE: ALL CHECKS PASSED');
+  console.log('\nAPI SMOKE: ALL CHECKS PASSED');
 }
 
 main().catch((e) => {
-  console.error('\nAUTH SMOKE: ERRORED');
+  console.error('\nAPI SMOKE: ERRORED');
   console.error(e instanceof Error ? e.stack : String(e));
   process.exit(2);
 });

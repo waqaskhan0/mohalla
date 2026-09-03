@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { IdentityModule } from '../../platform/identity/identity.module.js';
-import { BLOCK_CHECK, NoBlocksYet } from './ports/block-check.port.js';
+import { SafetyModule } from '../safety/safety.module.js';
+import { BlockService } from '../safety/application/block.service.js';
+import { BLOCK_CHECK } from './ports/block-check.port.js';
 import { PROFILE_REPOSITORY } from './repositories/profile.repository.port.js';
 import { PgProfileRepository } from './repositories/pg-profile.repository.js';
 import { ProfileService } from './application/profile.service.js';
@@ -17,9 +19,11 @@ import { ProfileController } from './transport/profile.controller.js';
  *
  * Depends on `identity` (platform tier) for the session guard and the
  * authenticated principal — product → platform, which the dependency guard
- * allows. It does NOT depend on `social-graph`: the block predicate arrives
- * through `BLOCK_CHECK`, so EPIC-05 supplies an adapter rather than this module
- * reaching sideways into another product module.
+ * allows — and on `safety` for the block predicate, which is the single shared
+ * implementation every read path in the product consults (§165).
+ *
+ * It still does NOT depend on `social-graph`. The predicate arrives through
+ * `BLOCK_CHECK`, which EPIC-05 filled in by changing one provider binding.
  *
  * `media` is not imported yet either. `photoMediaId` is accepted and stored as
  * an opaque id; validating that it exists and is READY belongs with the media
@@ -27,18 +31,19 @@ import { ProfileController } from './transport/profile.controller.js';
  * finished here.
  */
 @Module({
-  imports: [IdentityModule],
+  imports: [IdentityModule, SafetyModule],
   controllers: [ProfileController],
   providers: [
     PgProfileRepository,
     { provide: PROFILE_REPOSITORY, useExisting: PgProfileRepository },
 
-    // The stand-in until EPIC-05 owns blocks. Deliberately one binding: when
-    // the real adapter arrives it replaces this line, rather than requiring a
-    // change to every read path - and a read path is exactly where a privacy
-    // rule gets missed. A service test asserts the read path consults this
-    // port, so swapping it in cannot be a no-op.
-    { provide: BLOCK_CHECK, useClass: NoBlocksYet },
+    // EPIC-05 landed, so this is now the REAL predicate. It was one line to
+    // change, which was the point of introducing the port in EPIC-04 rather
+    // than writing the read paths without a block check and coming back: a
+    // read path is exactly where a privacy rule gets missed. `BlockService`
+    // satisfies `BlockCheck` structurally - `isBlockedEitherWay` with the same
+    // symmetric contract.
+    { provide: BLOCK_CHECK, useExisting: BlockService },
 
     ProfileService,
     UsernameService,
