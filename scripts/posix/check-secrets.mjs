@@ -83,9 +83,21 @@ const ALLOWED = [
 /** Files whose whole job is to describe secrets without containing them. */
 const SKIP_FILES = [/^\.env\.example$/, /^docs\//, /^scripts\/posix\/check-secrets\.mjs$/];
 
+/**
+ * Files git tracks, PLUS new files that are not ignored.
+ *
+ * Tracked-only was the original scope and it was subtly too late: a secret in
+ * a brand-new file passed every check right up until the commit that made it
+ * permanent - which is exactly the moment the check stops being useful. The
+ * whole working tree is the wrong scope in the other direction (node_modules),
+ * so `--exclude-standard` draws the line where .gitignore already draws it.
+ */
 let tracked;
 try {
-  tracked = execFileSync('git', ['ls-files'], { encoding: 'utf8' }).split('\n').filter(Boolean);
+  const ls = (args) => execFileSync('git', args, { encoding: 'utf8' }).split('\n').filter(Boolean);
+  tracked = [
+    ...new Set([...ls(['ls-files']), ...ls(['ls-files', '--others', '--exclude-standard'])]),
+  ];
 } catch {
   console.error('FAIL: not a git repository, or git is unavailable');
   process.exit(2);
@@ -151,4 +163,4 @@ if (findings.length > 0) {
   process.exit(1);
 }
 
-console.log(`OK: ${tracked.length} tracked files scanned, no secrets found`);
+console.log(`OK: ${tracked.length} files scanned (tracked + new), no secrets found`);

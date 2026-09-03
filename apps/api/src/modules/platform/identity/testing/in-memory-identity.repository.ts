@@ -8,12 +8,14 @@ import {
 import type {
   CreateUserInput,
   IdentityRepository,
+  LoginSubjectKind,
   OtpChallengeRecord,
   OtpThrottleState,
   SessionRecord,
   UserRecord,
 } from '../repositories/identity.repository.port.js';
 import type { UserState } from '../domain/user-state.js';
+import type { LoginFailureCounts } from '../domain/login-lockout.js';
 
 /**
  * In-memory `IdentityRepository` for service tests.
@@ -91,6 +93,16 @@ export class InMemoryIdentityRepository implements IdentityRepository {
     this.users.set(user.id, user);
     this.identifiers.set(this.key(identifier.hash), user.id);
     return user;
+  }
+
+  async findUserByIdentifierHash(hash: Buffer): Promise<UserRecord | null> {
+    const id = this.identifiers.get(this.key(hash));
+    return id === undefined ? null : (this.users.get(id) ?? null);
+  }
+
+  async updatePasswordHash(userId: string, passwordHash: string): Promise<void> {
+    const u = this.users.get(userId);
+    if (u) this.users.set(userId, { ...u, passwordHash });
   }
 
   async markUserVerified(userId: string): Promise<void> {
@@ -250,6 +262,85 @@ export class InMemoryIdentityRepository implements IdentityRepository {
     const s = this.sessions.find((x) => x.id === id);
     if (s === undefined || s.revokedAt !== null) return null;
     return s.expiresAt.getTime() > this.now().getTime() ? s : null;
+  }
+
+  async touchSession(sessionId: string, expiresAt: Date): Promise<void> {
+    const i = this.sessions.findIndex((x) => x.id === sessionId);
+    const s = this.sessions[i];
+    // Same guard as the SQL: never slide a revoked or expired session.
+    if (s === undefined || s.revokedAt !== null) return;
+    if (s.expiresAt.getTime() <= this.now().getTime()) return;
+    this.sessions[i] = { ...s, expiresAt };
+  }
+
+  // ---- login attempts -----------------------------------------------------
+  readonly loginAttempts: {
+    subjectKind: LoginSubjectKind;
+    subjectHash: Buffer;
+    sourceHash: Buffer | null;
+    succeeded: boolean;
+    createdAt: Date;
+  }[] = [];
+
+  async recordLoginAttempt(attempt: {
+    id: string;
+    subjectKind: LoginSubjectKind;
+    subjectHash: Buffer;
+    sourceHash: Buffer | null;
+    succeeded: boolean;
+  }): Promise<void> {
+    this.loginAttempts.push({
+      subjectKind: attempt.subjectKind,
+      subjectHash: attempt.subjectHash,
+      sourceHash: attempt.sourceHash,
+      succeeded: attempt.succeeded,
+      createdAt: this.now(),
+    });
+  }
+
+  async getLoginFailureCounts(
+    subjectKind: LoginSubjectKind,
+    subjectHash: Buffer,
+    sourceHash: Buffer | null,
+    windowMs: number,
+  ): Promise<LoginFailureCounts> {
+    const now = this.now().getTime();
+    const inWindow = (at: Date) => now - at.getTime() < windowMs;
+    const mine = this.loginAttempts.filter((a) => a.subjectKind === subjectKind);
+
+    // Account failures count only from the last success onward.
+    let lastSuccessAt = -Infinity;
+    for (const a of mine) {
+      if (a.succeeded && a.subjectHash.equals(subjectHash)) {
+        lastSuccessAt = Math.max(lastSuccessAt, a.createdAt.getTime());
+      }
+    }
+
+    let account = 0;
+    let source = 0;
+    let lastFailureAt: Date | null = null;
+
+    for (const a of mine) {
+      if (a.succeeded) continue;
+      const sameAccount = a.subjectHash.equals(subjectHash);
+      const sameSource =
+        sourceHash !== null && a.sourceHash !== null && a.sourceHash.equals(sourceHash);
+
+      if (sameAccount && inWindow(a.createdAt) && a.createdAt.getTime() > lastSuccessAt) {
+        account += 1;
+      }
+      if (sameSource && inWindow(a.createdAt)) source += 1;
+
+      if (
+        (sameAccount || sameSource) &&
+        inWindow(a.createdAt) &&
+        (lastFailureAt === null || a.createdAt > lastFailureAt)
+      ) {
+        lastFailureAt = a.createdAt;
+      }
+    }
+
+    return { account, source, lastFailureAt };
   }
 }
 

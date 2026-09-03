@@ -4,6 +4,7 @@ import { DatabaseService } from '../../../../database/database.service.js';
 import type {
   CreateUserInput,
   IdentityRepository,
+  LoginSubjectKind,
   OtpChallengeRecord,
   OtpThrottleState,
   SessionRecord,
@@ -16,6 +17,7 @@ import {
   type OtpPurpose,
 } from '../domain/otp.js';
 import type { UserState } from '../domain/user-state.js';
+import type { LoginFailureCounts } from '../domain/login-lockout.js';
 
 /** Postgres unique-violation. */
 const UNIQUE_VIOLATION = '23505';
@@ -122,6 +124,26 @@ export class PgIdentityRepository implements IdentityRepository {
     }
 
     return toUser(user.rows[0] as UserRow);
+  }
+
+  async findUserByIdentifierHash(hash: Buffer, client?: PoolClient): Promise<UserRecord | null> {
+    const r = await this.q<UserRow>(
+      client,
+      `SELECT u.* FROM users u
+         JOIN user_identifiers i ON i.user_id = u.id
+        WHERE i.value_hash = $1`,
+      [hash],
+    );
+    const row = r.rows[0];
+    return row ? toUser(row) : null;
+  }
+
+  async updatePasswordHash(
+    userId: string,
+    passwordHash: string,
+    client: PoolClient,
+  ): Promise<void> {
+    await client.query('UPDATE users SET password_hash = $2 WHERE id = $1', [userId, passwordHash]);
   }
 
   async markUserVerified(userId: string, client: PoolClient): Promise<void> {
@@ -354,5 +376,84 @@ export class PgIdentityRepository implements IdentityRepository {
           revokedAt: s.revoked_at,
         }
       : null;
+  }
+
+  async touchSession(sessionId: string, expiresAt: Date, client?: PoolClient): Promise<void> {
+    // Guarded, not blind: a revoked or expired session must never have its
+    // expiry pushed forward, which would resurrect it and defeat revocation
+    // entirely (BR-035, EDGE-010).
+    await this.q(
+      client,
+      `UPDATE sessions
+          SET expires_at = $2, last_seen_at = now()
+        WHERE id = $1 AND revoked_at IS NULL AND expires_at > now()`,
+      [sessionId, expiresAt],
+    );
+  }
+
+  // ---- login attempts -----------------------------------------------------
+  async recordLoginAttempt(
+    attempt: {
+      id: string;
+      subjectKind: LoginSubjectKind;
+      subjectHash: Buffer;
+      sourceHash: Buffer | null;
+      succeeded: boolean;
+    },
+    client?: PoolClient,
+  ): Promise<void> {
+    await this.q(
+      client,
+      `INSERT INTO login_attempts (id, subject_kind, subject_hash, source_hash, succeeded)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [attempt.id, attempt.subjectKind, attempt.subjectHash, attempt.sourceHash, attempt.succeeded],
+    );
+  }
+
+  async getLoginFailureCounts(
+    subjectKind: LoginSubjectKind,
+    subjectHash: Buffer,
+    sourceHash: Buffer | null,
+    windowMs: number,
+    client?: PoolClient,
+  ): Promise<LoginFailureCounts> {
+    const r = await this.q<{
+      account: string;
+      source: string;
+      last_failure_at: Date | null;
+    }>(
+      client,
+      // The account count starts AFTER the last success, so failures a person
+      // already recovered from cannot accumulate into a later lockout.
+      `WITH window_start AS (
+         SELECT GREATEST(
+                  now() - $4::interval,
+                  COALESCE(
+                    (SELECT MAX(created_at) FROM login_attempts
+                      WHERE subject_kind = $1 AND subject_hash = $2 AND succeeded),
+                    '-infinity'::timestamptz
+                  )
+                ) AS at
+       )
+       SELECT
+         (SELECT COUNT(*) FROM login_attempts, window_start
+           WHERE subject_kind = $1 AND subject_hash = $2
+             AND NOT succeeded AND created_at > window_start.at)          AS account,
+         (SELECT COUNT(*) FROM login_attempts
+           WHERE subject_kind = $1 AND $3::bytea IS NOT NULL AND source_hash = $3
+             AND NOT succeeded AND created_at > now() - $4::interval)     AS source,
+         (SELECT MAX(created_at) FROM login_attempts
+           WHERE subject_kind = $1 AND NOT succeeded
+             AND (subject_hash = $2 OR ($3::bytea IS NOT NULL AND source_hash = $3))
+             AND created_at > now() - $4::interval)                       AS last_failure_at`,
+      [subjectKind, subjectHash, sourceHash, `${windowMs} milliseconds`],
+    );
+
+    const row = r.rows[0];
+    return {
+      account: Number(row?.account ?? 0),
+      source: Number(row?.source ?? 0),
+      lastFailureAt: row?.last_failure_at ?? null,
+    };
   }
 }

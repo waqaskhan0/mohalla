@@ -1,6 +1,10 @@
 import type { PoolClient } from 'pg';
 import type { UserState } from '../domain/user-state.js';
 import type { OtpPurpose } from '../domain/otp.js';
+import type { LoginFailureCounts } from '../domain/login-lockout.js';
+
+/** User and admin credentials are separate stores (SEC-020), counted apart. */
+export type LoginSubjectKind = 'USER' | 'ADMIN';
 
 /**
  * Identity persistence port.
@@ -84,6 +88,12 @@ export interface IdentityRepository {
 
   // ---- users ----------------------------------------------------------
   findUserById(id: string, client?: PoolClient): Promise<UserRecord | null>;
+
+  /** The account holding this identifier, for authentication. */
+  findUserByIdentifierHash(hash: Buffer, client?: PoolClient): Promise<UserRecord | null>;
+
+  /** Replace the stored password hash (reset, change, or rehash on login). */
+  updatePasswordHash(userId: string, passwordHash: string, client: PoolClient): Promise<void>;
 
   /**
    * Create the account and bind its primary identifier in ONE call so the
@@ -171,4 +181,41 @@ export interface IdentityRepository {
 
   /** Resolve a presented token to its live session, or null. */
   findLiveSessionByTokenHash(tokenHash: Buffer, client?: PoolClient): Promise<SessionRecord | null>;
+
+  /** Slide a live session's idle expiry forward (AUTH-API-008). */
+  touchSession(sessionId: string, expiresAt: Date, client?: PoolClient): Promise<void>;
+
+  // ---- login attempts ---------------------------------------------------
+  /**
+   * Record one attempt, successful or not (SEC-007).
+   *
+   * Written for unknown identifiers too. If only real accounts were recorded,
+   * the table's own contents would answer "does this number have an account",
+   * which is the question the uniform response exists to refuse.
+   */
+  recordLoginAttempt(
+    attempt: {
+      id: string;
+      subjectKind: LoginSubjectKind;
+      subjectHash: Buffer;
+      sourceHash: Buffer | null;
+      succeeded: boolean;
+    },
+    client?: PoolClient,
+  ): Promise<void>;
+
+  /**
+   * Failures in the lockout window.
+   *
+   * Account failures are counted since the last SUCCESSFUL login, so a person
+   * who mistypes nine times, gets in, then mistypes twice is not locked out by
+   * failures they already recovered from.
+   */
+  getLoginFailureCounts(
+    subjectKind: LoginSubjectKind,
+    subjectHash: Buffer,
+    sourceHash: Buffer | null,
+    windowMs: number,
+    client?: PoolClient,
+  ): Promise<LoginFailureCounts>;
 }
