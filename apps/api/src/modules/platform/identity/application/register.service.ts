@@ -6,6 +6,7 @@ import { IdentifierHasher } from '../domain/identifier-hash.js';
 import { checkPassword } from '../domain/password-policy.js';
 import { generateOtpCode, hashOtpCode, otpExpiryFrom } from '../domain/otp.js';
 import { tryNormalizePakistaniMobile } from '../domain/phone-number.js';
+import type { Clock } from '../ports/clock.port.js';
 import type { PasswordHasher } from '../ports/password-hasher.port.js';
 import type { SmsProvider } from '../ports/sms-provider.port.js';
 import type { IdentityRepository } from '../repositories/identity.repository.port.js';
@@ -63,6 +64,7 @@ export class RegisterService {
     private readonly hasher: PasswordHasher,
     private readonly identifierHasher: IdentifierHasher,
     private readonly sms: SmsProvider,
+    private readonly clock: Clock,
     private readonly logger: StructuredLogger,
   ) {}
 
@@ -140,7 +142,7 @@ export class RegisterService {
             identifierHash,
             purpose: 'REGISTRATION',
             codeHash: hashOtpCode(code),
-            expiresAt: otpExpiryFrom(),
+            expiresAt: otpExpiryFrom(this.clock.now()),
           },
           client,
         );

@@ -13,7 +13,22 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
  */
 export const SESSION_TOKEN_BYTES = 32; // 256 bits
 export const MAX_ACTIVE_SESSIONS = 5; // BR-007 / SEC-005
-export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+/**
+ * IDLE expiry, not absolute lifetime (AUTH-FR-010, ADR-008 §42).
+ *
+ * The window slides forward while the app is in use, so a person who opens
+ * Mohalla every week is never signed out, while an abandoned session on a lost
+ * or resold handset stops working sixty days later on its own. An absolute
+ * lifetime would instead sign out the ACTIVE user - punishing exactly the
+ * wrong person, and training people to re-enter their password often, which is
+ * how credentials get phished.
+ *
+ * Admin sessions are the deliberate exception: 8 hours ABSOLUTE (SEC-024), set
+ * separately by the admin auth path, because an unattended moderator console
+ * is a different risk from a personal phone.
+ */
+export const SESSION_IDLE_MS = 60 * 24 * 60 * 60 * 1000; // 60 days
 
 export interface IssuedSessionToken {
   /** Returned to the client ONCE. Never stored, never logged. */
@@ -28,7 +43,7 @@ export function issueSessionToken(now: Date = new Date()): IssuedSessionToken {
   return {
     token,
     tokenHash: hashSessionToken(token),
-    expiresAt: new Date(now.getTime() + SESSION_TTL_MS),
+    expiresAt: new Date(now.getTime() + SESSION_IDLE_MS),
   };
 }
 
@@ -57,6 +72,24 @@ export interface SessionRow {
 
 export function isSessionLive(s: SessionRow, now: Date = new Date()): boolean {
   return s.revokedAt === null && s.expiresAt.getTime() > now.getTime();
+}
+
+/**
+ * The expiry a live session should be slid to on use (AUTH-API-008).
+ *
+ * Returns null when the session is already dead, so a request arriving after
+ * expiry can never resurrect it - sliding must extend a live session, never
+ * revive an expired or revoked one, which would defeat revocation entirely
+ * (BR-035, EDGE-010).
+ *
+ * Also returns null when the gain is under a minute. Without that floor every
+ * single authenticated request would issue an UPDATE against `sessions`, which
+ * on a feed-heavy screen turns each scroll into a write.
+ */
+export function slidExpiry(s: SessionRow, now: Date = new Date(), minGainMs = 60_000): Date | null {
+  if (!isSessionLive(s, now)) return null;
+  const next = now.getTime() + SESSION_IDLE_MS;
+  return next - s.expiresAt.getTime() < minGainMs ? null : new Date(next);
 }
 
 /**

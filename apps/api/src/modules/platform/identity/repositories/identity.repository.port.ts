@@ -34,8 +34,11 @@ export interface OtpChallengeRecord {
   purpose: OtpPurpose;
   codeHash: Buffer;
   attempts: number;
+  createdAt: Date;
   expiresAt: Date;
   consumedAt: Date | null;
+  /** Set when the attempt cap is reached; starts the 15-minute lockout. */
+  attemptsExhaustedAt: Date | null;
 }
 
 export interface SessionRecord {
@@ -44,6 +47,23 @@ export interface SessionRecord {
   createdAt: Date;
   expiresAt: Date;
   revokedAt: Date | null;
+}
+
+/**
+ * What the resend throttle needs to decide, in one round trip (SEC-003 §52).
+ *
+ * Three separate limits, because they stop three different things: the
+ * cooldown stops accidental double-taps, the hourly cap stops an SMS-cost
+ * attack on the victim, and the lockout stops the attempt cap being reset by
+ * simply asking for a new code.
+ */
+export interface OtpThrottleState {
+  /** When the newest challenge was issued, for the 60-second cooldown. */
+  lastIssuedAt: Date | null;
+  /** Challenges issued in the last hour, capped at 3. */
+  issuedLastHour: number;
+  /** Set while a 15-minute attempt lockout is in force. */
+  lockedUntil: Date | null;
 }
 
 export interface CreateUserInput {
@@ -90,7 +110,10 @@ export interface IdentityRepository {
    * index makes a concurrent resend unable to leave two valid codes standing.
    */
   replaceOtpChallenge(
-    challenge: Omit<OtpChallengeRecord, 'attempts' | 'consumedAt'>,
+    challenge: Omit<
+      OtpChallengeRecord,
+      'attempts' | 'consumedAt' | 'createdAt' | 'attemptsExhaustedAt'
+    >,
     client: PoolClient,
   ): Promise<void>;
 
@@ -100,7 +123,21 @@ export interface IdentityRepository {
     client?: PoolClient,
   ): Promise<OtpChallengeRecord | null>;
 
+  /**
+   * Spend one attempt and return the new total.
+   *
+   * Also stamps the moment the cap is reached, which starts the lockout. Doing
+   * it here rather than in the service keeps the counter and its timestamp in
+   * one atomic statement - they must never disagree.
+   */
   incrementOtpAttempts(challengeId: string, client: PoolClient): Promise<number>;
+
+  /** Everything the resend throttle needs, in one query. */
+  getOtpThrottleState(
+    identifierHash: Buffer,
+    purpose: OtpPurpose,
+    client?: PoolClient,
+  ): Promise<OtpThrottleState>;
 
   consumeOtpChallenge(challengeId: string, client: PoolClient): Promise<void>;
 

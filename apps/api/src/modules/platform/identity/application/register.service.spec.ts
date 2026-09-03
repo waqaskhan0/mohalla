@@ -2,8 +2,9 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { RegisterService, type RegisterCommand } from './register.service.js';
 import { IdentifierHasher } from '../domain/identifier-hash.js';
 import { FakeSmsProvider } from '../adapters/fake-sms-provider.js';
-import type { IdentityRepository, UserRecord } from '../repositories/identity.repository.port.js';
+import { InMemoryIdentityRepository } from '../testing/in-memory-identity.repository.js';
 import type { PasswordHasher } from '../ports/password-hasher.port.js';
+import { SystemClock } from '../ports/clock.port.js';
 import type { DatabaseService } from '../../../../database/database.service.js';
 import type { StructuredLogger } from '../../../../common/logging/structured.logger.js';
 
@@ -24,64 +25,8 @@ const VALID: RegisterCommand = {
   termsVersion: 'terms-2026-01',
 };
 
-/** Records what the service actually did, so behaviour is observable. */
-class FakeRepo implements IdentityRepository {
-  banned = new Set<string>();
-  existing = new Map<string, string>();
-  loseRace = false;
-
-  createdUsers = 0;
-  createdChallenges = 0;
-  passwordHashCalls = 0;
-
-  async isIdentifierBanned(hash: Buffer): Promise<boolean> {
-    return this.banned.has(hash.toString('hex'));
-  }
-  async findUserIdByIdentifierHash(hash: Buffer): Promise<string | null> {
-    return this.existing.get(hash.toString('hex')) ?? null;
-  }
-  async findUserById(): Promise<UserRecord | null> {
-    return null;
-  }
-  async createUserWithPrimaryPhone(input: { id: string }): Promise<UserRecord | null> {
-    if (this.loseRace) return null;
-    this.createdUsers += 1;
-    return {
-      id: input.id,
-      state: 'UNVERIFIED',
-      accountType: 'INDIVIDUAL',
-      username: null,
-      passwordHash: 'x',
-      dateOfBirth: VALID.dateOfBirth,
-      suspendedUntil: null,
-      termsVersion: VALID.termsVersion,
-      termsAcceptedAt: new Date(),
-      createdAt: new Date(),
-    };
-  }
-  async markUserVerified(): Promise<void> {}
-  async replaceOtpChallenge(): Promise<void> {
-    this.createdChallenges += 1;
-  }
-  async findLiveOtpChallenge(): Promise<null> {
-    return null;
-  }
-  async incrementOtpAttempts(): Promise<number> {
-    return 1;
-  }
-  async consumeOtpChallenge(): Promise<void> {}
-  async listLiveSessions(): Promise<[]> {
-    return [];
-  }
-  async createSession(): Promise<void> {}
-  async revokeSessions(): Promise<void> {}
-  async findLiveSessionByTokenHash(): Promise<null> {
-    return null;
-  }
-}
-
 function build() {
-  const repo = new FakeRepo();
+  const repo = new InMemoryIdentityRepository();
   const sms = new FakeSmsProvider();
   const logs: string[] = [];
 
@@ -110,7 +55,15 @@ function build() {
     debug: () => undefined,
   } as unknown as StructuredLogger;
 
-  const service = new RegisterService(db, repo, hasher, new IdentifierHasher(PEPPER), sms, logger);
+  const service = new RegisterService(
+    db,
+    repo,
+    hasher,
+    new IdentifierHasher(PEPPER),
+    sms,
+    new SystemClock(),
+    logger,
+  );
   return { service, repo, sms, logs };
 }
 
@@ -122,33 +75,33 @@ describe('RegisterService — enumeration resistance (SEC-006)', () => {
 
   it('returns ACCEPTED for a free number', async () => {
     await expect(ctx.service.register(VALID)).resolves.toEqual({ status: 'ACCEPTED' });
-    expect(ctx.repo.createdUsers).toBe(1);
+    expect(ctx.repo.users.size).toBe(1);
   });
 
   it('returns the IDENTICAL result when the number is already registered', async () => {
     const hash = new IdentifierHasher(PEPPER).hash(VALID.phone).toString('hex');
-    ctx.repo.existing.set(hash, 'existing-user-id');
+    ctx.repo.identifiers.set(hash, 'existing-user-id');
 
     const result = await ctx.service.register(VALID);
 
     expect(result).toEqual({ status: 'ACCEPTED' }); // same shape, same value
-    expect(ctx.repo.createdUsers).toBe(0); // but nothing was created
+    expect(ctx.repo.users.size).toBe(0); // but nothing was created
     expect(ctx.sms.all()).toHaveLength(0); // and no code was sent
   });
 
   it('returns the IDENTICAL result when the number is BANNED (BR-036)', async () => {
     const hash = new IdentifierHasher(PEPPER).hash(VALID.phone).toString('hex');
-    ctx.repo.banned.add(hash);
+    ctx.repo.bannedIdentifiers.add(hash);
 
     const result = await ctx.service.register(VALID);
 
     expect(result).toEqual({ status: 'ACCEPTED' });
-    expect(ctx.repo.createdUsers).toBe(0);
+    expect(ctx.repo.users.size).toBe(0);
     expect(ctx.sms.all()).toHaveLength(0);
   });
 
   it('returns the IDENTICAL result when a concurrent request wins the race (EDGE-001)', async () => {
-    ctx.repo.loseRace = true;
+    ctx.repo.loseUniquenessRace = true;
     const result = await ctx.service.register(VALID);
     expect(result).toEqual({ status: 'ACCEPTED' });
     expect(ctx.sms.all()).toHaveLength(0);
@@ -160,10 +113,16 @@ describe('RegisterService — enumeration resistance (SEC-006)', () => {
     for (const setup of [
       () => undefined,
       () =>
-        ctx.repo.existing.set(new IdentifierHasher(PEPPER).hash(VALID.phone).toString('hex'), 'u'),
-      () => ctx.repo.banned.add(new IdentifierHasher(PEPPER).hash(VALID.phone).toString('hex')),
+        ctx.repo.identifiers.set(
+          new IdentifierHasher(PEPPER).hash(VALID.phone).toString('hex'),
+          'u',
+        ),
+      () =>
+        ctx.repo.bannedIdentifiers.add(
+          new IdentifierHasher(PEPPER).hash(VALID.phone).toString('hex'),
+        ),
       () => {
-        ctx.repo.loseRace = true;
+        ctx.repo.loseUniquenessRace = true;
       },
     ]) {
       ctx = build();
@@ -184,7 +143,7 @@ describe('RegisterService — enumeration resistance (SEC-006)', () => {
           throw new Error('db down');
         },
       } as unknown as DatabaseService,
-      new FakeRepo(),
+      new InMemoryIdentityRepository(),
       {
         async hash() {
           return 'h';
@@ -198,6 +157,7 @@ describe('RegisterService — enumeration resistance (SEC-006)', () => {
       },
       new IdentifierHasher(PEPPER),
       new FakeSmsProvider(),
+      new SystemClock(),
       {
         log: () => undefined,
         warn: () => undefined,
@@ -212,7 +172,7 @@ describe('RegisterService — enumeration resistance (SEC-006)', () => {
 describe('RegisterService — cost and delivery', () => {
   it('does NOT hash the password for a banned number (DoS resistance)', async () => {
     const ctx = build();
-    ctx.repo.banned.add(new IdentifierHasher(PEPPER).hash(VALID.phone).toString('hex'));
+    ctx.repo.bannedIdentifiers.add(new IdentifierHasher(PEPPER).hash(VALID.phone).toString('hex'));
     await ctx.service.register(VALID);
     // A ~236ms hash on every probe would be a free denial-of-service.
     expect(ctx.repo.passwordHashCalls).toBe(0);
@@ -220,7 +180,7 @@ describe('RegisterService — cost and delivery', () => {
 
   it('does NOT hash the password for an already-registered number', async () => {
     const ctx = build();
-    ctx.repo.existing.set(new IdentifierHasher(PEPPER).hash(VALID.phone).toString('hex'), 'u');
+    ctx.repo.identifiers.set(new IdentifierHasher(PEPPER).hash(VALID.phone).toString('hex'), 'u');
     await ctx.service.register(VALID);
     expect(ctx.repo.passwordHashCalls).toBe(0);
   });
@@ -231,7 +191,7 @@ describe('RegisterService — cost and delivery', () => {
     const sent = ctx.sms.lastTo(VALID.phone);
     expect(sent).toBeDefined();
     expect(sent?.body).toMatch(/\b\d{6}\b/);
-    expect(ctx.repo.createdChallenges).toBe(1);
+    expect(ctx.repo.challenges.length).toBe(1);
   });
 
   it('never writes the OTP code or the phone number into a log line', async () => {
@@ -293,7 +253,7 @@ describe('RegisterService — input the user can see for themselves', () => {
   it('creates nothing when input validation fails', async () => {
     const ctx = build();
     await ctx.service.register({ ...VALID, password: 'weak' });
-    expect(ctx.repo.createdUsers).toBe(0);
+    expect(ctx.repo.users.size).toBe(0);
     expect(ctx.repo.passwordHashCalls).toBe(0);
   });
 });

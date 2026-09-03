@@ -12,6 +12,21 @@ export const OTP_LENGTH = 6;
 export const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
 export const OTP_MAX_ATTEMPTS = 5;
 
+/**
+ * What happens once those five attempts are gone (SEC-003 §52).
+ *
+ * Without a lockout the attempt cap is decorative: exhaust five guesses, ask
+ * for a new code, and the counter is back at zero. That is unlimited guessing
+ * with extra steps, and every round costs the victim an SMS. The lockout is
+ * what makes the cap mean something.
+ */
+export const OTP_LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+
+/** Resend limits: no faster than this, and no more than 3 in the window. */
+export const OTP_RESEND_COOLDOWN_MS = 60 * 1000; // 60 seconds
+export const OTP_RESEND_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+export const OTP_RESEND_MAX_PER_WINDOW = 3;
+
 export type OtpPurpose = 'REGISTRATION' | 'PASSWORD_RESET';
 
 /**
@@ -69,4 +84,36 @@ export function checkOtpUsable(
 
 export function otpExpiryFrom(now: Date = new Date()): Date {
   return new Date(now.getTime() + OTP_TTL_MS);
+}
+
+export interface OtpThrottleInputs {
+  lastIssuedAt: Date | null;
+  issuedLastHour: number;
+  lockedUntil: Date | null;
+}
+
+export type OtpResendRefusal = 'LOCKED_OUT' | 'COOLDOWN' | 'HOURLY_CAP';
+
+/**
+ * May a new code be issued right now?
+ *
+ * Order is deliberate. The lockout is checked first because it is the security
+ * limit - the other two are courtesy limits protecting the user's inbox and
+ * the SMS bill, and neither should be able to mask an active lockout.
+ */
+export function checkOtpResendAllowed(
+  state: OtpThrottleInputs,
+  now: Date = new Date(),
+): OtpResendRefusal | null {
+  if (state.lockedUntil !== null && state.lockedUntil.getTime() > now.getTime()) {
+    return 'LOCKED_OUT';
+  }
+  if (
+    state.lastIssuedAt !== null &&
+    now.getTime() - state.lastIssuedAt.getTime() < OTP_RESEND_COOLDOWN_MS
+  ) {
+    return 'COOLDOWN';
+  }
+  if (state.issuedLastHour >= OTP_RESEND_MAX_PER_WINDOW) return 'HOURLY_CAP';
+  return null;
 }

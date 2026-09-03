@@ -5,10 +5,16 @@ import type {
   CreateUserInput,
   IdentityRepository,
   OtpChallengeRecord,
+  OtpThrottleState,
   SessionRecord,
   UserRecord,
 } from './identity.repository.port.js';
-import type { OtpPurpose } from '../domain/otp.js';
+import {
+  OTP_LOCKOUT_MS,
+  OTP_MAX_ATTEMPTS,
+  OTP_RESEND_WINDOW_MS,
+  type OtpPurpose,
+} from '../domain/otp.js';
 import type { UserState } from '../domain/user-state.js';
 
 /** Postgres unique-violation. */
@@ -132,7 +138,10 @@ export class PgIdentityRepository implements IdentityRepository {
 
   // -------------------------------------------------------------------- OTP
   async replaceOtpChallenge(
-    challenge: Omit<OtpChallengeRecord, 'attempts' | 'consumedAt'>,
+    challenge: Omit<
+      OtpChallengeRecord,
+      'attempts' | 'consumedAt' | 'createdAt' | 'attemptsExhaustedAt'
+    >,
     client: PoolClient,
   ): Promise<void> {
     // Consume any live challenge first: resend invalidates the previous code
@@ -166,8 +175,10 @@ export class PgIdentityRepository implements IdentityRepository {
       purpose: OtpPurpose;
       code_hash: Buffer;
       attempts: number;
+      created_at: Date;
       expires_at: Date;
       consumed_at: Date | null;
+      attempts_exhausted_at: Date | null;
     }>(
       client,
       `SELECT * FROM otp_challenges
@@ -182,17 +193,77 @@ export class PgIdentityRepository implements IdentityRepository {
       purpose: row.purpose,
       codeHash: row.code_hash,
       attempts: row.attempts,
+      createdAt: row.created_at,
       expiresAt: row.expires_at,
       consumedAt: row.consumed_at,
+      attemptsExhaustedAt: row.attempts_exhausted_at,
     };
   }
 
   async incrementOtpAttempts(challengeId: string, client: PoolClient): Promise<number> {
+    // The lockout stamp is set in the SAME statement that reaches the cap, so
+    // the counter and its timestamp can never disagree - and a crash between
+    // two statements cannot leave an exhausted challenge with no lockout.
+    //
+    // COALESCE keeps the FIRST exhaustion time: a later attempt must not push
+    // the lockout further out, or the window would never end. (It cannot be
+    // reached anyway - the cap CHECK rejects a sixth increment - but the
+    // constraint should not be the only thing holding this correct.)
     const r = await client.query<{ attempts: number }>(
-      'UPDATE otp_challenges SET attempts = attempts + 1 WHERE id = $1 RETURNING attempts',
-      [challengeId],
+      `UPDATE otp_challenges
+          SET attempts = attempts + 1,
+              attempts_exhausted_at = CASE
+                WHEN attempts + 1 >= $2 THEN COALESCE(attempts_exhausted_at, now())
+                ELSE attempts_exhausted_at
+              END
+        WHERE id = $1
+        RETURNING attempts`,
+      [challengeId, OTP_MAX_ATTEMPTS],
     );
     return r.rows[0]?.attempts ?? 0;
+  }
+
+  async getOtpThrottleState(
+    identifierHash: Buffer,
+    purpose: OtpPurpose,
+    client?: PoolClient,
+  ): Promise<OtpThrottleState> {
+    // One query rather than three: the throttle runs on every resend, and each
+    // extra round trip is latency a user feels while waiting for a code.
+    const r = await this.q<{
+      last_issued_at: Date | null;
+      issued_last_hour: string;
+      locked_until: Date | null;
+    }>(
+      client,
+      `SELECT MAX(created_at)                                       AS last_issued_at,
+              COUNT(*) FILTER (WHERE created_at > now() - $3::interval)
+                                                                    AS issued_last_hour,
+              MAX(attempts_exhausted_at) + $4::interval             AS locked_until
+         FROM otp_challenges
+        WHERE identifier_hash = $1
+          AND purpose = $2
+          AND created_at > now() - $5::interval`,
+      [
+        identifierHash,
+        purpose,
+        `${OTP_RESEND_WINDOW_MS} milliseconds`,
+        `${OTP_LOCKOUT_MS} milliseconds`,
+        // Bound the scan. Nothing older than the longest window can affect any
+        // of the three answers, and this lets the index do the work.
+        `${Math.max(OTP_RESEND_WINDOW_MS, OTP_LOCKOUT_MS) * 2} milliseconds`,
+      ],
+    );
+
+    const row = r.rows[0];
+    const lockedUntil = row?.locked_until ?? null;
+    return {
+      lastIssuedAt: row?.last_issued_at ?? null,
+      issuedLastHour: Number(row?.issued_last_hour ?? 0),
+      // Report a lockout only while it is still running. An elapsed one is not
+      // a lockout, and the caller should not have to reason about that.
+      lockedUntil: lockedUntil !== null && lockedUntil.getTime() > Date.now() ? lockedUntil : null,
+    };
   }
 
   async consumeOtpChallenge(challengeId: string, client: PoolClient): Promise<void> {
