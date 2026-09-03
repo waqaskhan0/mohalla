@@ -1213,6 +1213,317 @@ async function main() {
     }
   }
 
+  console.log('\n--- engagement and feeds (EPIC-07) ---');
+  {
+    const writer = await onboard(Date.now() + 55);
+    const reader = await onboard(Date.now() + 66);
+    const stranger = await onboard(Date.now() + 77);
+
+    // The reader follows the writer; the stranger follows nobody.
+    await send('PUT', `/users/${writer.userId}/follow`, undefined, reader.token);
+
+    /** Publish `n` posts and return their ids, oldest first. */
+    const publish = async (token, n, prefix, category) => {
+      const ids = [];
+      for (let i = 0; i < n; i += 1) {
+        const r = await post(
+          '/posts',
+          { body: `${prefix} ${i}`, ...(category === undefined ? {} : { categorySlug: category }) },
+          token,
+        );
+        const body = await r.json();
+        if (body?.id !== undefined) ids.push(body.id);
+      }
+      return ids;
+    };
+
+    const posted = await publish(writer.token, 25, 'notice');
+    check('the writer published 25 posts', posted.length === 25, `${posted.length}`);
+
+    // ---- likes -------------------------------------------------------
+    const target = posted[0];
+    {
+      const r = await send('PUT', `/posts/${target}/like`, undefined, reader.token);
+      check('PUT /posts/{id}/like works', r.status === 204, `status ${r.status}`);
+
+      // ENGAGE-FR-001 AC: six rapid taps change the count by at most one.
+      await Promise.all(
+        Array.from({ length: 6 }, () =>
+          send('PUT', `/posts/${target}/like`, undefined, reader.token),
+        ),
+      );
+      const view = await (await get(`/posts/${target}`, reader.token)).json();
+      check(
+        'SIX RAPID TAPS CHANGE THE COUNT BY AT MOST ONE (ENGAGE-FR-001)',
+        view?.likeCount === 1,
+        `likeCount ${view?.likeCount}`,
+      );
+
+      const un = await send('DELETE', `/posts/${target}/like`, undefined, reader.token);
+      check('DELETE unlikes', un.status === 204, `status ${un.status}`);
+      const after = await (await get(`/posts/${target}`, reader.token)).json();
+      check(
+        'and the count goes back down',
+        after?.likeCount === 0,
+        `likeCount ${after?.likeCount}`,
+      );
+
+      const again = await send('DELETE', `/posts/${target}/like`, undefined, reader.token);
+      check('unliking twice is idempotent', again.status === 204, `status ${again.status}`);
+    }
+    {
+      const own = await send('PUT', `/posts/${target}/like`, undefined, writer.token);
+      check('a user may like their OWN post', own.status === 204, `status ${own.status}`);
+      await send('DELETE', `/posts/${target}/like`, undefined, writer.token);
+    }
+
+    // ---- comments and one-level nesting -------------------------------
+    let topCommentId;
+    {
+      const r = await post(
+        '/posts/' + target + '/comments',
+        { body: 'شکریہ، بہت مفید' },
+        reader.token,
+      );
+      const body = await r.json();
+      topCommentId = body?.id;
+      check('POST a comment', r.status === 201, `status ${r.status}`);
+      check(
+        'AN URDU COMMENT SURVIVES THE ROUND TRIP',
+        body?.body === 'شکریہ، بہت مفید',
+        String(body?.body),
+      );
+
+      const empty = await post(`/posts/${target}/comments`, { body: '   ' }, reader.token);
+      check('an empty comment is refused', empty.status === 400, `status ${empty.status}`);
+
+      const tooLong = await post(
+        `/posts/${target}/comments`,
+        { body: 'x'.repeat(1001) },
+        reader.token,
+      );
+      check('an over-long comment is refused', tooLong.status === 400, `status ${tooLong.status}`);
+    }
+    let replyId;
+    if (typeof topCommentId === 'string') {
+      const r = await post(`/comments/${topCommentId}/replies`, { body: 'a reply' }, writer.token);
+      const body = await r.json();
+      replyId = body?.id;
+      check('POST a reply', r.status === 201, `status ${r.status}`);
+      check(
+        'it attaches to the top-level comment',
+        body?.parentCommentId === topCommentId,
+        String(body?.parentCommentId),
+      );
+    }
+    if (typeof replyId === 'string') {
+      const r = await post(
+        `/comments/${replyId}/replies`,
+        { body: 'reply to reply' },
+        reader.token,
+      );
+      const body = await r.json();
+      check(
+        'A REPLY-TO-A-REPLY ATTACHES TO THE SAME THREAD, never a third level (BR-033)',
+        r.status === 201 && body?.parentCommentId === topCommentId,
+        `status ${r.status} parent ${body?.parentCommentId}`,
+      );
+    }
+    {
+      const r = await get(`/posts/${target}/comments`, reader.token);
+      const body = await r.json();
+      check(
+        'GET comments returns them oldest-first',
+        r.status === 200 && body?.comments?.[0]?.body === 'شکریہ، بہت مفید',
+        `status ${r.status}`,
+      );
+      check('with full author projections', body?.comments?.[0]?.author?.username !== undefined);
+    }
+
+    // ---- who may delete a comment (BR-020) ----------------------------
+    if (typeof topCommentId === 'string') {
+      const byStranger = await send(
+        'DELETE',
+        `/comments/${topCommentId}`,
+        undefined,
+        stranger.token,
+      );
+      check(
+        'a third party cannot delete a comment',
+        byStranger.status === 404,
+        `status ${byStranger.status}`,
+      );
+
+      // The POST's author may delete any comment on it (ENGAGE-FR-005).
+      const byPostAuthor = await send(
+        'DELETE',
+        `/comments/${topCommentId}`,
+        undefined,
+        writer.token,
+      );
+      check(
+        "THE POST'S AUTHOR MAY DELETE ANY COMMENT ON IT (BR-020)",
+        byPostAuthor.status === 204,
+        `status ${byPostAuthor.status}`,
+      );
+
+      const after = await (await get(`/posts/${target}/comments`, reader.token)).json();
+      check(
+        'and its replies went with it (ENGAGE-FR-004)',
+        Array.isArray(after?.comments) && after.comments.length === 0,
+        `${after?.comments?.length} left`,
+      );
+    }
+
+    // ---- feeds --------------------------------------------------------
+    {
+      const r = await get('/feed/following?limit=20', reader.token);
+      const body = await r.json();
+      check('GET /feed/following works', r.status === 200, `status ${r.status}`);
+      check(
+        'and returns 20 per page (FEED-FR-004)',
+        body?.items?.length === 20,
+        `${body?.items?.length}`,
+      );
+
+      // BR-026: strictly reverse-chronological.
+      const times = (body?.items ?? []).map((i) => new Date(i.createdAt).getTime());
+      const descending = times.every((t, i) => i === 0 || times[i - 1] >= t);
+      check('STRICTLY NEWEST-FIRST, never ranked (BR-026)', descending);
+
+      check(
+        'items carry the viewer like state',
+        typeof body?.items?.[0]?.viewerHasLiked === 'boolean',
+      );
+      check('and a cursor for the next page', body?.nextCursor?.id !== undefined);
+    }
+    {
+      // FEED-FR-004 AC: paging while new posts are created must not repeat or
+      // skip an item. Keyset pagination is what makes that true.
+      const seen = new Set();
+      let cursor;
+      let duplicates = 0;
+      for (let page = 0; page < 3; page += 1) {
+        const qs =
+          cursor === undefined
+            ? ''
+            : `&cursorCreatedAt=${encodeURIComponent(cursor.createdAt)}&cursorId=${cursor.id}`;
+        const r = await get(`/feed/following?limit=10${qs}`, reader.token);
+        const body = await r.json();
+        for (const item of body?.items ?? []) {
+          if (seen.has(item.id)) duplicates += 1;
+          seen.add(item.id);
+        }
+        cursor = body?.nextCursor ?? undefined;
+        // A new post lands mid-scroll, which is what breaks OFFSET.
+        await post('/posts', { body: `interleaved ${page}` }, writer.token);
+        if (cursor === undefined) break;
+      }
+      check(
+        'KEYSET PAGING REPEATS NOTHING WHILE POSTS ARE CREATED (EDGE-017)',
+        duplicates === 0,
+        `${duplicates} duplicates`,
+      );
+    }
+    {
+      const r = await get('/feed/discover?limit=5', stranger.token);
+      const body = await r.json();
+      check(
+        'GET /feed/discover works for an account following NOBODY',
+        r.status === 200,
+        `status ${r.status}`,
+      );
+      check(
+        'and it is not empty - the cold-start answer (FEED-FR-003)',
+        (body?.items?.length ?? 0) > 0,
+        `${body?.items?.length} items`,
+      );
+    }
+    {
+      const empty = await get('/feed/following', stranger.token);
+      const body = await empty.json();
+      check(
+        'the following feed of someone following nobody is empty, not an error',
+        empty.status === 200 && body?.items?.length === 0,
+        `status ${empty.status} items ${body?.items?.length}`,
+      );
+    }
+    {
+      const r = await get('/feed/featured', stranger.token);
+      const body = await r.json();
+      check(
+        'GET /feed/featured resolves independently (RSK-001)',
+        r.status === 200,
+        `status ${r.status}`,
+      );
+      check(
+        'and returns an array so the client hides an empty section',
+        Array.isArray(body?.announcements),
+        JSON.stringify(body?.announcements),
+      );
+    }
+    {
+      await publish(writer.token, 2, 'health notice', 'health');
+      const r = await get('/feed/discover?category=health&limit=20', reader.token);
+      const body = await r.json();
+      const allHealth = (body?.items ?? []).every((i) => i.categorySlug === 'health');
+      check(
+        'FILTERING BY CATEGORY RETURNS ONLY THAT CATEGORY (FEED-FR-006)',
+        r.status === 200 && (body?.items?.length ?? 0) > 0 && allHealth,
+        `status ${r.status} items ${body?.items?.length}`,
+      );
+    }
+    {
+      const bad = await get('/feed/following?limit=20&cursorId=not-a-uuid', reader.token);
+      check(
+        'a malformed cursor is rejected, not silently ignored',
+        bad.status === 400,
+        `status ${bad.status}`,
+      );
+    }
+
+    // ---- blocking removes content from the feed -----------------------
+    {
+      await send('PUT', `/users/${writer.userId}/block`, undefined, reader.token);
+      const r = await get('/feed/discover?limit=50', reader.token);
+      const body = await r.json();
+      const fromWriter = (body?.items ?? []).filter((i) => i.author?.userId === writer.userId);
+      check(
+        'A BLOCKED AUTHOR VANISHES FROM THE FEED (BR-027)',
+        fromWriter.length === 0,
+        `${fromWriter.length} still present`,
+      );
+      await send('DELETE', `/users/${writer.userId}/block`, undefined, reader.token);
+    }
+
+    // ---- saved posts ---------------------------------------------------
+    {
+      const r = await send('PUT', `/posts/${target}/save`, undefined, reader.token);
+      check('PUT /posts/{id}/save works', r.status === 204, `status ${r.status}`);
+
+      const saved = await (await get('/me/saved', reader.token)).json();
+      check('the post appears in /me/saved', saved?.items?.some((i) => i.id === target) === true);
+
+      const theirs = await (await get('/me/saved', writer.token)).json();
+      check(
+        'SAVING IS PRIVATE - the author does not see it',
+        theirs?.items?.some((i) => i.id === target) !== true,
+      );
+
+      await send('DELETE', `/posts/${target}/save`, undefined, reader.token);
+      const gone = await (await get('/me/saved', reader.token)).json();
+      check('and unsaving removes it', gone?.items?.some((i) => i.id === target) !== true);
+    }
+    {
+      const anon = await get('/feed/discover');
+      check(
+        'feed routes are guarded like everything else',
+        anon.status === 401,
+        `status ${anon.status}`,
+      );
+    }
+  }
+
   console.log('\n--- no secret leaves the server ---');
   {
     const r = await post('/login', { phone, password: 'synthetic-Wrong-Passw0rd' });
