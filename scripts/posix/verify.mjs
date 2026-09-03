@@ -125,16 +125,16 @@ if (process.env.DATABASE_URL) {
     blocked('audit append-only test', 'RUNTIME_APP_DATABASE_URL not set');
   }
 
-  // The auth flow over real HTTP against the real database. The unit tests
-  // prove the rules; this proves the routes are mounted, the guard is applied,
-  // the DI graph resolves and the error envelope says what a client will read -
-  // none of which a unit test can fail on. Uses the deterministic fake SMS
-  // provider, so nothing is delivered to a real recipient.
-  run('auth smoke test (real HTTP)', ...npmRun('run', 'smoke:auth'), { allowSkip: true });
+  // Every epic's flow over real HTTP against the real database. The unit tests
+  // prove the rules; this proves the routes are mounted, the guards are
+  // applied, the DI graph resolves and the error envelope says what a client
+  // will read - none of which a unit test can fail on. Uses the deterministic
+  // fake SMS provider, so nothing is delivered to a real recipient.
+  run('api smoke test (real HTTP)', ...npmRun('run', 'smoke:api'), { allowSkip: true });
 } else {
   blocked('migration status', 'DATABASE_URL not set — no database reachable');
   blocked('audit append-only test', 'DATABASE_URL not set — no database reachable');
-  blocked('auth smoke test (real HTTP)', 'DATABASE_URL not set — no database reachable');
+  blocked('api smoke test (real HTTP)', 'DATABASE_URL not set — no database reachable');
 }
 
 // ---------------------------------------------------------------- android

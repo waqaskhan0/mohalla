@@ -1,6 +1,11 @@
 /**
- * EPIC-02 AUTH SMOKE TEST — boots the REAL application against the REAL
- * database and drives the whole flow over HTTP.
+ * API SMOKE TEST — boots the REAL application against the REAL database and
+ * drives each epic's flow over HTTP.
+ *
+ * Covers EPIC-02 (authentication and sessions) and EPIC-04 (profiles). Later
+ * epics append their own section rather than starting a new file: the value is
+ * in one process exercising the whole surface, and a per-epic file would let
+ * two epics pass separately while conflicting when mounted together.
  *
  * WHY THIS EXISTS SEPARATELY FROM THE UNIT TESTS
  *
@@ -73,6 +78,17 @@ async function main() {
       },
       body: JSON.stringify(body),
     });
+
+  const send = async (method, path, body, token) =>
+    fetch(`${base}${path}`, {
+      method,
+      headers: {
+        'content-type': 'application/json',
+        ...(token === undefined ? {} : { authorization: `Bearer ${token}` }),
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+  const get = (path, token) => send('GET', path, undefined, token);
 
   const phone = syntheticPhone(Date.now());
   const password = 'synthetic-Smoke-Passw0rd';
@@ -396,6 +412,244 @@ async function main() {
   }
 
   if (owner !== undefined) await owner.end().catch(() => undefined);
+
+  console.log('\n--- profiles: the full onboarding flow (EPIC-04) ---');
+  {
+    // A fresh verified account, so this section does not depend on the state
+    // the auth section left behind.
+    const p2 = syntheticPhone(Date.now() + 4242);
+    await post('/register', {
+      phone: p2,
+      password,
+      dateOfBirth: '1995-06-15',
+      termsVersion: terms,
+    });
+
+    const { SMS_PROVIDER } =
+      await import('../../apps/api/dist/modules/platform/identity/ports/sms-provider.port.js');
+    const smsForProfile = app.get(SMS_PROVIDER, { strict: false });
+    const code = smsForProfile?.lastTo?.(p2)?.body?.match(/\b(\d{6})\b/)?.[1];
+    await post('/otp/verify', { phone: p2, code, purpose: 'REGISTRATION' });
+
+    const login = await post('/login', { phone: p2, password });
+    const session = (await login.json())?.token;
+    check('a verified account can sign in for the profile flow', typeof session === 'string');
+
+    // ---- routes exist ------------------------------------------------
+    const handle = `n${String(Date.now()).slice(-8)}`;
+    {
+      const r = await get(`/username/available?u=${handle}`, session);
+      const body = await r.json();
+      check('GET /username/available exists', r.status === 200, `status ${r.status}`);
+      check('a fresh handle is available', body?.available === true, JSON.stringify(body));
+    }
+    {
+      // The reserved list must not be distinguishable from "taken".
+      const reserved = await get('/username/available?u=shehersaaz', session);
+      const rb = await reserved.json();
+      check(
+        'A RESERVED HANDLE REPORTS UNAVAILABLE WITH NO REASON',
+        rb?.available === false && rb?.malformed === false && rb?.reason === undefined,
+        JSON.stringify(rb),
+      );
+    }
+    {
+      const r = await get('/username/available?u=ab', session);
+      const body = await r.json();
+      check(
+        'a malformed handle reports its reason',
+        body?.reason === 'TOO_SHORT',
+        JSON.stringify(body),
+      );
+    }
+
+    // ---- profile requires a username first ---------------------------
+    {
+      const early = await post('/me/profile', { displayName: 'Too Early' }, session);
+      check(
+        'creating a profile before a username is refused',
+        early.status === 409,
+        `status ${early.status}`,
+      );
+    }
+
+    // ---- claim, then create ------------------------------------------
+    {
+      const r = await post('/me/username', { username: handle }, session);
+      check('POST /me/username claims the handle', r.status === 201, `status ${r.status}`);
+
+      const again = await post('/me/username', { username: handle }, session);
+      check(
+        'A SECOND CLAIM IS REFUSED - the username is immutable (BR-005)',
+        again.status === 409,
+        `status ${again.status}`,
+      );
+
+      const taken = await get(`/username/available?u=${handle}`, session);
+      const tb = await taken.json();
+      check('the handle now reports as taken', tb?.available === false, JSON.stringify(tb));
+      check(
+        'and alternatives are suggested (PROFILE-FR-002 A1)',
+        Array.isArray(tb?.suggestions) && tb.suggestions.length > 0,
+        JSON.stringify(tb?.suggestions),
+      );
+    }
+    {
+      const r = await post(
+        '/me/profile',
+        { displayName: 'عائشہ خان', city: 'کراچی', bio: 'محلے کی رہائشی' },
+        session,
+      );
+      const body = await r.json();
+      check('POST /me/profile creates the profile', r.status === 201, `status ${r.status}`);
+      check(
+        'AN URDU DISPLAY NAME SURVIVES THE ROUND TRIP',
+        body?.displayName === 'عائشہ خان',
+        String(body?.displayName),
+      );
+      check('the Urdu city survives too', body?.city === 'کراچی', String(body?.city));
+    }
+
+    // ---- the projection, over the wire -------------------------------
+    let myUserId;
+    {
+      const r = await get('/me', session);
+      const own = await r.json();
+      myUserId = own?.userId;
+      check('GET /me returns the owner view', r.status === 200, `status ${r.status}`);
+      check('it carries the account state', own?.state === 'ACTIVE', String(own?.state));
+
+      const serialized = JSON.stringify(own);
+      check(
+        'THE OWNER VIEW CARRIES NO PHONE NUMBER AND NO DATE OF BIRTH',
+        !serialized.includes(p2.slice(3)) && !serialized.includes('1995-06-15'),
+      );
+    }
+
+    // ---- editing ------------------------------------------------------
+    {
+      const r = await send('PATCH', '/me/profile', { bio: null }, session);
+      const body = await r.json();
+      check(
+        'PATCH clears an optional field when sent null',
+        r.status === 200 && body?.bio === null,
+        `status ${r.status}`,
+      );
+      check('and leaves an unmentioned field alone', body?.city === 'کراچی', String(body?.city));
+    }
+    {
+      // BR-005 again, this time at the transport boundary: the edit DTO is
+      // strict, so a username field must be rejected rather than ignored.
+      const r = await send('PATCH', '/me/profile', { username: 'something_else' }, session);
+      check(
+        'PATCH REJECTS A USERNAME FIELD rather than ignoring it',
+        r.status === 400,
+        `status ${r.status}`,
+      );
+    }
+    {
+      const r = await send('PATCH', '/me/profile', { bio: 'x'.repeat(300) }, session);
+      check('an over-long bio is refused', r.status === 400, `status ${r.status}`);
+    }
+
+    // ---- interests ----------------------------------------------------
+    {
+      const r = await get('/categories', session);
+      const body = await r.json();
+      check(
+        'GET /categories returns the eleven seeded rows (BR-017)',
+        r.status === 200 && body?.categories?.length === 11,
+        `status ${r.status} count ${body?.categories?.length}`,
+      );
+      check(
+        'each category carries both language names',
+        body?.categories?.every((c) => c.nameEn && c.nameUr) === true,
+      );
+    }
+    {
+      const r = await send('PUT', '/me/interests', { slugs: ['health', 'education'] }, session);
+      const body = await r.json();
+      check('PUT /me/interests stores a selection', r.status === 200, `status ${r.status}`);
+      check(
+        'read back in taxonomy order',
+        JSON.stringify(body?.interests) === JSON.stringify(['education', 'health']),
+        JSON.stringify(body?.interests),
+      );
+
+      const empty = await send('PUT', '/me/interests', { slugs: [] }, session);
+      check(
+        'an empty selection is valid, since interests are optional',
+        empty.status === 200,
+        `status ${empty.status}`,
+      );
+
+      const bad = await send('PUT', '/me/interests', { slugs: ['not-a-category'] }, session);
+      check(
+        'an unknown slug is reported, not silently dropped',
+        bad.status === 400,
+        `status ${bad.status}`,
+      );
+    }
+
+    // ---- viewing someone else ----------------------------------------
+    {
+      const viewer = await post('/login', { phone, password }, undefined);
+      const viewerToken = (await viewer.json())?.token;
+
+      if (typeof viewerToken === 'string' && typeof myUserId === 'string') {
+        const r = await get(`/users/${myUserId}`, viewerToken);
+        const pub = await r.json();
+        check(
+          'GET /users/{id} returns the public projection',
+          r.status === 200,
+          `status ${r.status}`,
+        );
+
+        // §162: display name, username, photo, city, bio, badge and counts -
+        // "and nothing else".
+        const keys = Object.keys(pub ?? {}).sort();
+        check(
+          'THE PUBLIC PROJECTION IS EXACTLY THE APPROVED FIELD SET',
+          JSON.stringify(keys) ===
+            JSON.stringify([
+              'accountType',
+              'bio',
+              'city',
+              'displayName',
+              'followerCount',
+              'followingCount',
+              'photoMediaId',
+              'postCount',
+              'userId',
+              'username',
+              'verifiedBadge',
+            ]),
+          keys.join(','),
+        );
+      } else {
+        console.log('  SKIP  public profile view - could not establish a second session');
+      }
+    }
+    {
+      // BR-025 / UX-STATE-001: one neutral state. An id that does not exist
+      // must look exactly like a blocked or banned one.
+      const r = await get('/users/00000000-0000-4000-8000-000000000000', session);
+      const body = await r.json();
+      check(
+        'an unknown profile is one neutral 404 RESOURCE_UNAVAILABLE',
+        r.status === 404 && body?.error?.code === 'RESOURCE_UNAVAILABLE',
+        `status ${r.status} code ${body?.error?.code}`,
+      );
+    }
+    {
+      const anon = await get('/me');
+      check(
+        'the profile routes are guarded like everything else',
+        anon.status === 401,
+        `status ${anon.status}`,
+      );
+    }
+  }
 
   console.log('\n--- no secret leaves the server ---');
   {
