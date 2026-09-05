@@ -25,6 +25,14 @@ import { SettingsModule } from './modules/product/settings/settings.module.js';
 import { ModerationModule } from './modules/admin/moderation/moderation.module.js';
 import { AdminOpsModule } from './modules/admin/admin-ops/admin-ops.module.js';
 
+// EPIC-11's cross-tier wiring. See the `providers` block below for why it is
+// here and not inside NotificationsModule.
+import { OutboxDrainService } from './modules/platform/notifications/application/outbox-drain.service.js';
+import { BLOCK_CHECK } from './modules/platform/notifications/ports/block-check.port.js';
+import { ACTOR_NAMES } from './modules/platform/notifications/ports/actor-names.port.js';
+import { BlockCheckAdapter } from './modules/product/safety/adapters/block-check.adapter.js';
+import { ActorNamesAdapter } from './modules/product/profile/adapters/actor-names.adapter.js';
+
 /**
  * Root application module.
  *
@@ -71,6 +79,33 @@ import { AdminOpsModule } from './modules/admin/admin-ops/admin-ops.module.js';
     ModerationModule,
     AdminOpsModule,
   ],
+  /**
+   * THE ONE PIECE OF WIRING THAT CANNOT LIVE IN A MODULE.
+   *
+   * `OutboxDrainService` turns domain events into notifications, and to do that
+   * it needs two facts that PRODUCT modules own: whether two people have
+   * blocked each other (`safety`, and §165 says that predicate has exactly one
+   * implementation) and what somebody is called (`profile`). The service itself
+   * belongs to `notifications`, which is PLATFORM tier — and §3 forbids platform
+   * importing product, upward being the one direction that is never allowed.
+   *
+   * Both needs are therefore ports, declared in `notifications` and implemented
+   * in the product modules that own the data. Their BINDING has to happen
+   * somewhere that may see both tiers, and that place is the composition root:
+   * this file. Putting it in a module would either invert a dependency or
+   * duplicate the block predicate, and the second is worse — a block that leaks
+   * on one surface leaks entirely.
+   *
+   * Nothing else in the application is wired here, and nothing else should be.
+   */
+  providers: [
+    BlockCheckAdapter,
+    { provide: BLOCK_CHECK, useExisting: BlockCheckAdapter },
+    ActorNamesAdapter,
+    { provide: ACTOR_NAMES, useExisting: ActorNamesAdapter },
+    OutboxDrainService,
+  ],
+  exports: [OutboxDrainService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

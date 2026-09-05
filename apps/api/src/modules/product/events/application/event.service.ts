@@ -4,6 +4,7 @@ import { DatabaseService } from '../../../../database/database.service.js';
 import { StructuredLogger } from '../../../../common/logging/structured.logger.js';
 import { CLOCK, type Clock } from '../../../platform/identity/ports/clock.port.js';
 import { BlockService } from '../../safety/application/block.service.js';
+import { OutboxService } from '../../../platform/notifications/application/outbox.service.js';
 import {
   EVENT_QUOTA_WINDOW_HOURS,
   MAX_EVENTS_PER_DAY,
@@ -122,6 +123,7 @@ export class EventService {
     private readonly db: DatabaseService,
     @Inject(EVENT_REPOSITORY) private readonly repo: EventRepository,
     private readonly blocks: BlockService,
+    private readonly outbox: OutboxService,
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly logger: StructuredLogger,
   ) {}
@@ -272,13 +274,20 @@ export class EventService {
 
     await this.db.withTransaction(async (client) => {
       await this.repo.setRsvp(eventId, viewerId, response, client);
+
+      // EVENT-FR-004: "the creator is notified". In the same transaction as
+      // the RSVP, so the count and the notification cannot disagree.
+      await this.outbox.emit(
+        { topic: 'event.rsvp', eventId, creatorId: event.creatorId, actorId: viewerId },
+        client,
+      );
     });
 
-    // TODO(EPIC-11): notify the creator (EVENT-FR-004 "the creator is
-    // notified"), and schedule the 24-hour and 1-hour reminders for a GOING
-    // response (EVENT-FR-008, NOTIF-FR-006). Both need the outbox and the
-    // worker, which EPIC-11 owns. `attendeeIdsForNotice(eventId, true)` is the
-    // query the reminder job will use.
+    // TODO(EPIC-11 reminders): the 24-hour and 1-hour reminders (EVENT-FR-008,
+    // NOTIF-FR-006) are SCHEDULED work rather than reactive, so they belong to
+    // the worker's scheduled sweep rather than to this transaction - it reads
+    // `attendeeIdsForNotice(eventId, true)` for events whose start crosses
+    // either mark, and NOTIF-FR-006 requires it to skip a cancelled one.
     const updated = await this.repo.findById(eventId);
     this.log('event_rsvp', { response });
     return {
@@ -447,11 +456,19 @@ export class EventService {
 
     let notifiedAttendees = 0;
     if (notice) {
-      // TODO(EPIC-11): emit `event.changed` to these ids. Resolved here rather
-      // than left to the pipeline because this module owns the rule about WHICH
-      // changes are worth a notification, and the count is what the creator is
-      // shown ("42 people were told").
-      notifiedAttendees = (await this.repo.attendeeIdsForNotice(eventId, false)).length;
+      // Resolved HERE rather than in the pipeline, because this module owns the
+      // rule about WHICH changes are worth a notification - and the count is
+      // what the creator is shown ("42 people were told").
+      const attendees = await this.repo.attendeeIdsForNotice(eventId, false);
+      notifiedAttendees = attendees.length;
+      if (attendees.length > 0) {
+        await this.db.withTransaction(async (client) => {
+          await this.outbox.emit(
+            { topic: 'event.changed', eventId, recipientIds: attendees },
+            client,
+          );
+        });
+      }
     }
 
     this.log('event_updated', { notice, notifiedAttendees });
@@ -487,11 +504,23 @@ export class EventService {
     const attendees = await this.repo.attendeeIdsForNotice(eventId, false);
     await this.db.withTransaction(async (client) => {
       await this.repo.cancel(eventId, this.clock.now(), client);
+
+      // Same transaction as the cancellation. An event that is cancelled while
+      // the notice fails to enqueue is the worst of both: nobody is told, and
+      // the event stops looking like it is happening.
+      if (attendees.length > 0) {
+        await this.outbox.emit(
+          { topic: 'event.cancelled', eventId, recipientIds: attendees },
+          client,
+        );
+      }
     });
 
-    // TODO(EPIC-11): emit `event.cancelled` to `attendees`, and CANCEL any
-    // pending reminders - NOTIF-FR-006's criterion is that an event cancelled
-    // two hours before its start sends no one-hour reminder.
+    // The pending reminders need no cancelling: NOTIF-FR-006's criterion - "an
+    // event cancelled 2 hours before its start... no reminder is sent" - is
+    // satisfied because the reminder sweep reads the event's CURRENT status
+    // rather than working from a queue of pre-scheduled jobs. There is nothing
+    // to cancel, which is why the sweep is a sweep.
     this.log('event_cancelled', { notifiedAttendees: attendees.length });
     return { status: 'CANCELLED', notifiedAttendees: attendees.length };
   }

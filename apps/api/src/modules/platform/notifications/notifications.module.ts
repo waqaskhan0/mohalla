@@ -1,25 +1,57 @@
 import { Module } from '@nestjs/common';
+import { IdentityModule } from '../identity/identity.module.js';
+import { NOTIFICATION_REPOSITORY } from './repositories/notification.repository.port.js';
+import { PgNotificationRepository } from './repositories/pg-notification.repository.js';
+import { PUSH_SENDER } from './ports/push-sender.port.js';
+import { FakePushSender } from './adapters/fake-push-sender.js';
+import { NotificationService } from './application/notification.service.js';
+import { OutboxService } from './application/outbox.service.js';
+import { NotificationController } from './transport/notification.controller.js';
 
 /**
- * `notifications` - platform tier.
+ * `notifications` — platform tier. EPIC-11, ADR-014.
  *
- * STAGE 5 FOUNDATION SHELL. Intentionally empty.
+ * Owns `notifications`, `notification_preferences`, `device_tokens` and the
+ * `outbox`.
  *
- * No controller, provider, entity, route or business rule exists here yet.
- * The shell exists so that the module boundary, the tier it belongs to and the
- * dependency-direction check are all in place and enforced *before* any feature
- * is written.
+ * WHAT THIS MODULE EXPORTS AND WHY THE SPLIT MATTERS.
  *
- * Requirements owned by this module are listed in
- * `docs/architecture/06-backend-modules.md`. Implementation begins in the epic
- * that owns it - not in Stage 5.
+ * `OutboxService` is what PRODUCERS use — engagement, social-graph, messaging,
+ * events. Its single method takes a transaction client, so an outbox row cannot
+ * be written outside the business transaction that justifies it. Producers say
+ * what happened; they decide nothing about who is notified.
  *
- * Nothing calls this module synchronously. It consumes domain events asynchronously, which is what stops every module importing it and creating a hub.
+ * `NotificationService` is the delivery pipeline and the in-app centre. It
+ * applies ADR-014's eligibility rules in order, in one place.
+ *
+ * `OutboxDrainService` — the consumer that joins the two — is deliberately NOT
+ * here. It needs the block predicate (`safety`) and display names (`profile`),
+ * both PRODUCT tier, and `06-backend-modules.md` §3 forbids platform importing
+ * product. It is composed at the application root instead, where cross-tier
+ * wiring belongs; the ports it consumes are declared in `ports/` so this module
+ * still imports nothing upward.
+ *
+ * THE PUSH SENDER IS THE FAKE, and that is not a placeholder. DEP-003 has no
+ * technical owner and no FCM project exists; the security addendum forbids any
+ * CI test sending a real notification to a real user. The fake is what CI must
+ * keep using even after a real adapter is written — a real one replaces this
+ * single binding and nothing else in the module changes.
  */
 @Module({
-  imports: [],
-  controllers: [],
-  providers: [],
-  exports: [],
+  imports: [IdentityModule],
+  controllers: [NotificationController],
+  providers: [
+    PgNotificationRepository,
+    { provide: NOTIFICATION_REPOSITORY, useExisting: PgNotificationRepository },
+
+    // One instance, so a test can read what "would have been sent" from the
+    // same object the service pushed to.
+    FakePushSender,
+    { provide: PUSH_SENDER, useExisting: FakePushSender },
+
+    NotificationService,
+    OutboxService,
+  ],
+  exports: [NotificationService, OutboxService, NOTIFICATION_REPOSITORY, PUSH_SENDER],
 })
 export class NotificationsModule {}

@@ -9,6 +9,7 @@ import {
   type FollowRepository,
 } from '../repositories/follow.repository.port.js';
 import { REQUEST_PROMOTION, type RequestPromotion } from '../ports/request-promotion.port.js';
+import { OutboxService } from '../../../platform/notifications/application/outbox.service.js';
 
 export type FollowResult =
   | { status: 'FOLLOWING'; created: boolean }
@@ -50,6 +51,7 @@ export class FollowService {
     private readonly db: DatabaseService,
     @Inject(FOLLOW_REPOSITORY) private readonly repo: FollowRepository,
     @Inject(REQUEST_PROMOTION) private readonly requests: RequestPromotion,
+    private readonly outbox: OutboxService,
     private readonly blocks: BlockService,
     private readonly profiles: ProfileService,
     private readonly logger: StructuredLogger,
@@ -79,9 +81,16 @@ export class FollowService {
       // interrupted between the two writes.
       const promoted = await this.requests.promotePendingRequest(followerId, followeeId, client);
 
-      // TODO(EPIC-11): emit `social.followed` so the target is notified
-      // (NOTIF-FR-003). Only when `created` is true - a repeat follow must not
-      // produce a second notification.
+      // SOCIAL-FR-001: "the target receives a notification". Only when
+      // `created` - a repeat follow must not produce a second one, which is
+      // the same idempotence the composite primary key gives the row itself.
+      if (created) {
+        await this.outbox.emit(
+          { topic: 'social.followed', followeeId, actorId: followerId },
+          client,
+        );
+      }
+
       this.log(created ? 'follow_created' : 'follow_repeated');
       if (promoted) this.log('message_request_promoted');
       return { status: 'FOLLOWING', created } as const;

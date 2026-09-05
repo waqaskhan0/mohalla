@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { DatabaseService } from '../../../../database/database.service.js';
 import { StructuredLogger } from '../../../../common/logging/structured.logger.js';
+import { OutboxService } from '../../../platform/notifications/application/outbox.service.js';
 import { PostService } from '../../posts/application/post.service.js';
 import { ProfileService } from '../../profile/application/profile.service.js';
 import type { PublicProfile } from '../../profile/domain/public-profile.js';
@@ -67,6 +68,7 @@ export class EngagementService {
     @Inject(ENGAGEMENT_REPOSITORY) private readonly repo: EngagementRepository,
     private readonly posts: PostService,
     private readonly profiles: ProfileService,
+    private readonly outbox: OutboxService,
     private readonly logger: StructuredLogger,
   ) {}
 
@@ -74,14 +76,32 @@ export class EngagementService {
   async like(userId: string, postId: string): Promise<LikeResult> {
     // Visibility first. A user may like their OWN post, which the requirement
     // says explicitly, and the post read path already allows that.
-    if (!(await this.postIsVisible(userId, postId))) return { status: 'NOT_AVAILABLE' };
+    const post = await this.visiblePost(userId, postId);
+    if (post === null) return { status: 'NOT_AVAILABLE' };
 
     return this.db.withTransaction(async (client) => {
       const created = await this.repo.like(userId, postId, client);
 
-      // TODO(EPIC-11): emit `engagement.liked` so the author is notified
-      // (NOTIF-FR-003) - only when `created`, so a repeat tap does not notify
-      // a second time.
+      // NOTIF-FR-003, and ONLY when `created`: a repeat tap must not notify a
+      // second time. The row goes in THIS transaction (ADR-014), so the
+      // notification is exactly as durable as the like itself - a crash
+      // between commit and enqueue cannot lose one.
+      //
+      // Nothing here decides whether the author will actually be notified.
+      // Their own like, a block, a muted category and the six-per-hour
+      // batching are all the pipeline's job; producers state what happened.
+      if (created) {
+        await this.outbox.emit(
+          {
+            topic: 'engagement.liked',
+            postId,
+            postAuthorId: post.author.userId,
+            actorId: userId,
+          },
+          client,
+        );
+      }
+
       this.log(created ? 'like_created' : 'like_repeated', { postId });
       return { status: 'LIKED', created } as const;
     });
@@ -95,7 +115,7 @@ export class EngagementService {
    * now holds.
    */
   async unlike(userId: string, postId: string): Promise<UnlikeResult> {
-    if (!(await this.postIsVisible(userId, postId))) return { status: 'NOT_AVAILABLE' };
+    if ((await this.visiblePost(userId, postId)) === null) return { status: 'NOT_AVAILABLE' };
 
     await this.db.withTransaction(async (client) => {
       await this.repo.unlike(userId, postId, client);
@@ -122,7 +142,8 @@ export class EngagementService {
     // ENGAGE-FR-002 error case: "post deleted while composing → submission
     // refused with a clear explanation". The refusal is the neutral one; the
     // client keeps the text.
-    if (!(await this.postIsVisible(userId, postId))) return { status: 'NOT_AVAILABLE' };
+    const post = await this.visiblePost(userId, postId);
+    if (post === null) return { status: 'NOT_AVAILABLE' };
 
     let parentCommentId: string | null = null;
     if (replyToCommentId !== undefined) {
@@ -150,7 +171,37 @@ export class EngagementService {
         client,
       );
 
-      // TODO(EPIC-11): emit `engagement.commented` / `engagement.replied`.
+      // Two different notifications, because NOTIF-FR-003 lists them
+      // separately: "a comment on their post" and "a reply to their comment"
+      // reach different people. A reply notifies the PARENT COMMENT's author;
+      // a top-level comment notifies the POST's author.
+      if (parentCommentId === null) {
+        await this.outbox.emit(
+          {
+            topic: 'engagement.commented',
+            postId,
+            postAuthorId: post.author.userId,
+            commentId: created.id,
+            actorId: userId,
+          },
+          client,
+        );
+      } else {
+        const parent = await this.repo.findCommentById(parentCommentId, client);
+        if (parent !== null) {
+          await this.outbox.emit(
+            {
+              topic: 'engagement.replied',
+              postId,
+              parentAuthorId: parent.authorId,
+              commentId: created.id,
+              actorId: userId,
+            },
+            client,
+          );
+        }
+      }
+
       this.log('comment_created', { postId, isReply: parentCommentId !== null });
       return {
         status: 'CREATED',
@@ -169,7 +220,7 @@ export class EngagementService {
     comments: CommentView[];
     nextCursor: { createdAt: string; id: string } | null;
   } | null> {
-    if (!(await this.postIsVisible(viewerId, postId))) return null;
+    if ((await this.visiblePost(viewerId, postId)) === null) return null;
 
     const page = await this.repo.listComments(viewerId, postId, clampLimit(limit), cursor);
 
@@ -292,9 +343,17 @@ export class EngagementService {
   // ---- internals --------------------------------------------------------
 
   /** One question, asked the same way by every write path. */
-  private async postIsVisible(viewerId: string, postId: string): Promise<boolean> {
+  /**
+   * The post, if this viewer may see it — otherwise null.
+   *
+   * Returns the POST rather than a boolean because every caller that needs the
+   * visibility check also needs the author id, to address the notification.
+   * Answering "yes" and then re-reading the row would be a second query for a
+   * fact already in hand, and two lookups are two chances to disagree.
+   */
+  private async visiblePost(viewerId: string, postId: string) {
     const post = await this.posts.view(viewerId, postId);
-    return post.status === 'FOUND';
+    return post.status === 'FOUND' ? post.post : null;
   }
 
   private async authorsFor(

@@ -2569,11 +2569,25 @@ async function main() {
         `status ${detail?.status}`,
       );
 
-      const list = await (await get('/events?limit=50', attendee.token)).json();
-      check(
-        'and it is still in the upcoming list until its original date passes',
-        (list?.events ?? []).some((e) => e.id === eventId),
-      );
+      // PAGED, not a single page. This database is not reset between smoke
+      // runs, so events accumulate and the one under test drifts off page one
+      // - which is a property of the fixture, not of the product. The first
+      // version asserted against `?limit=50` and passed until there were more
+      // than fifty upcoming events.
+      let found = false;
+      let cursor = null;
+      for (let page = 0; page < 20 && !found; page += 1) {
+        const query =
+          cursor === null
+            ? '/events?limit=50'
+            : `/events?limit=50&cursorStartsAt=${encodeURIComponent(cursor.cursorStartsAt)}` +
+              `&cursorId=${cursor.cursorId}`;
+        const list = await (await get(query, attendee.token)).json();
+        found = (list?.events ?? []).some((e) => e.id === eventId);
+        cursor = list?.nextCursor ?? null;
+        if (cursor === null) break;
+      }
+      check('and it is still in the upcoming list until its original date passes', found);
 
       const lateRsvp = await send(
         'PUT',
@@ -2655,6 +2669,385 @@ async function main() {
     {
       const anon = await get('/events');
       check('event routes are guarded like everything else', anon.status === 401);
+    }
+  }
+
+  console.log('\n--- notifications, outbox to push (EPIC-11) ---');
+  {
+    // The drain is the WORKER's job in production. Here it is pulled straight
+    // out of the running DI graph, which is the same object the worker gets -
+    // ADR-014's eligibility rules have one implementation, and this exercises
+    // that one rather than a copy.
+    const { OutboxDrainService } =
+      await import('../../apps/api/dist/modules/platform/notifications/application/outbox-drain.service.js');
+    const { PUSH_SENDER } =
+      await import('../../apps/api/dist/modules/platform/notifications/ports/push-sender.port.js');
+    const drain = app.get(OutboxDrainService, { strict: false });
+    const pushes = app.get(PUSH_SENDER, { strict: false });
+
+    const author = await onboard(Date.now() + 10111);
+    const liker = await onboard(Date.now() + 10222);
+
+    const registerDevice = (user, token, language) =>
+      post('/notifications/devices', { token, language }, user.token);
+
+    const notificationsOf = async (user, locale) => {
+      const r = await get(
+        `/notifications${locale === undefined ? '' : `?locale=${locale}`}`,
+        user.token,
+      );
+      return { status: r.status, body: await r.json() };
+    };
+
+    // ---- NOTIF-FR-001: the device registers -----------------------------
+    {
+      const r = await registerDevice(author, 'synthetic-device-author', 'en');
+      check(
+        'POST /notifications/devices registers a token',
+        r.status === 204,
+        `status ${r.status}`,
+      );
+    }
+
+    const authorPost = await (
+      await post('/posts', { body: 'Street light on the corner is out again' }, author.token)
+    ).json();
+
+    // ---- the outbox is written INSIDE the business transaction ----------
+    {
+      await send('PUT', `/posts/${authorPost.id}/like`, undefined, liker.token);
+
+      const beforeDrain = await notificationsOf(author);
+      check(
+        'NOTHING IS DELIVERED BEFORE THE DRAIN RUNS - the outbox is not the centre',
+        beforeDrain.body?.notifications?.length === 0,
+        `${beforeDrain.body?.notifications?.length} notifications`,
+      );
+
+      const result = await drain.drain();
+      check(
+        'the drain claims and processes the row',
+        result.claimed >= 1 && result.failed === 0,
+        JSON.stringify({
+          claimed: result.claimed,
+          processed: result.processed,
+          failed: result.failed,
+        }),
+      );
+
+      const after = await notificationsOf(author, 'en');
+      const likeEntry = (after.body?.notifications ?? []).find((n) => n.category === 'LIKE');
+      check(
+        'A LIKE REACHES THE AUTHOR (NOTIF-FR-003)',
+        likeEntry !== undefined,
+        JSON.stringify(after.body?.notifications ?? []).slice(0, 160),
+      );
+      check(
+        'and the text is RENDERED, carrying the actor name untranslated (LOCALE-FR-006)',
+        typeof likeEntry?.text === 'string' && likeEntry.text.includes('liked your post'),
+        String(likeEntry?.text),
+      );
+
+      const pushed = pushes.to('synthetic-device-author');
+      check(
+        'AND THE DEVICE IS PUSHED (NOTIF-FR-001)',
+        pushed.length === 1,
+        `${pushed.length} pushes`,
+      );
+      check(
+        'the push carries a deep link and no more than it needs (ADR-014)',
+        pushed[0]?.deepLink === `/posts/${authorPost.id}`,
+        String(pushed[0]?.deepLink),
+      );
+    }
+
+    // ---- NOTIF-FR-003: never your own action ----------------------------
+    {
+      const before = (await notificationsOf(author)).body?.notifications?.length ?? 0;
+      await send('PUT', `/posts/${authorPost.id}/like`, undefined, author.token);
+      await drain.drain();
+      const after = (await notificationsOf(author)).body?.notifications?.length ?? 0;
+      check(
+        'A USER IS NEVER NOTIFIED OF THEIR OWN ACTION (NOTIF-FR-003)',
+        after === before,
+        `${before} -> ${after}`,
+      );
+    }
+
+    // ---- LOCALE-FR-006: the centre renders in the reader's language -----
+    {
+      const english = await notificationsOf(author, 'en');
+      const urdu = await notificationsOf(author, 'ur');
+      const enText = english.body?.notifications?.[0]?.text;
+      const urText = urdu.body?.notifications?.[0]?.text;
+
+      check(
+        'THE SAME RECORD RENDERS IN EITHER LANGUAGE (LOCALE-FR-002)',
+        typeof enText === 'string' && typeof urText === 'string' && enText !== urText,
+        `${enText} | ${urText}`,
+      );
+      check(
+        'and the Urdu template really is Urdu',
+        /[\u0600-\u06FF]/.test(String(urText)),
+        String(urText),
+      );
+    }
+
+    // ---- NOTIF-FR-007: preferences gate PUSH ONLY -----------------------
+    {
+      const prefs = await (await get('/notifications/preferences', author.token)).json();
+      check(
+        'every switch is reported, defaulting to enabled (NOTIF-FR-007)',
+        prefs?.preferences?.LIKE === true && prefs?.preferences?.MESSAGE === true,
+        JSON.stringify(prefs?.preferences),
+      );
+
+      const off = await send(
+        'PUT',
+        '/notifications/preferences/LIKE',
+        { pushEnabled: false },
+        author.token,
+      );
+      check('a category can be disabled', off.status === 204, `status ${off.status}`);
+
+      const pushesBefore = pushes.to('synthetic-device-author').length;
+      const notificationsBefore = (await notificationsOf(author)).body?.notifications?.length ?? 0;
+
+      const third = await onboard(Date.now() + 10333);
+      await send('PUT', `/posts/${authorPost.id}/like`, undefined, third.token);
+      await drain.drain();
+
+      const pushesAfter = pushes.to('synthetic-device-author').length;
+      const notificationsAfter = (await notificationsOf(author)).body?.notifications?.length ?? 0;
+
+      check(
+        'NO PUSH IS SENT FOR A DISABLED CATEGORY (NOTIF-FR-007 AC)',
+        pushesAfter === pushesBefore,
+        `${pushesBefore} -> ${pushesAfter}`,
+      );
+      check(
+        'BUT THE ENTRY STILL APPEARS IN THE IN-APP CENTRE (the other half of the AC)',
+        notificationsAfter === notificationsBefore + 1,
+        `${notificationsBefore} -> ${notificationsAfter}`,
+      );
+
+      await send('PUT', '/notifications/preferences/LIKE', { pushEnabled: true }, author.token);
+    }
+
+    // ---- BR-025: never notify across a block ----------------------------
+    {
+      const blocked = await onboard(Date.now() + 10444);
+      await send('PUT', `/users/${blocked.userId}/block`, undefined, author.token);
+
+      const before = (await notificationsOf(author)).body?.notifications?.length ?? 0;
+      await send('PUT', `/posts/${authorPost.id}/like`, undefined, blocked.token);
+      await drain.drain();
+      const after = (await notificationsOf(author)).body?.notifications?.length ?? 0;
+
+      check(
+        'A BLOCKED USER PRODUCES NO NOTIFICATION AT ALL - not even a silent record (BR-025)',
+        after === before,
+        `${before} -> ${after}`,
+      );
+      await send('DELETE', `/users/${blocked.userId}/block`, undefined, author.token);
+    }
+
+    // ---- BR-027 / NOTIF-FR-004: a Message Request is silent -------------
+    {
+      const stranger = await onboard(Date.now() + 10555);
+      const opened = await (
+        await post('/conversations', { userId: author.userId }, stranger.token)
+      ).json();
+      await post(
+        `/conversations/${opened.conversationId}/messages`,
+        { clientMessageId: randomUUID(), body: 'salaam, ek sawal tha' },
+        stranger.token,
+      );
+
+      const pushesBefore = pushes.to('synthetic-device-author').length;
+      await drain.drain();
+      const pushesAfter = pushes.to('synthetic-device-author').length;
+
+      check(
+        'A MESSAGE FROM A NON-FOLLOWER DELIVERS NO PUSH (NOTIF-FR-004 AC)',
+        pushesAfter === pushesBefore,
+        `${pushesBefore} -> ${pushesAfter}`,
+      );
+
+      const centre = await notificationsOf(author);
+      check(
+        'and the record is still kept, so the request count can update',
+        (centre.body?.notifications ?? []).some((n) => n.category === 'MESSAGE'),
+      );
+    }
+
+    // ---- NOTIF-FR-003: like batching ------------------------------------
+    {
+      const busy = await onboard(Date.now() + 10666);
+      await post(
+        '/notifications/devices',
+        { token: 'synthetic-device-busy', language: 'en' },
+        busy.token,
+      );
+      const busyPost = await (
+        await post(
+          '/posts',
+          { body: 'Free medical camp this Sunday at the community hall' },
+          busy.token,
+        )
+      ).json();
+
+      for (let i = 0; i < 12; i += 1) {
+        const fan = await onboard(Date.now() + 10700 + i);
+        await send('PUT', `/posts/${busyPost.id}/like`, undefined, fan.token);
+      }
+      await drain.drain();
+
+      const centre = await (await get('/notifications?limit=50', busy.token)).json();
+      const likeEntries = (centre?.notifications ?? []).filter((n) => n.category === 'LIKE');
+      const summary = likeEntries.find((n) => n.batchCount > 1);
+
+      check(
+        'TWELVE LIKES PRODUCE A SUMMARY, NOT TWELVE ALERTS (NOTIF-FR-003 AC)',
+        likeEntries.length === 6 && summary?.batchCount === 12,
+        `${likeEntries.length} entries, summary covers ${summary?.batchCount}`,
+      );
+      check(
+        'the summary says how many others',
+        typeof summary?.text === 'string' && summary.text.includes('11 others'),
+        String(summary?.text),
+      );
+      check(
+        'and the phone buzzed six times rather than twelve',
+        pushes.to('synthetic-device-busy').length === 6,
+        `${pushes.to('synthetic-device-busy').length} pushes`,
+      );
+    }
+
+    // ---- NOTIF-FR-002: a deleted target takes its notification with it --
+    {
+      const deleter = await onboard(Date.now() + 10888);
+      await post(
+        '/notifications/devices',
+        { token: 'synthetic-device-deleter', language: 'en' },
+        deleter.token,
+      );
+      const doomed = await (
+        await post('/posts', { body: 'This post will be deleted shortly' }, deleter.token)
+      ).json();
+
+      const fan = await onboard(Date.now() + 10999);
+      await send('PUT', `/posts/${doomed.id}/like`, undefined, fan.token);
+      await drain.drain();
+
+      const before = await (await get('/notifications?limit=50', deleter.token)).json();
+      check(
+        'the notification is there while the post is',
+        (before?.notifications ?? []).some((n) => n.targetId === doomed.id),
+      );
+
+      await send('DELETE', `/posts/${doomed.id}`, undefined, deleter.token);
+
+      const after = await (await get('/notifications?limit=50', deleter.token)).json();
+      check(
+        'A NOTIFICATION WHOSE TARGET WAS DELETED IS REMOVED (NOTIF-FR-002 AC)',
+        (after?.notifications ?? []).every((n) => n.targetId !== doomed.id),
+        `${after?.notifications?.length} remain`,
+      );
+    }
+
+    // ---- the unread badge and marking read ------------------------------
+    {
+      const counted = await (await get('/notifications/unread-count', author.token)).json();
+      check(
+        'the unread count is a number',
+        typeof counted?.unread === 'number' && counted.unread > 0,
+        JSON.stringify(counted),
+      );
+
+      const all = await post('/notifications/read-all', undefined, author.token);
+      const marked = await all.json();
+      check('mark-all-read reports how many moved', marked?.marked > 0, JSON.stringify(marked));
+
+      const zero = await (await get('/notifications/unread-count', author.token)).json();
+      check('and the badge clears', zero?.unread === 0, JSON.stringify(zero));
+    }
+
+    // ---- SOCIAL-FR-001 and EVENT-FR-004 both notify ---------------------
+    {
+      const follower = await onboard(Date.now() + 11111);
+      await send('PUT', `/users/${author.userId}/follow`, undefined, follower.token);
+      await drain.drain();
+
+      const centre = await (await get('/notifications?limit=50', author.token)).json();
+      check(
+        'A NEW FOLLOWER NOTIFIES (SOCIAL-FR-001)',
+        (centre?.notifications ?? []).some((n) => n.category === 'FOLLOW'),
+      );
+    }
+    {
+      const organiser = await onboard(Date.now() + 11222);
+      await post(
+        '/notifications/devices',
+        { token: 'synthetic-device-organiser', language: 'ur' },
+        organiser.token,
+      );
+      const event = await (
+        await post(
+          '/events',
+          {
+            title: 'Neighbourhood water meeting',
+            description: 'Planning the supply schedule for the coming month.',
+            startsAt: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString(),
+            eventType: 'PHYSICAL',
+            locationText: 'Community hall, Block C',
+          },
+          organiser.token,
+        )
+      ).json();
+
+      const attendee = await onboard(Date.now() + 11333);
+      await send('PUT', `/events/${event.id}/rsvp`, { response: 'GOING' }, attendee.token);
+      await drain.drain();
+
+      const centre = await (await get('/notifications?limit=50&locale=ur', organiser.token)).json();
+      const rsvp = (centre?.notifications ?? []).find((n) => n.category === 'EVENT');
+      check(
+        'AN RSVP NOTIFIES THE CREATOR (EVENT-FR-004)',
+        rsvp !== undefined,
+        JSON.stringify(centre?.notifications ?? []).slice(0, 160),
+      );
+      check(
+        'THE PUSH IS RENDERED IN THE DEVICE LANGUAGE (BR-040, LOCALE-FR-006)',
+        /[\u0600-\u06FF]/.test(String(pushes.to('synthetic-device-organiser')[0]?.body)),
+        String(pushes.to('synthetic-device-organiser')[0]?.body),
+      );
+
+      // EVENT-FR-007: cancelling tells everyone who responded.
+      await send('DELETE', `/events/${event.id}`, undefined, organiser.token);
+      await drain.drain();
+      const attendeeCentre = await (await get('/notifications?limit=50', attendee.token)).json();
+      check(
+        'CANCELLING AN EVENT NOTIFIES EVERY ATTENDEE (EVENT-FR-007 AC)',
+        (attendeeCentre?.notifications ?? []).some((n) => n.category === 'EVENT'),
+        `${attendeeCentre?.notifications?.length} notifications`,
+      );
+    }
+
+    // ---- the drain is idempotent over processed rows ---------------------
+    {
+      const again = await drain.drain();
+      check(
+        'a second drain finds nothing left to do',
+        again.claimed === 0,
+        `claimed ${again.claimed}`,
+      );
+    }
+
+    // ---- guards ----------------------------------------------------------
+    {
+      const anon = await get('/notifications');
+      check('notification routes are guarded like everything else', anon.status === 401);
     }
   }
 

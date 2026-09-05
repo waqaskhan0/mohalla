@@ -23,6 +23,17 @@ const schema = z.object({
   JOB_EXPIRE_SECONDS: z.coerce.number().int().min(5).max(3600).default(120),
 
   /** Heartbeat interval, so a wedged worker is visible rather than silent. */
+  /**
+   * How often the outbox is drained (ADR-014).
+   *
+   * A minute is well inside what a notification needs - NOTIF-FR-001 calls push
+   * "the primary retention mechanism", not a realtime one, and MSG-FR-004's
+   * 3-second guarantee is the SOCKET's job, not this one. A notification that
+   * arrives a minute after the message is normal; one that arrives never is the
+   * failure this schedule exists to prevent.
+   */
+  NOTIFICATION_DRAIN_MINUTES: z.coerce.number().int().min(1).max(60).default(1),
+
   WORKER_HEARTBEAT_SECONDS: z.coerce.number().int().min(5).max(3600).default(60),
 
   APP_VERSION: z.string().default('0.0.0'),

@@ -6,6 +6,7 @@ import { StructuredLogger } from '../../../../common/logging/structured.logger.j
 import { CLOCK, type Clock } from '../../../platform/identity/ports/clock.port.js';
 import { BlockService } from '../../safety/application/block.service.js';
 import { FollowService } from '../../social-graph/application/follow.service.js';
+import { OutboxService } from '../../../platform/notifications/application/outbox.service.js';
 import {
   isReadOnlyBecauseOfCounterpart,
   orderPair,
@@ -142,6 +143,7 @@ export class MessagingService {
     @Inject(MESSAGING_REPOSITORY) private readonly repo: MessagingRepository,
     private readonly blocks: BlockService,
     private readonly follows: FollowService,
+    private readonly outbox: OutboxService,
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly logger: StructuredLogger,
   ) {}
@@ -316,10 +318,31 @@ export class MessagingService {
 
       this.log('message_sent', { created, isRequest: recipient.requestState !== 'ACCEPTED' });
 
-      // TODO(EPIC-11): emit `message.sent` carrying `isRequest`, which the
-      // notification pipeline uses to drop push for a request (BR-027). The
-      // decision itself is already made here - `pushAllowedToRecipient` in
-      // request-policy.ts - so EPIC-11 consults it rather than re-deriving it.
+      // BR-027 rides along as `isRequest` rather than being re-derived by the
+      // pipeline. Messaging already knows - the recipient's participant row
+      // says so - and deciding it twice is how the two answers diverge. The
+      // pipeline drops the PUSH and keeps the record, which is what makes the
+      // recipient's request count update while their phone stays quiet.
+      //
+      // Only a genuinely new message notifies. A retry that resolved to an
+      // existing row (EDGE-020/021) must not buzz a second time.
+      if (created) {
+        await this.outbox.emit(
+          {
+            topic: 'message.sent',
+            conversationId: conversation.id,
+            recipientId,
+            actorId: senderId,
+            isRequest: recipient.requestState !== 'ACCEPTED',
+            // NOTIF-FR-004 asks for "the sender and a preview". ADR-014
+            // records the accepted residual risk that this reaches a lock
+            // screen. Bounded here so a 2,000-character message does not
+            // become a 2,000-character push payload.
+            preview: (body ?? '').slice(0, 120),
+          },
+          client,
+        );
+      }
       return {
         status: 'SENT',
         message: view,

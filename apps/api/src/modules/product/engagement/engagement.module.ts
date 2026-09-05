@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { IdentityModule } from '../../platform/identity/identity.module.js';
+import { NotificationsModule } from '../../platform/notifications/notifications.module.js';
 import { PostsModule } from '../posts/posts.module.js';
 import { ProfileModule } from '../profile/profile.module.js';
 import { SafetyModule } from '../safety/safety.module.js';
@@ -20,7 +21,7 @@ import { EngagementController } from './transport/engagement.controller.js';
  * erasing an account move them too.
  */
 @Module({
-  imports: [IdentityModule, PostsModule, ProfileModule, SafetyModule],
+  imports: [IdentityModule, NotificationsModule, PostsModule, ProfileModule, SafetyModule],
   controllers: [EngagementController],
   providers: [
     PgEngagementRepository,

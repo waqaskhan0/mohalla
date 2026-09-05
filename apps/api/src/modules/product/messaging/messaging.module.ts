@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { IdentityModule } from '../../platform/identity/identity.module.js';
 import { MediaModule } from '../../platform/media/media.module.js';
+import { NotificationsModule } from '../../platform/notifications/notifications.module.js';
 import { SafetyModule } from '../safety/safety.module.js';
 import { SocialGraphModule } from '../social-graph/social-graph.module.js';
 import { MESSAGING_REPOSITORY } from './repositories/messaging.repository.port.js';
@@ -43,7 +44,7 @@ import { MessagingGateway } from './transport/messaging.gateway.js';
  * inherited.
  */
 @Module({
-  imports: [IdentityModule, MediaModule, SafetyModule, SocialGraphModule],
+  imports: [IdentityModule, MediaModule, NotificationsModule, SafetyModule, SocialGraphModule],
   controllers: [MessagingController],
   providers: [
     PgMessagingRepository,

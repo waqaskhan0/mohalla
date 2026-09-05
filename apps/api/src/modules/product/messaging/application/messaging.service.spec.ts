@@ -15,6 +15,7 @@ import type {
 import type { BlockService } from '../../safety/application/block.service.js';
 import type { FollowService } from '../../social-graph/application/follow.service.js';
 import type { DatabaseService } from '../../../../database/database.service.js';
+import type { OutboxService } from '../../../platform/notifications/application/outbox.service.js';
 import type { StructuredLogger } from '../../../../common/logging/structured.logger.js';
 
 /**
@@ -284,6 +285,18 @@ function build() {
     },
   } as unknown as FollowService;
 
+  // Records every domain event, so the ADR-014 assertions are about what was
+  // EMITTED rather than about a call having been made. `client` is captured
+  // too: the outbox row must be written inside the business transaction, and a
+  // fake that ignored the client would let that regress unnoticed.
+  const emitted: { topic: string; payload: Record<string, unknown> }[] = [];
+  const outbox = {
+    async emit(event: { topic: string } & Record<string, unknown>) {
+      const { topic, ...payload } = event;
+      emitted.push({ topic, payload });
+    },
+  } as unknown as OutboxService;
+
   const db = {
     withTransaction: async <T>(fn: (c: never) => Promise<T>): Promise<T> => fn(undefined as never),
     query: async () => ({ rows: [{ ok: false }] }),
@@ -297,7 +310,8 @@ function build() {
   } as unknown as StructuredLogger;
 
   return {
-    service: new MessagingService(db, repo, blocks, follows, clock, logger),
+    emitted,
+    service: new MessagingService(db, repo, blocks, follows, outbox, clock, logger),
     repo,
     clock,
     logs,

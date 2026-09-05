@@ -1,0 +1,15 @@
+{
+  "notification.like": "{actor} liked your post",
+  "notification.like.batched": "{actor} and {others} others liked your post",
+  "notification.comment": "{actor} commented on your post",
+  "notification.reply": "{actor} replied to your comment",
+  "notification.follow": "{actor} started following you",
+  "notification.mention": "{actor} mentioned you",
+  "notification.message": "{actor}: {preview}",
+  "notification.event.rsvp": "{actor} is going to {event}",
+  "notification.event.changed": "{event} has been updated",
+  "notification.event.cancelled": "{event} has been cancelled",
+  "notification.event.reminder24h": "{event} is tomorrow",
+  "notification.event.reminder1h": "{event} starts in an hour",
+  "notification.announcement": "{title}"
+}

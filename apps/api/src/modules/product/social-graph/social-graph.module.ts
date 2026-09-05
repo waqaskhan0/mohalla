@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { IdentityModule } from '../../platform/identity/identity.module.js';
+import { NotificationsModule } from '../../platform/notifications/notifications.module.js';
 import { ProfileModule } from '../profile/profile.module.js';
 import { SafetyModule } from '../safety/safety.module.js';
 import { FOLLOW_REPOSITORY } from './repositories/follow.repository.port.js';
@@ -28,7 +29,7 @@ import { FollowController } from './transport/follow.controller.js';
  * cannot forget.
  */
 @Module({
-  imports: [IdentityModule, ProfileModule, SafetyModule],
+  imports: [IdentityModule, NotificationsModule, ProfileModule, SafetyModule],
   controllers: [FollowController],
   providers: [
     PgFollowRepository,

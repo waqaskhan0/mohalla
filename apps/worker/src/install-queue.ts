@@ -4,6 +4,10 @@ import {
   FOUNDATION_HEALTH_DEAD_LETTER,
   FOUNDATION_HEALTH_JOB,
 } from './jobs/foundation-health.job.js';
+import {
+  NOTIFICATION_DRAIN_DEAD_LETTER,
+  NOTIFICATION_DRAIN_JOB,
+} from './jobs/notification-drain.job.js';
 
 /**
  * ONE-TIME QUEUE INSTALL — run as migration_owner, not the runtime worker.
@@ -38,8 +42,18 @@ async function main(): Promise<void> {
     deadLetter: FOUNDATION_HEALTH_DEAD_LETTER,
   });
 
+  await boss.createQueue(NOTIFICATION_DRAIN_DEAD_LETTER);
+  await boss.createQueue(NOTIFICATION_DRAIN_JOB, {
+    retryLimit: env.JOB_RETRY_LIMIT,
+    retryDelay: env.JOB_RETRY_DELAY_SECONDS,
+    retryBackoff: true,
+    expireInSeconds: env.JOB_EXPIRE_SECONDS,
+    deadLetter: NOTIFICATION_DRAIN_DEAD_LETTER,
+    policy: 'singleton',
+  });
+
   process.stdout.write(
-    `${JSON.stringify({ event: 'queue_installed', schema: env.PGBOSS_SCHEMA, queues: [FOUNDATION_HEALTH_JOB, FOUNDATION_HEALTH_DEAD_LETTER] })}\n`,
+    `${JSON.stringify({ event: 'queue_installed', schema: env.PGBOSS_SCHEMA, queues: [FOUNDATION_HEALTH_JOB, FOUNDATION_HEALTH_DEAD_LETTER, NOTIFICATION_DRAIN_JOB, NOTIFICATION_DRAIN_DEAD_LETTER] })}\n`,
   );
   await boss.stop({ graceful: true, close: true });
 }

@@ -1,0 +1,15 @@
+{
+  "notification.like": "{actor} نے آپ کی پوسٹ پسند کی",
+  "notification.like.batched": "{actor} اور {others} دیگر افراد نے آپ کی پوسٹ پسند کی",
+  "notification.comment": "{actor} نے آپ کی پوسٹ پر تبصرہ کیا",
+  "notification.reply": "{actor} نے آپ کے تبصرے کا جواب دیا",
+  "notification.follow": "{actor} نے آپ کو فالو کرنا شروع کیا",
+  "notification.mention": "{actor} نے آپ کا ذکر کیا",
+  "notification.message": "{actor}: {preview}",
+  "notification.event.rsvp": "{actor} {event} میں شرکت کر رہے ہیں",
+  "notification.event.changed": "{event} میں تبدیلی کی گئی ہے",
+  "notification.event.cancelled": "{event} منسوخ کر دیا گیا ہے",
+  "notification.event.reminder24h": "{event} کل ہے",
+  "notification.event.reminder1h": "{event} ایک گھنٹے میں شروع ہو رہا ہے",
+  "notification.announcement": "{title}"
+}

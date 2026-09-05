@@ -7,12 +7,25 @@ import {
   handleFoundationHealth,
   type FoundationHealthPayload,
 } from './jobs/foundation-health.job.js';
+import {
+  NOTIFICATION_DRAIN_DEAD_LETTER,
+  NOTIFICATION_DRAIN_JOB,
+  closeDrainer,
+  handleNotificationDrain,
+  type NotificationDrainPayload,
+} from './jobs/notification-drain.job.js';
 
 /**
  * Worker entry point.
  *
- * STAGE 5 FOUNDATION. Registers exactly one job handler - FOUNDATION_HEALTH_JOB
- * - and no product jobs.
+ * Registers the foundation health job and, since EPIC-11, the notification
+ * drain (ADR-014's consumer).
+ *
+ * THE DRAIN IS SCHEDULED, NOT TRIGGERED. The API writes outbox rows inside its
+ * business transactions and enqueues nothing - that is the whole point of an
+ * outbox, since enqueuing after commit reintroduces the window it exists to
+ * close. So the worker polls on a schedule instead, and a tick that finds
+ * nothing is the normal case rather than a wasted one.
  */
 async function main(): Promise<void> {
   const env = loadEnv();
@@ -47,6 +60,36 @@ async function main(): Promise<void> {
     expireInSeconds: env.JOB_EXPIRE_SECONDS,
     deadLetter: FOUNDATION_HEALTH_DEAD_LETTER,
   });
+
+  // The notification drain. Its own dead-letter queue, because a payload that
+  // cannot be turned into a notification is worth keeping: it names a like, a
+  // follow or a message somebody never heard about.
+  await boss.createQueue(NOTIFICATION_DRAIN_DEAD_LETTER);
+  await boss.createQueue(NOTIFICATION_DRAIN_JOB, {
+    retryLimit: env.JOB_RETRY_LIMIT,
+    retryDelay: env.JOB_RETRY_DELAY_SECONDS,
+    retryBackoff: true,
+    expireInSeconds: env.JOB_EXPIRE_SECONDS,
+    deadLetter: NOTIFICATION_DRAIN_DEAD_LETTER,
+    // A drain already running must not be joined by a second one: they would
+    // claim different rows (SKIP LOCKED) but both hold a DI graph and a pool.
+    policy: 'singleton',
+  });
+
+  await boss.work<NotificationDrainPayload>(
+    NOTIFICATION_DRAIN_JOB,
+    async ([job]: Job<NotificationDrainPayload>[]) => {
+      if (!job) return;
+      const result = await handleNotificationDrain(job.data);
+      // Logged even when empty. A drain that stops finding rows and a drain
+      // that stops RUNNING look identical without a line per tick.
+      logger.info({ event: 'notification_drain', jobId: job.id, ...result });
+    },
+  );
+
+  // ADR-014 says the outbox is drained by the worker; nothing enqueues this
+  // job, so the worker schedules it for itself. Every interval, forever.
+  await boss.schedule(NOTIFICATION_DRAIN_JOB, `*/${env.NOTIFICATION_DRAIN_MINUTES} * * * *`, {});
 
   await boss.work<FoundationHealthPayload>(
     FOUNDATION_HEALTH_JOB,
@@ -98,7 +141,7 @@ async function main(): Promise<void> {
     environment: env.NODE_ENV,
     version: env.APP_VERSION,
     commit: env.GIT_COMMIT,
-    handlers: [FOUNDATION_HEALTH_JOB],
+    handlers: [FOUNDATION_HEALTH_JOB, NOTIFICATION_DRAIN_JOB],
     deadLetterQueue: FOUNDATION_HEALTH_DEAD_LETTER,
     retryLimit: env.JOB_RETRY_LIMIT,
     note: 'foundation only - no product job exists',
@@ -140,6 +183,10 @@ async function main(): Promise<void> {
     logger.info({ event: 'shutdown_started', signal });
     try {
       await boss.stop({ graceful: true, close: true });
+      // The drain holds a NestJS context with its own connection pool. Leaving
+      // it open keeps the process alive past the queue's shutdown, which turns
+      // a graceful restart into a timeout and a SIGKILL.
+      await closeDrainer();
       logger.info({ event: 'shutdown_complete', signal });
       process.exit(0);
     } catch (e) {
