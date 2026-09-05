@@ -3795,6 +3795,372 @@ async function main() {
     await db.end();
   }
 
+  console.log('\n--- settings and account deletion (EPIC-14) ---');
+  {
+    const { Client } = await import('pg');
+    const db = new Client({
+      connectionString: process.env.MIGRATION_DATABASE_URL ?? process.env.DATABASE_URL,
+    });
+    await db.connect();
+
+    const leaver = await onboard(Date.now() + 24001);
+    const neighbour = await onboard(Date.now() + 24002);
+    const stranger = await onboard(Date.now() + 24003);
+
+    // ---- SET-FR-001: the language lives on the ACCOUNT --------------------
+    {
+      const screen = await (await get('/me/settings', leaver.token)).json();
+      check(
+        'GET /me/settings composes the screen (SET-API-002)',
+        typeof screen?.notifications === 'object' && typeof screen?.blockedCount === 'number',
+        JSON.stringify(screen),
+      );
+      check(
+        'and NO LANGUAGE IS PRE-SELECTED (BR-040)',
+        screen?.language === null,
+        `language ${JSON.stringify(screen?.language)}`,
+      );
+
+      const set = await send('PUT', '/me/language', { language: 'ur' }, leaver.token);
+      check('PUT /me/language stores it (SET-API-001)', set.status === 204, `status ${set.status}`);
+
+      // SET-FR-001's criterion is about ANOTHER DEVICE: "given Urdu is selected
+      // on one device, when the user logs in on another device, then Urdu is
+      // applied there too". A second login is a second device.
+      const second = await post('/login', { phone: leaver.phone, password });
+      const secondToken = (await second.json())?.token;
+      const elsewhere = await (await get('/me/settings', secondToken)).json();
+      check(
+        'AND A DIFFERENT DEVICE SEES IT (SET-FR-001 AC)',
+        elsewhere?.language === 'ur',
+        `language ${JSON.stringify(elsewhere?.language)}`,
+      );
+
+      const bad = await send('PUT', '/me/language', { language: 'fr' }, leaver.token);
+      check('an unsupported language is refused', bad.status === 400, `status ${bad.status}`);
+    }
+
+    // ---- PRIV-006: the consequences, BEFORE confirming --------------------
+    let consequences;
+    {
+      const r = await get('/me/deletion-consequences', leaver.token);
+      consequences = await r.json();
+      check(
+        'GET /me/deletion-consequences is served before anything happens (PRIV-006)',
+        r.status === 200 && Array.isArray(consequences?.keys),
+        `status ${r.status}`,
+      );
+      check(
+        'the grace period is thirty days (S2-CR-004)',
+        consequences?.graceDays === 30,
+        `graceDays ${consequences?.graceDays}`,
+      );
+      check(
+        'THE SURPRISING CONSEQUENCE IS SECOND, WHERE IT IS READ (PRIV-006)',
+        consequences?.keys?.[1] === 'deletion.consequence.postsRemainAnonymised',
+        JSON.stringify(consequences?.keys),
+      );
+      check(
+        'nothing is scheduled yet',
+        consequences?.scheduledErasureAt === null,
+        JSON.stringify(consequences?.scheduledErasureAt),
+      );
+    }
+
+    // ---- the content that must survive, and the request that must not ----
+    let leaverPostId;
+    let requestConversationId;
+    {
+      leaverPostId = (
+        await (
+          await post(
+            '/posts',
+            { body: 'The streetlight on the corner has been out since Eid' },
+            leaver.token,
+          )
+        ).json()
+      )?.id;
+
+      await send('PUT', `/users/${leaver.userId}/follow`, {}, neighbour.token);
+
+      // A message request the leaver SENT and the stranger has not accepted:
+      // EDGE-030's case.
+      const started = await (
+        await post('/conversations', { userId: stranger.userId }, leaver.token)
+      ).json();
+      requestConversationId = started?.id ?? started?.conversationId;
+      await post(
+        `/conversations/${requestConversationId}/messages`,
+        {
+          body: 'Salaam - are you the one who organised the clean-up?',
+          clientMessageId: randomUUID(),
+        },
+        leaver.token,
+      );
+
+      const requests = await (await get('/conversations?section=REQUESTS', stranger.token)).json();
+      check(
+        'the stranger has a pending message request before the deletion',
+        (requests?.conversations ?? requests?.items ?? []).length >= 1,
+        JSON.stringify(requests).slice(0, 200),
+      );
+    }
+
+    // ---- SET-FR-004: the password is re-entered --------------------------
+    {
+      const wrong = await send(
+        'DELETE',
+        '/me',
+        { password: 'synthetic-Not-The-Passw0rd' },
+        leaver.token,
+      );
+      const wrongBody = await wrong.json();
+      check(
+        'DELETE /me REFUSES A WRONG PASSWORD (SET-FR-004)',
+        wrong.status === 400 && wrongBody?.error?.code === 'PASSWORD_CONFIRMATION_FAILED',
+        `status ${wrong.status} code ${wrongBody?.error?.code}`,
+      );
+      check(
+        'and it is NOT a 401 - the session is fine, the confirmation was not',
+        wrong.status !== 401,
+        `status ${wrong.status}`,
+      );
+      check(
+        'the account is untouched after a wrong password',
+        (await get('/me', leaver.token)).status === 200,
+      );
+    }
+
+    let scheduledErasureAt;
+    {
+      const r = await send('DELETE', '/me', { password }, leaver.token);
+      const body = await r.json();
+      scheduledErasureAt = body?.scheduledErasureAt;
+      check(
+        'DELETE /me accepts the correct password (SET-API-005)',
+        r.status === 200 && typeof scheduledErasureAt === 'string',
+        `status ${r.status} ${JSON.stringify(body).slice(0, 160)}`,
+      );
+      check(
+        'and returns the consequences with the response',
+        (body?.consequences ?? []).length === consequences.keys.length,
+      );
+
+      const days = (new Date(scheduledErasureAt) - Date.now()) / 86400000;
+      check(
+        'erasure is scheduled thirty days out',
+        days > 29.5 && days < 30.5,
+        `${days.toFixed(2)} days`,
+      );
+    }
+
+    // ---- BR-035: every session is gone, immediately ----------------------
+    {
+      const after = await get('/me', leaver.token);
+      check(
+        'EVERY SESSION IS REVOKED BY THE DELETION (BR-035)',
+        after.status === 401,
+        `status ${after.status}`,
+      );
+    }
+
+    // ---- the account is invisible, the CONTENT is not --------------------
+    {
+      const profile = await get(`/users/${leaver.userId}`, neighbour.token);
+      check(
+        'the profile is gone from other people immediately',
+        profile.status === 404,
+        `status ${profile.status}`,
+      );
+
+      const search = await (
+        await get(`/search?q=${encodeURIComponent(leaver.handle)}&type=USERS`, neighbour.token)
+      ).json();
+      check('and out of search', !JSON.stringify(search ?? {}).includes(leaver.userId));
+
+      // BR-009 / PRIV-006, the line users are warned about: the POST REMAINS.
+      const stillThere = await get(`/posts/${leaverPostId}`, neighbour.token);
+      check(
+        'BUT THE POST REMAINS READABLE (BR-009, PRIV-006)',
+        stillThere.status === 200,
+        `status ${stillThere.status}`,
+      );
+    }
+
+    // ---- EDGE-030: the pending request is withdrawn ----------------------
+    {
+      const requests = await (await get('/conversations?section=REQUESTS', stranger.token)).json();
+      const list = requests?.conversations ?? requests?.items ?? [];
+      check(
+        'THE PENDING MESSAGE REQUEST IS WITHDRAWN (EDGE-030)',
+        !list.some((c) => (c.id ?? c.conversationId) === requestConversationId),
+        JSON.stringify(list).slice(0, 200),
+      );
+    }
+
+    // ---- EDGE-003 / EDGE-029: the number cannot be re-registered ---------
+    {
+      const again = await post('/register', {
+        phone: leaver.phone,
+        password: 'synthetic-Different-Passw0rd',
+        dateOfBirth: '1995-06-15',
+        termsVersion: terms,
+      });
+      check(
+        're-registering the number returns the uniform acknowledgement (SEC-006)',
+        again.status === 202,
+        `status ${again.status}`,
+      );
+
+      const held = await db.query(
+        `SELECT u.state FROM user_identifiers ui JOIN users u ON u.id = ui.user_id
+          WHERE ui.user_id = $1`,
+        [leaver.userId],
+      );
+      check(
+        'AND THE NUMBER IS STILL HELD BY THE PENDING ACCOUNT, not a new one (EDGE-003/029)',
+        held.rows.length === 1 && held.rows[0].state === 'PENDING_DELETION',
+        JSON.stringify(held.rows),
+      );
+    }
+
+    // ---- SET-FR-005 / UX-AUTH-012: logging in offers restoration ---------
+    let restoreToken;
+    {
+      const login = await post('/login', { phone: leaver.phone, password });
+      const body = await login.json();
+      restoreToken = body?.token;
+      check(
+        'LOGGING IN DURING THE GRACE PERIOD ISSUES A RESTORE-ONLY SESSION (SET-FR-005)',
+        login.status === 200 && body?.capability === 'RESTORE_ONLY',
+        `status ${login.status} capability ${body?.capability}`,
+      );
+
+      const offer = await (await get('/me/deletion-consequences', restoreToken)).json();
+      check(
+        'and the restore screen can say how long is left (UX-AUTH-012)',
+        offer?.scheduledErasureAt === scheduledErasureAt,
+        `${offer?.scheduledErasureAt} vs ${scheduledErasureAt}`,
+      );
+
+      // A restore-only session must not be able to act. An account on its way
+      // out must not be posting, and the same guard that enforces BR-034's
+      // read-only suspension is what enforces this.
+      const write = await post('/posts', { body: 'One last thing' }, restoreToken);
+      check('a RESTORE_ONLY session cannot write', write.status === 403, `status ${write.status}`);
+    }
+
+    // ---- the restore itself ----------------------------------------------
+    {
+      const r = await post('/me/restore', {}, restoreToken);
+      const body = await r.json();
+      check(
+        'POST /me/restore restores the account, WITH NO ADMINISTRATOR (SET-FR-005)',
+        r.status === 200 && body?.status === 'RESTORED',
+        `status ${r.status} ${JSON.stringify(body)}`,
+      );
+
+      const login = await post('/login', { phone: leaver.phone, password });
+      const loginBody = await login.json();
+      check(
+        'and the next login is a FULL session again',
+        loginBody?.capability === 'FULL',
+        `capability ${loginBody?.capability}`,
+      );
+
+      const back = await (await get(`/users/${leaver.userId}`, neighbour.token)).json();
+      check(
+        'the profile is visible again',
+        back?.username === leaver.handle,
+        JSON.stringify(back).slice(0, 160),
+      );
+
+      // SET-FR-005's criterion, verbatim: "follower relationships that existed
+      // before deletion are present". True by construction - phase one changed
+      // only the state - which is exactly why it is worth asserting.
+      const followers = await (
+        await get(`/users/${leaver.userId}/followers`, loginBody?.token)
+      ).json();
+      check(
+        'FOLLOWERS THAT EXISTED BEFORE THE DELETION ARE PRESENT (SET-FR-005 AC)',
+        JSON.stringify(followers ?? {}).includes(neighbour.userId),
+        JSON.stringify(followers).slice(0, 200),
+      );
+
+      const requests = await (await get('/conversations?section=REQUESTS', stranger.token)).json();
+      const list = requests?.conversations ?? requests?.items ?? [];
+      check(
+        'and the withdrawn message request is back (EDGE-030 reversed)',
+        list.some((c) => (c.id ?? c.conversationId) === requestConversationId),
+        JSON.stringify(list).slice(0, 200),
+      );
+
+      const second = await post('/me/restore', {}, restoreToken);
+      check(
+        'restoring twice is refused rather than repeated',
+        second.status === 400 || second.status === 401 || second.status === 404,
+        `status ${second.status}`,
+      );
+    }
+
+    // ---- the day-30 sweep, DRY RUN ONLY ----------------------------------
+    {
+      // THE SMOKE TEST NEVER ERASES. Everything above is reversible; a real
+      // erasure here would destroy rows a later section might read, and would
+      // make this script the one place in the repository where the
+      // irreversible path runs unattended. Mandatory test F covers the real
+      // one, against rows it creates for that purpose and cleans up after.
+      const { DeletionService } =
+        await import('../../apps/api/dist/modules/product/settings/application/deletion.service.js');
+      const deletion = app.get(DeletionService, { strict: false });
+
+      const erasable = await onboard(Date.now() + 24004);
+      await send('DELETE', '/me', { password }, erasable.token);
+      // Both columns move: `deletion_requests_grace_is_forward` requires the
+      // erasure to be scheduled AFTER the request, so back-dating one alone is
+      // rejected by the database - correctly, since a request that was never
+      // in the future was never a grace period.
+      await db.query(
+        `UPDATE deletion_requests
+            SET requested_at = now() - interval '31 days',
+                scheduled_erasure_at = now() - interval '1 day'
+          WHERE user_id = $1`,
+        [erasable.userId],
+      );
+
+      const dry = await deletion.runErasure({ dryRun: true, limit: 10 });
+      const report = dry.find((r) => r.userId === erasable.userId);
+      check(
+        'the day-30 sweep finds the due account (PRIV-007)',
+        report !== undefined,
+        `${dry.length} due`,
+      );
+      check(
+        'THE DRY RUN REPORTS EVERY CONTRIBUTING MODULE (ADR-019 registry)',
+        (report?.outcomes ?? []).length >= 5,
+        JSON.stringify((report?.outcomes ?? []).map((o) => o.module)),
+      );
+
+      const after = await db.query('SELECT state FROM users WHERE id = $1', [erasable.userId]);
+      check(
+        'AND IT CHANGED NOTHING',
+        after.rows[0]?.state === 'PENDING_DELETION',
+        `state ${after.rows[0]?.state}`,
+      );
+
+      const stillOpen = await db.query(
+        'SELECT completed_at FROM deletion_requests WHERE user_id = $1',
+        [erasable.userId],
+      );
+      check(
+        'leaving the account still erasable by the real sweep',
+        stillOpen.rows[0]?.completed_at === null,
+      );
+    }
+
+    await db.end();
+  }
+
   console.log('\n--- no secret leaves the server ---');
   {
     const r = await post('/login', { phone, password: 'synthetic-Wrong-Passw0rd' });

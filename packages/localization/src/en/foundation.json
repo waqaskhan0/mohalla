@@ -7,5 +7,6 @@
   "foundation.action.retry": "Retry",
   "foundation.action.cancel": "Cancel",
   "foundation.language.english": "English",
-  "foundation.language.urdu": "اردو"
+  "foundation.language.urdu": "اردو",
+  "profile.deletedUser": "Deleted User"
 }

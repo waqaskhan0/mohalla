@@ -49,6 +49,7 @@ function build() {
         passwordHash: 'irrelevant',
         dateOfBirth: '1995-06-15',
         suspendedUntil,
+        language: null,
         termsVersion: 'terms-2026-01',
         termsAcceptedAt: clock.now(),
         createdAt: clock.now(),

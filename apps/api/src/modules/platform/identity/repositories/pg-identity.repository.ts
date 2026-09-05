@@ -30,6 +30,7 @@ interface UserRow {
   password_hash: string;
   date_of_birth: string;
   suspended_until: Date | null;
+  language: 'en' | 'ur' | null;
   terms_version: string;
   terms_accepted_at: Date;
   created_at: Date;
@@ -46,6 +47,7 @@ function toUser(r: UserRow): UserRecord {
     // applied to a date of birth.
     dateOfBirth: String(r.date_of_birth),
     suspendedUntil: r.suspended_until,
+    language: r.language,
     termsVersion: r.terms_version,
     termsAcceptedAt: r.terms_accepted_at,
     createdAt: r.created_at,
@@ -76,6 +78,15 @@ export class PgIdentityRepository implements IdentityRepository {
     const r = await this.q<{ exists: boolean }>(
       client,
       'SELECT EXISTS(SELECT 1 FROM banned_identifiers WHERE identifier_hash = $1) AS exists',
+      [hash],
+    );
+    return r.rows[0]?.exists === true;
+  }
+
+  async isIdentifierReserved(hash: Buffer, client?: PoolClient): Promise<boolean> {
+    const r = await this.q<{ exists: boolean }>(
+      client,
+      'SELECT EXISTS(SELECT 1 FROM reserved_identifiers WHERE identifier_hash = $1) AS exists',
       [hash],
     );
     return r.rows[0]?.exists === true;

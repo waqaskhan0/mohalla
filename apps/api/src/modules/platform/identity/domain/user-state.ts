@@ -43,6 +43,33 @@ export function canWrite(state: UserState): boolean {
   return state === 'ACTIVE';
 }
 
+/**
+ * DOES THIS ACCOUNT'S CONTENT SURVIVE THE ACCOUNT? (BR-009 · PRIV-006)
+ *
+ * DELIBERATELY NOT THE SAME QUESTION AS `isPubliclyVisible`, and conflating the
+ * two is a real defect this predicate exists to prevent: a deleted account's
+ * PROFILE must disappear while its POSTS AND COMMENTS REMAIN, attributed to
+ * "Deleted User".
+ *
+ * PRIV-006 requires users to be told that before they confirm, "BECAUSE IT
+ * DIFFERS FROM THE ERASURE MANY WILL ASSUME" - so it is a promise the product
+ * makes out loud, and a read path that hides the content quietly breaks it in
+ * the direction nobody checks.
+ *
+ * WHY THE CONTENT STAYS. A thread is not one person's property. Erasing the
+ * opening post of a discussion about a water outage destroys eleven other
+ * people's record of what was agreed, and on a civic platform that record is
+ * sometimes the only evidence a complaint was raised.
+ *
+ * BANNED IS THE EXCEPTION, and the only one. A ban is a moderation outcome
+ * whose whole point is that the account's contributions leave; deletion is a
+ * person leaving, which is not the same act and does not have the same
+ * consequence.
+ */
+export function contentSurvivesAccount(state: UserState): boolean {
+  return state !== 'BANNED';
+}
+
 /** May this account's content be shown to others? */
 export function isPubliclyVisible(state: UserState): boolean {
   // A suspended profile stays visible (SRS); banned/deleted do not.

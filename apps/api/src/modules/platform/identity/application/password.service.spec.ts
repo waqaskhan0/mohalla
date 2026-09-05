@@ -72,6 +72,7 @@ function build() {
         passwordHash: `h:${OLD_PASSWORD}`,
         dateOfBirth: '1995-06-15',
         suspendedUntil: null,
+        language: null,
         termsVersion: 'terms-2026-01',
         termsAcceptedAt: clock.now(),
         createdAt: clock.now(),

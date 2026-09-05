@@ -190,8 +190,11 @@ export class FeedService {
         if (own !== null) authors.set(id, own);
         continue;
       }
-      const view = await this.profiles.viewByUserId(viewerId, id);
-      if (view.status === 'FOUND') authors.set(id, view.profile);
+      // BR-009: a departed author's posts stay in the feed under "Deleted
+      // User". A post with no entry here is dropped below, which is correct
+      // only for a ban or a block.
+      const view = await this.profiles.attributionFor(viewerId, id);
+      if (view.status !== 'HIDDEN') authors.set(id, view.profile);
     }
 
     // ENGAGE-FR-006: what this viewer is shown excludes contributions from

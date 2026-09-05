@@ -100,6 +100,38 @@ export interface ProfileUserFacts {
  * Every field is named. Nothing is spread, nothing is deleted, nothing is
  * copied wholesale — see the file comment for why that is the whole point.
  */
+/**
+ * "Deleted User" - the author a departed account's content is shown under.
+ *
+ * BR-009 names the string; this returns a KEY, because the two languages are
+ * peers (LOCALE-FR-001) and a server that hard-coded the English would make an
+ * Urdu thread say "Deleted User" in the middle of it. The client renders
+ * `profile.deletedUser` from its catalogue.
+ *
+ * EVERY COUNT IS ZERO AND THE HANDLE IS EMPTY, deliberately. A placeholder that
+ * carried the real follower count or username would be a link back to the
+ * person - which is exactly what PRIV-007 forbids the remaining content to
+ * have. The user id stays, because a thread still has to attribute two replies
+ * from the same author to the same author.
+ */
+export const DELETED_USER_NAME_KEY = 'profile.deletedUser';
+
+export function anonymousAuthor(userId: string): PublicProfile {
+  return {
+    userId,
+    username: '',
+    displayName: DELETED_USER_NAME_KEY,
+    photoMediaId: null,
+    city: null,
+    bio: null,
+    verifiedBadge: false,
+    accountType: 'INDIVIDUAL',
+    followerCount: 0,
+    followingCount: 0,
+    postCount: 0,
+  };
+}
+
 export function toPublicProfile(row: ProfileRow, user: ProfileUserFacts): PublicProfile {
   return {
     userId: row.userId,

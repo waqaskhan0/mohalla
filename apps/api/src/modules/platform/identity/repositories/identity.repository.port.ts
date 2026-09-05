@@ -27,6 +27,14 @@ export interface UserRecord {
   passwordHash: string;
   dateOfBirth: string;
   suspendedUntil: Date | null;
+  /**
+   * The account's stored interface language (SET-FR-001), or null.
+   *
+   * NULL is a real answer rather than a missing one: BR-040 says no default is
+   * pre-selected, so an account that has never synced a choice has none, and
+   * push falls back to what the DEVICE recorded at registration.
+   */
+  language: 'en' | 'ur' | null;
   termsVersion: string;
   termsAcceptedAt: Date;
   createdAt: Date;
@@ -82,6 +90,22 @@ export interface IdentityRepository {
   // ---- identifiers ---------------------------------------------------
   /** BR-036: is this identifier permanently barred from registering? */
   isIdentifierBanned(hash: Buffer, client?: PoolClient): Promise<boolean>;
+
+  /**
+   * EDGE-029 — was this identifier held by an account that has been erased?
+   *
+   * ADR-019: "The registered identifier REMAINS RESERVED, so re-registration is
+   * refused." Erasure deletes the `user_identifiers` row, so without this the
+   * number would look free the moment the account it belonged to ceased to
+   * exist — and the next person to be assigned that number by their operator
+   * would open an account that the previous holder's contacts still have in
+   * their conversations.
+   *
+   * READ HERE, WRITTEN BY ERASURE, exactly like `banned_identifiers`: the rule
+   * that a hash may not register belongs to registration, and the other module
+   * only records that a hash has joined the list.
+   */
+  isIdentifierReserved(hash: Buffer, client?: PoolClient): Promise<boolean>;
 
   /** Does an account already hold this identifier? */
   findUserIdByIdentifierHash(hash: Buffer, client?: PoolClient): Promise<string | null>;

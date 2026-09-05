@@ -8,6 +8,13 @@ import {
   type FoundationHealthPayload,
 } from './jobs/foundation-health.job.js';
 import {
+  ACCOUNT_ERASURE_DEAD_LETTER,
+  ACCOUNT_ERASURE_JOB,
+  closeEraser,
+  handleAccountErasure,
+  type AccountErasurePayload,
+} from './jobs/account-erasure.job.js';
+import {
   NOTIFICATION_DRAIN_DEAD_LETTER,
   NOTIFICATION_DRAIN_JOB,
   closeDrainer,
@@ -91,6 +98,52 @@ async function main(): Promise<void> {
   // job, so the worker schedules it for itself. Every interval, forever.
   await boss.schedule(NOTIFICATION_DRAIN_JOB, `*/${env.NOTIFICATION_DRAIN_MINUTES} * * * *`, {});
 
+  // THE DAY-30 ERASURE SWEEP (PRIV-007, ADR-019). The only irreversible job in
+  // the system, and the one place in this file where a destructive flag is
+  // written down. Its dead-letter queue matters more than the others': a sweep
+  // that failed halfway is a question about whether an account was erased, and
+  // that question needs the payload to answer.
+  await boss.createQueue(ACCOUNT_ERASURE_DEAD_LETTER);
+  await boss.createQueue(ACCOUNT_ERASURE_JOB, {
+    retryLimit: env.JOB_RETRY_LIMIT,
+    retryDelay: env.JOB_RETRY_DELAY_SECONDS,
+    retryBackoff: true,
+    // Longer than the others. Each account is one transaction across every
+    // anonymising module, and a sweep expiring mid-account would be retried
+    // against rows a committed transaction has already moved.
+    expireInSeconds: Math.max(env.JOB_EXPIRE_SECONDS, 600),
+    deadLetter: ACCOUNT_ERASURE_DEAD_LETTER,
+    // Two sweeps would contend for the same rows. The row lock makes that safe
+    // (mandatory test F proves exactly one of them erases), but both would hold
+    // a DI graph and a pool for nothing.
+    policy: 'singleton',
+  });
+
+  await boss.work<AccountErasurePayload>(
+    ACCOUNT_ERASURE_JOB,
+    async ([job]: Job<AccountErasurePayload>[]) => {
+      if (!job) return;
+      const result = await handleAccountErasure(job.data, {
+        ACCOUNT_ERASURE_DRY_RUN: env.ACCOUNT_ERASURE_DRY_RUN,
+      });
+
+      // Logged every tick, including the empty ones. A sweep that stops finding
+      // due accounts and a sweep that stops RUNNING look identical otherwise,
+      // and the second means a thirty-day promise is quietly not being kept.
+      logger.info({ event: 'account_erasure', jobId: job.id, ...result });
+    },
+  );
+
+  // `dryRun: false` IS WRITTEN HERE AND NOWHERE ELSE. The handler defaults to a
+  // dry run, so this single line is what makes the scheduled sweep real - one
+  // line to read, question, or remove.
+  await boss.schedule(
+    ACCOUNT_ERASURE_JOB,
+    env.ACCOUNT_ERASURE_CRON,
+    { dryRun: false, limit: env.ACCOUNT_ERASURE_LIMIT },
+    { tz: 'Asia/Karachi' },
+  );
+
   await boss.work<FoundationHealthPayload>(
     FOUNDATION_HEALTH_JOB,
     async ([job]: Job<FoundationHealthPayload>[]) => {
@@ -141,7 +194,14 @@ async function main(): Promise<void> {
     environment: env.NODE_ENV,
     version: env.APP_VERSION,
     commit: env.GIT_COMMIT,
-    handlers: [FOUNDATION_HEALTH_JOB, NOTIFICATION_DRAIN_JOB],
+    handlers: [FOUNDATION_HEALTH_JOB, NOTIFICATION_DRAIN_JOB, ACCOUNT_ERASURE_JOB],
+    // Stated at startup because it is the difference between a worker that
+    // erases accounts and one that rehearses. Somebody reading the first line
+    // of the log should not have to infer it.
+    accountErasure: {
+      cron: env.ACCOUNT_ERASURE_CRON,
+      forcedDryRun: env.ACCOUNT_ERASURE_DRY_RUN,
+    },
     deadLetterQueue: FOUNDATION_HEALTH_DEAD_LETTER,
     retryLimit: env.JOB_RETRY_LIMIT,
     note: 'foundation only - no product job exists',
@@ -187,6 +247,7 @@ async function main(): Promise<void> {
       // it open keeps the process alive past the queue's shutdown, which turns
       // a graceful restart into a timeout and a SIGKILL.
       await closeDrainer();
+      await closeEraser();
       logger.info({ event: 'shutdown_complete', signal });
       process.exit(0);
     } catch (e) {

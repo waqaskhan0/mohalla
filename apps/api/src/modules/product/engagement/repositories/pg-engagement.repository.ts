@@ -131,7 +131,11 @@ export class PgEngagementRepository implements EngagementRepository {
          JOIN users u ON u.id = c.author_id
         WHERE c.post_id = $2
           AND c.visibility_state = 'VISIBLE'
-          AND u.state IN ('ACTIVE', 'SUSPENDED')
+          -- NOT 'ACTIVE, SUSPENDED'. BR-009: a departed commenter's replies
+          -- stay in the thread as "Deleted User", because removing them takes
+          -- the other participants' record of the conversation with them.
+          -- Only a ban removes content with its author.
+          AND u.state <> 'BANNED'
           AND ${notBlockedSql('$1', 'c.author_id')}
           AND ($3::timestamptz IS NULL OR (c.created_at, c.id) > ($3, $4))
         ORDER BY c.created_at, c.id

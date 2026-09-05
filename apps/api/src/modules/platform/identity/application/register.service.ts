@@ -107,6 +107,14 @@ export class RegisterService {
           return;
         }
 
+        // EDGE-029: held by an account that was erased. The hash outlives the
+        // account precisely so this check can be made - see
+        // `isIdentifierReserved`. Silent, like every other branch here.
+        if (await this.repo.isIdentifierReserved(identifierHash, client)) {
+          this.logInternal('register_blocked_reserved_identifier', cmd.correlationId);
+          return;
+        }
+
         // Already held by an account: do nothing, say nothing (EDGE-003).
         const existing = await this.repo.findUserIdByIdentifierHash(identifierHash, client);
         if (existing !== null) {

@@ -367,8 +367,11 @@ export class EngagementService {
         if (own !== null) out.set(id, own);
         continue;
       }
-      const view = await this.profiles.viewByUserId(viewerId, id);
-      if (view.status === 'FOUND') out.set(id, view.profile);
+      // BR-009: a departed commenter's replies stay in the thread under
+      // "Deleted User". Removing them would take the other participants'
+      // record of the conversation with them.
+      const view = await this.profiles.attributionFor(viewerId, id);
+      if (view.status !== 'HIDDEN') out.set(id, view.profile);
     }
     return out;
   }

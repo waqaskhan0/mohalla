@@ -53,7 +53,7 @@ function load(locale: Locale): Record<string, string> {
  * pass parity and never render. Listing them is what makes that a compile-time
  * decision rather than a silent omission.
  */
-const CATALOGUE_FILES = ['foundation', 'notifications'] as const;
+const CATALOGUE_FILES = ['foundation', 'notifications', 'deletion'] as const;
 
 export const catalogues: Record<Locale, Record<string, string>> = {
   en: load('en'),

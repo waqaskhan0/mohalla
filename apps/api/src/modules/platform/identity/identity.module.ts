@@ -108,6 +108,10 @@ import { AdminSessionGuard } from './transport/admin-session.guard.js';
   // any module with a rule that is a statement about time needs the same
   // injectable clock, and a second one would mean a test could freeze one and
   // not the other. EPIC-09's request quota is the first outside caller.
-  exports: [SessionService, AdminAuthService, CLOCK],
+  // PasswordService is exported for ONE method: `confirmIdentity`. Irreversible
+  // actions elsewhere have to re-check the password (SET-FR-004), and the
+  // alternative to exporting this is exporting the repository and the hasher —
+  // which would let any module verify passwords its own way.
+  exports: [SessionService, AdminAuthService, PasswordService, CLOCK],
 })
 export class IdentityModule {}

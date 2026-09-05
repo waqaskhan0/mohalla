@@ -4,6 +4,7 @@ import { DatabaseService } from '../../../../database/database.service.js';
 import { StructuredLogger } from '../../../../common/logging/structured.logger.js';
 import { IdentifierHasher } from '../domain/identifier-hash.js';
 import { checkPassword } from '../domain/password-policy.js';
+import type { UserState } from '../domain/user-state.js';
 import {
   checkOtpResendAllowed,
   checkOtpUsable,
@@ -270,6 +271,37 @@ export class PasswordService {
    * is present and has just proved it, so ejecting them would be pointless
    * friction — while everyone else, who may be the reason for the change, goes.
    */
+  /**
+   * "Is this really the account holder?" — asked by irreversible actions.
+   *
+   * WHY THIS EXISTS RATHER THAN THE CALLER READING THE HASH. Account deletion
+   * (SET-FR-004) needs the password re-entered, and the obvious implementation
+   * is for `settings` to fetch the user and call the hasher itself. That would
+   * mean a second module knowing how a password is stored, and a second place
+   * to update when the hash algorithm changes — the exact duplication that ends
+   * with one of them still using the old verifier.
+   *
+   * So identity answers the QUESTION and keeps the mechanism. The caller learns
+   * two facts and no credential.
+   *
+   * `null` when there is no such account. The state comes back with it because
+   * the callers that need this also need to know whether the account may act,
+   * and two round trips would be two chances for it to change in between.
+   */
+  async confirmIdentity(
+    userId: string,
+    password: string,
+  ): Promise<{ state: UserState; verified: boolean } | null> {
+    const user = await this.repo.findUserById(userId);
+    if (user === null) return null;
+
+    // The hasher never throws on a malformed stored hash (its port says so), so
+    // a corrupt row reads as a wrong password rather than a 500. For deletion
+    // that is the right failure: the account survives and the user is asked to
+    // try again.
+    return { state: user.state, verified: await this.hasher.verify(user.passwordHash, password) };
+  }
+
   async change(cmd: ChangePasswordCommand): Promise<ChangePasswordResult> {
     const policy = checkPassword(cmd.newPassword);
     if (policy !== null) {

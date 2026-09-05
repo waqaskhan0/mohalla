@@ -1,7 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { DatabaseService } from '../../../../database/database.service.js';
 import { StructuredLogger } from '../../../../common/logging/structured.logger.js';
-import { isPubliclyVisible } from '../../../platform/identity/domain/user-state.js';
+import {
+  contentSurvivesAccount,
+  isPubliclyVisible,
+} from '../../../platform/identity/domain/user-state.js';
 import {
   checkBio,
   checkCity,
@@ -10,6 +13,7 @@ import {
 } from '../domain/profile-fields.js';
 import { checkUsername, type UsernameRejection } from '../domain/username.js';
 import {
+  anonymousAuthor,
   toOwnProfile,
   toPublicProfile,
   type OwnProfile,
@@ -243,6 +247,46 @@ export class ProfileService {
    */
   async viewByUserId(viewerId: string, targetUserId: string): Promise<ViewProfileResult> {
     return this.view(viewerId, () => this.repo.findByUserId(targetUserId));
+  }
+
+  /**
+   * HOW SHOULD THIS PERSON BE NAMED ON CONTENT THEY LEFT BEHIND? (BR-009)
+   *
+   * A DIFFERENT QUESTION FROM `viewByUserId`, and the answers differ for
+   * exactly the case that matters. A departed account's profile is gone - that
+   * is `NOT_AVAILABLE`, correctly - while their posts and comments REMAIN,
+   * attributed to "Deleted User" (PRIV-006). Every content read path used to
+   * ask the PROFILE question and drop the content when the answer was no,
+   * which quietly broke the one consequence users are explicitly warned about.
+   *
+   *   'FOUND'      render normally
+   *   'ANONYMOUS'  the content stays; the author is the placeholder
+   *   'HIDDEN'     the content goes too - banned, blocked, or no such account
+   *
+   * A BLOCK STILL HIDES EVERYTHING (BR-025), and is checked before the state,
+   * so a blocked viewer gets the same answer whatever became of the account.
+   */
+  async attributionFor(
+    viewerId: string,
+    authorId: string,
+  ): Promise<
+    | { status: 'FOUND'; profile: PublicProfile }
+    | { status: 'ANONYMOUS'; profile: PublicProfile }
+    | { status: 'HIDDEN' }
+  > {
+    const view = await this.viewByUserId(viewerId, authorId);
+    if (view.status === 'FOUND') return view;
+
+    // `viewByUserId` refused. The ONLY reason to look past that refusal is a
+    // departed account, so establish that it is one before doing so.
+    const found = await this.repo.findByUserId(authorId);
+    if (found === null || !contentSurvivesAccount(found.user.state)) return { status: 'HIDDEN' };
+
+    if (viewerId !== authorId && (await this.blocks.isBlockedEitherWay(viewerId, authorId))) {
+      return { status: 'HIDDEN' };
+    }
+
+    return { status: 'ANONYMOUS', profile: anonymousAuthor(authorId) };
   }
 
   /** The same rules, resolved by handle rather than id. */

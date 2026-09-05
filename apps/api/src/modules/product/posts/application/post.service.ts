@@ -188,6 +188,9 @@ export class PostService {
     // The subject's own visibility first: a banned author has no viewable post
     // list, and a blocked one must not expose here what the profile route
     // refuses to show.
+    // A PROFILE'S post list, so the PROFILE question is the right one here:
+    // a departed account has no profile page to list posts on, and its posts
+    // are reached through the threads and feeds they are already in.
     if (viewerId !== authorId) {
       const profile = await this.profiles.viewByUserId(viewerId, authorId);
       if (profile.status === 'NOT_AVAILABLE') return null;
@@ -296,10 +299,12 @@ export class PostService {
     const blockedEitherWay =
       isAuthor || isAdmin ? false : await this.blocks.isBlockedEitherWay(viewerId, post.authorId);
 
-    // "Is the author publicly visible" is answered by the profile read path,
-    // which already collapses banned and deleted.
+    // NOT "is the author publicly visible" - that is a different question, and
+    // asking it here was a defect: a departed account's profile is gone while
+    // its posts REMAIN, attributed to "Deleted User" (BR-009, PRIV-006). Only a
+    // ban or a block takes the content with the account.
     const authorVisible =
-      isAuthor || (await this.profiles.viewByUserId(viewerId, post.authorId)).status === 'FOUND';
+      isAuthor || (await this.profiles.attributionFor(viewerId, post.authorId)).status !== 'HIDDEN';
 
     return decidePostVisibility({
       state: post.visibilityState,
@@ -319,8 +324,9 @@ export class PostService {
       const own = await this.profiles.getOwn(authorId);
       return own === null ? null : own;
     }
-    const view = await this.profiles.viewByUserId(viewerId, authorId);
-    return view.status === 'FOUND' ? view.profile : null;
+    // FOUND or ANONYMOUS both render; only HIDDEN removes the post.
+    const view = await this.profiles.attributionFor(viewerId, authorId);
+    return view.status === 'HIDDEN' ? null : view.profile;
   }
 
   /** `'UNKNOWN'` when the slug does not exist, so the caller can say so. */

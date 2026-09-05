@@ -7,5 +7,6 @@
   "foundation.action.retry": "دوبارہ کوشش کریں",
   "foundation.action.cancel": "منسوخ کریں",
   "foundation.language.english": "English",
-  "foundation.language.urdu": "اردو"
+  "foundation.language.urdu": "اردو",
+  "profile.deletedUser": "ڈیلیٹ شدہ صارف"
 }

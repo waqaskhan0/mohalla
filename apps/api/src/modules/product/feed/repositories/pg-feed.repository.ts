@@ -55,13 +55,16 @@ const POST_COLUMNS = `
  * stated as "the same" is how they stop being the same.
  *
  *   - only VISIBLE posts (auto-hidden and deleted never appear)
- *   - author ACTIVE or SUSPENDED: "posts from suspended users remain visible,
- *     posts from banned users do not"
+ *   - author NOT BANNED: "posts from suspended users remain visible, posts
+ *     from banned users do not" - and BR-009 keeps a DEPARTED author's posts
+ *     too, rendered as "Deleted User". Banning is a moderation outcome that
+ *     takes the contributions with it; deleting an account is a person
+ *     leaving, and PRIV-006 promises the thread survives them.
  *   - no block in either direction
  */
 const FEED_EXCLUSIONS = (viewerParam: string): string => `
   p.visibility_state = 'VISIBLE'
-  AND u.state IN ('ACTIVE', 'SUSPENDED')
+  AND u.state <> 'BANNED'
   AND ${notBlockedSql(viewerParam, 'p.author_id')}`;
 
 @Injectable()

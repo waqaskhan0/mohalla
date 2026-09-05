@@ -100,6 +100,26 @@ describe('RegisterService — enumeration resistance (SEC-006)', () => {
     expect(ctx.sms.all()).toHaveLength(0);
   });
 
+  it('REFUSES A NUMBER WHOSE ACCOUNT WAS ERASED, AND SAYS NOTHING (EDGE-029)', async () => {
+    // ADR-019: "the registered identifier REMAINS RESERVED, so re-registration
+    // is refused". Erasure deletes the `user_identifiers` row, so nothing else
+    // in this path would notice - the number would look free the moment the
+    // account it belonged to ceased to exist, and the next person assigned it
+    // by their operator would open an account that the previous holder's
+    // contacts still have in their conversations.
+    const hash = new IdentifierHasher(PEPPER).hash(VALID.phone).toString('hex');
+    ctx.repo.reservedIdentifiers.add(hash);
+
+    const result = await ctx.service.register(VALID);
+
+    // Identical to every other branch (SEC-006). "Refused" is the outcome, not
+    // the response: telling the caller would turn this into an oracle for
+    // which numbers once held accounts.
+    expect(result).toEqual({ status: 'ACCEPTED' });
+    expect(ctx.repo.users.size).toBe(0);
+    expect(ctx.sms.all()).toHaveLength(0);
+  });
+
   it('returns the IDENTICAL result when a concurrent request wins the race (EDGE-001)', async () => {
     ctx.repo.loseUniquenessRace = true;
     const result = await ctx.service.register(VALID);

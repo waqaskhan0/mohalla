@@ -42,6 +42,8 @@ export class InMemoryIdentityRepository implements IdentityRepository {
   /** hex(identifier hash) -> userId */
   readonly identifiers = new Map<string, string>();
   readonly bannedIdentifiers = new Set<string>();
+  /** EDGE-029: hashes whose account was erased and may never register again. */
+  readonly reservedIdentifiers = new Set<string>();
   readonly challenges: OtpChallengeRecord[] = [];
   readonly sessions: SessionRecord[] = [];
 
@@ -59,6 +61,10 @@ export class InMemoryIdentityRepository implements IdentityRepository {
   // ---- identifiers -----------------------------------------------------
   async isIdentifierBanned(hash: Buffer): Promise<boolean> {
     return this.bannedIdentifiers.has(this.key(hash));
+  }
+
+  async isIdentifierReserved(hash: Buffer): Promise<boolean> {
+    return this.reservedIdentifiers.has(this.key(hash));
   }
 
   async findUserIdByIdentifierHash(hash: Buffer): Promise<string | null> {
@@ -86,6 +92,7 @@ export class InMemoryIdentityRepository implements IdentityRepository {
       passwordHash: input.passwordHash,
       dateOfBirth: input.dateOfBirth,
       suspendedUntil: null,
+      language: null,
       termsVersion: input.termsVersion,
       termsAcceptedAt: this.now(),
       createdAt: this.now(),
