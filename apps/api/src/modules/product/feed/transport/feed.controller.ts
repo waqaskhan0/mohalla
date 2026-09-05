@@ -50,6 +50,14 @@ type IdParam = z.infer<typeof idParam>;
  * BOTH CURSOR HALVES OR NEITHER. A partial cursor would silently page from the
  * beginning, which to a reader looks exactly like duplicated content.
  */
+const featuredQuery = z
+  .object({
+    /** The language the client is displaying (ADMIN-FR-009, LOCALE-FR-002). */
+    locale: z.enum(['en', 'ur']).optional(),
+  })
+  .strict();
+type FeaturedQuery = z.infer<typeof featuredQuery>;
+
 @ApiTags('feed')
 @Controller()
 export class FeedController {
@@ -94,9 +102,12 @@ export class FeedController {
       'data by requirement - this is the cold-start guarantee (RSK-001). An empty array means ' +
       'the client hides the section entirely rather than rendering an empty container.',
   })
-  async featured() {
-    // No viewer parameter, deliberately. See the class comment.
-    return { announcements: await this.feed.featured() };
+  async featured(@Query(new ZodValidationPipe(featuredQuery)) query: FeaturedQuery) {
+    // Still no VIEWER parameter - the cold-start guarantee is that this
+    // resolves without follow data or a session lookup. A locale is not a
+    // viewer: it is what the client is already displaying, and passing it
+    // costs nothing that RSK-001 cares about.
+    return { announcements: await this.feed.featured(query.locale ?? 'en') };
   }
 
   @Get('me/saved')

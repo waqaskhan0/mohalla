@@ -23,10 +23,21 @@ export interface FeedQuery {
   since?: Date | undefined;
 }
 
+/**
+ * An announcement, in BOTH languages.
+ *
+ * ADMIN-FR-009 requires both versions "because a single-language announcement
+ * fails half the audience", so the record carries both and the service picks
+ * the reader's — the same shape as a notification template, and for the same
+ * reason: LOCALE-FR-002 wants a language switch to change what is already on
+ * screen, which pre-picking at the database would prevent.
+ */
 export interface AnnouncementRecord {
   id: string;
-  title: string;
-  body: string;
+  titleEn: string;
+  titleUr: string;
+  bodyEn: string;
+  bodyUr: string;
   expiresAt: Date;
   createdAt: Date;
 }

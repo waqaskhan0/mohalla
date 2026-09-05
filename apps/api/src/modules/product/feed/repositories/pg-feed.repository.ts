@@ -170,13 +170,15 @@ export class PgFeedRepository implements FeedRepository {
     // belongs to another query.
     const r = await this.q<{
       id: string;
-      title: string;
-      body: string;
+      title_en: string;
+      title_ur: string;
+      body_en: string;
+      body_ur: string;
       expires_at: Date;
       created_at: Date;
     }>(
       client,
-      `SELECT id, title, body, expires_at, created_at
+      `SELECT id, title_en, title_ur, body_en, body_ur, expires_at, created_at
          FROM announcements
         WHERE expires_at > now()
         ORDER BY created_at DESC
@@ -186,8 +188,10 @@ export class PgFeedRepository implements FeedRepository {
 
     return r.rows.map((row) => ({
       id: row.id,
-      title: row.title,
-      body: row.body,
+      titleEn: row.title_en,
+      titleUr: row.title_ur,
+      bodyEn: row.body_en,
+      bodyUr: row.body_ur,
       expiresAt: row.expires_at,
       createdAt: row.created_at,
     }));

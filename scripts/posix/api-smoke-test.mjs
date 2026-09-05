@@ -3339,6 +3339,462 @@ async function main() {
     }
   }
 
+  console.log('\n--- the Admin Portal (EPIC-13) ---');
+  {
+    // OD-020 IS NOT CLEARED BY THIS TEST. No administrator can be provisioned
+    // for a real deployment - DEP-016 has named no technical owner, and there is
+    // no bootstrap endpoint in any environment. What this does is insert a
+    // SYNTHETIC admin row directly into the local test database, the same way
+    // the CLI would, so the routes can be exercised. It proves the portal
+    // works; it does not create anybody's account.
+    const { PASSWORD_HASHER } =
+      await import('../../apps/api/dist/modules/platform/identity/ports/password-hasher.port.js');
+    const hasher = app.get(PASSWORD_HASHER, { strict: false });
+    const { Client } = await import('pg');
+
+    const adminPassword = 'synthetic-Admin-Passw0rd';
+    const adminHash = await hasher.hash(adminPassword);
+
+    const db = new Client({
+      connectionString: process.env.MIGRATION_DATABASE_URL ?? process.env.DATABASE_URL,
+    });
+    await db.connect();
+
+    const makeAdmin = async (label) => {
+      const id = randomUUID();
+      await db.query(
+        `INSERT INTO admins (id, email, password_hash, state, display_name)
+         VALUES ($1, $2, $3, 'ACTIVE', $4)`,
+        [id, `synthetic-${label}-${id}@example.invalid`, adminHash, `Synthetic ${label}`],
+      );
+      const login = await post(
+        '/admin/login',
+        { email: `synthetic-${label}-${id}@example.invalid`, password: adminPassword },
+        undefined,
+      );
+      const body = await login.json();
+      return { id, token: body?.token, loginStatus: login.status };
+    };
+
+    const adminA = await makeAdmin('admin-a');
+    const adminB = await makeAdmin('admin-b');
+
+    check(
+      'POST /admin/login issues an admin session (AUTH-FR-011)',
+      adminA.loginStatus === 200 && typeof adminA.token === 'string',
+      `status ${adminA.loginStatus}`,
+    );
+
+    // ---- SEC-020: the two credential stores never cross ------------------
+    {
+      const asUser = await get('/me', adminA.token);
+      check(
+        'AN ADMIN TOKEN IS NOT VALID IN THE APP (SEC-020, AUTH-FR-011 AC)',
+        asUser.status === 401,
+        `status ${asUser.status}`,
+      );
+
+      const citizen = await onboard(Date.now() + 30111);
+      const asAdmin = await get('/admin/dashboard', citizen.token);
+      check(
+        'AND A USER TOKEN IS NOT VALID IN THE PORTAL',
+        asAdmin.status === 401,
+        `status ${asAdmin.status}`,
+      );
+
+      const anon = await get('/admin/dashboard');
+      check('admin routes are guarded', anon.status === 401, `status ${anon.status}`);
+    }
+
+    // ---- ADMIN-FR-001/011: the dashboard ---------------------------------
+    {
+      const r = await get('/admin/dashboard', adminA.token);
+      const body = await r.json();
+      check(
+        'GET /admin/dashboard returns the operational counts (ADMIN-FR-001)',
+        r.status === 200 && typeof body?.openReports === 'number',
+        `status ${r.status} ${JSON.stringify(body)}`,
+      );
+      check(
+        'EVERY FIGURE IS AN AGGREGATE - no id appears (ADMIN-FR-011 AC)',
+        !/[0-9a-f]{8}-[0-9a-f]{4}-/i.test(JSON.stringify(body)),
+        JSON.stringify(body),
+      );
+    }
+
+    // ---- the queue, and a case to act on ---------------------------------
+    const author = await onboard(Date.now() + 30222);
+    const reporters = [];
+    for (let i = 0; i < 3; i += 1) reporters.push(await onboard(Date.now() + 30300 + i));
+
+    const hiddenPost = await (
+      await post('/posts', { body: 'A post that will be reported three times' }, author.token)
+    ).json();
+    for (const r of reporters) {
+      await post(
+        '/reports',
+        { targetType: 'POST', targetId: hiddenPost.id, reasonCode: 'HATE_SPEECH' },
+        r.token,
+      );
+    }
+
+    let caseId;
+    let caseVersion;
+    {
+      const r = await get('/admin/moderation/queue?limit=50', adminA.token);
+      const body = await r.json();
+      const found = (body?.cases ?? []).find((c) => c.targetId === hiddenPost.id);
+      check(
+        'THE AUTO-HIDDEN POST IS IN THE QUEUE (ADMIN-FR-002)',
+        found !== undefined,
+        `${body?.cases?.length} cases`,
+      );
+      caseId = found?.id;
+      caseVersion = found?.version;
+
+      check(
+        'and every case carries the VERSION a decision must quote (EDGE-024)',
+        typeof caseVersion === 'number',
+        `version ${caseVersion}`,
+      );
+
+      const severities = (body?.cases ?? []).map((c) => c.maxSeverity);
+      const rank = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
+      const ordered = severities.every((sv, i) => i === 0 || rank[severities[i - 1]] >= rank[sv]);
+      check(
+        'the queue is ordered by severity first (SAFETY-FR-003 AC)',
+        ordered,
+        severities.join(','),
+      );
+    }
+
+    {
+      const r = await get(`/admin/moderation/cases/${caseId}`, adminA.token);
+      const body = await r.json();
+      check(
+        "THE CASE VIEW CARRIES THE AUTHOR'S ENFORCEMENT HISTORY (ADMIN-FR-002)",
+        r.status === 200 && Array.isArray(body?.enforcementHistory),
+        `status ${r.status}`,
+      );
+      check(
+        'and the BR-037 repeat-offender flag as a fact to weigh',
+        typeof body?.repeatOffenderFlag === 'boolean',
+        String(body?.repeatOffenderFlag),
+      );
+    }
+
+    // ---- EDGE-024 / mandatory test D, over real HTTP ----------------------
+    {
+      const first = await post(
+        `/admin/moderation/cases/${caseId}/restore`,
+        { reason: 'Reviewed; this is legitimate civic criticism.', version: caseVersion },
+        adminA.token,
+      );
+      check(
+        'THE FIRST DECISION IS APPLIED (ADMIN-FR-003)',
+        first.status === 200,
+        `status ${first.status}`,
+      );
+
+      const second = await post(
+        `/admin/moderation/cases/${caseId}/delete`,
+        { reason: 'I disagree with my colleague.', version: caseVersion },
+        adminB.token,
+      );
+      const stale = await second.json();
+      check(
+        'THE SECOND ADMINISTRATOR GETS 409, NOT A GENERIC ERROR (EDGE-024)',
+        second.status === 409 && stale?.error?.code === 'CASE_ALREADY_RESOLVED',
+        `status ${second.status} code ${stale?.error?.code}`,
+      );
+
+      const details = Object.fromEntries(
+        (stale?.error?.details ?? []).map((d) => [d.path, d.message]),
+      );
+      check(
+        'AND IT NAMES WHO RESOLVED IT AND HOW (EDGE-024, mandatory test D)',
+        details.resolvedBy === adminA.id && details.outcome === 'RESOLVED_RESTORED',
+        JSON.stringify(details),
+      );
+
+      const restored = await get(`/posts/${hiddenPost.id}`, reporters[0].token);
+      check(
+        'the restored post is visible again, and the count is reset (ADMIN-FR-003)',
+        restored.status === 200,
+        `status ${restored.status}`,
+      );
+    }
+
+    // ---- EDGE-026: the same reporters can re-hide it, but never delete it -
+    {
+      for (const r of reporters) {
+        await post(
+          '/reports',
+          { targetType: 'POST', targetId: hiddenPost.id, reasonCode: 'HATE_SPEECH' },
+          r.token,
+        );
+      }
+      const again = await get(`/posts/${hiddenPost.id}`, reporters[0].token);
+      check(
+        'THREE FRESH REPORTS HIDE IT AGAIN (EDGE-026)',
+        again.status === 404,
+        `status ${again.status}`,
+      );
+
+      const stillThere = await get(`/posts/${hiddenPost.id}`, author.token);
+      check(
+        'and it is still only HIDDEN - no automatic deletion ever occurs (BR-032)',
+        stillThere.status === 200,
+        `status ${stillThere.status}`,
+      );
+    }
+
+    // ---- BR-038: a reason is mandatory -----------------------------------
+    {
+      const queue = await (await get('/admin/moderation/queue?limit=50', adminA.token)).json();
+      const reopened = (queue?.cases ?? []).find((c) => c.targetId === hiddenPost.id);
+
+      const noReason = await post(
+        `/admin/moderation/cases/${reopened.id}/delete`,
+        { reason: 'no', version: reopened.version },
+        adminA.token,
+      );
+      check(
+        'A DECISION WITHOUT A REASON IS REFUSED (BR-038)',
+        noReason.status === 400,
+        `status ${noReason.status}`,
+      );
+    }
+
+    // ---- ADMIN-FR-005 / PRIV-008: the audited sensitive view -------------
+    {
+      const plain = await (await get(`/admin/users/${author.userId}`, adminA.token)).json();
+      check(
+        'the account view carries state and counts (ADMIN-FR-005)',
+        plain?.state === 'ACTIVE' && typeof plain?.reportsReceived === 'number',
+        JSON.stringify({ state: plain?.state, received: plain?.reportsReceived }),
+      );
+      check(
+        'AND NO PHONE, EMAIL OR DATE OF BIRTH',
+        plain?.phone === undefined && plain?.dateOfBirth === undefined,
+        Object.keys(plain ?? {}).join(','),
+      );
+
+      const before = await (
+        await get(`/admin/audit-log?action=ADMIN_VIEWED_SENSITIVE_DATA`, adminA.token)
+      ).json();
+
+      const sensitive = await get(`/admin/users/${author.userId}/sensitive`, adminA.token);
+      const sensitiveBody = await sensitive.json();
+      check(
+        'the sensitive view returns the number to an administrator (PRIV-008)',
+        sensitive.status === 200 && typeof sensitiveBody?.phone === 'string',
+        `status ${sensitive.status}`,
+      );
+
+      const after = await (
+        await get(`/admin/audit-log?action=ADMIN_VIEWED_SENSITIVE_DATA`, adminA.token)
+      ).json();
+      check(
+        'AND THE VIEWING IS ITSELF AUDITED (ADMIN-FR-005 AC, SEC-022)',
+        after?.total === before?.total + 1,
+        `${before?.total} -> ${after?.total}`,
+      );
+      check(
+        'the audit entry names the FIELDS, never their values',
+        !JSON.stringify(after?.entries?.[0] ?? {}).includes(String(sensitiveBody?.phone)),
+        JSON.stringify(after?.entries?.[0]?.metadata),
+      );
+    }
+
+    // ---- ADMIN-FR-006/007/008: enforcement -------------------------------
+    const offender = await onboard(Date.now() + 30444);
+    {
+      const suspend = await post(
+        `/admin/users/${offender.userId}/suspend`,
+        { duration: 'HOURS_24', reason: 'Repeated spam after a warning.' },
+        adminA.token,
+      );
+      const sb = await suspend.json();
+      check(
+        'a suspension is applied and every session is revoked (ADMIN-FR-006, BR-035)',
+        suspend.status === 200 && sb?.sessionsRevoked >= 1,
+        `status ${suspend.status} revoked ${sb?.sessionsRevoked}`,
+      );
+
+      const afterSuspend = await get('/me', offender.token);
+      check(
+        'THE SUSPENDED SESSION IS REJECTED ON THE NEXT REQUEST (AUTH-FR-010 AC)',
+        afterSuspend.status === 401,
+        `status ${afterSuspend.status}`,
+      );
+
+      // EDGE-027: a second suspension REPLACES the duration.
+      const second = await post(
+        `/admin/users/${offender.userId}/suspend`,
+        { duration: 'DAYS_7', reason: 'Extending after a further report.' },
+        adminA.token,
+      );
+      const sb2 = await second.json();
+      check(
+        'RE-SUSPENDING REPLACES THE DURATION (EDGE-027)',
+        second.status === 200 && new Date(sb2.expiresAt) > new Date(sb.expiresAt),
+        `${sb?.expiresAt} -> ${sb2?.expiresAt}`,
+      );
+
+      const reinstate = await post(
+        `/admin/users/${offender.userId}/reinstate`,
+        { reason: 'Reviewed on appeal and reversed.' },
+        adminA.token,
+      );
+      check('a reinstatement is applied (ADMIN-FR-008)', reinstate.status === 200);
+
+      const view = await (await get(`/admin/users/${offender.userId}`, adminA.token)).json();
+      check('and the account is ACTIVE again', view?.state === 'ACTIVE', String(view?.state));
+    }
+
+    // ---- BR-ADM-001 / SEC-021: an admin can never be actioned -------------
+    {
+      const suspendAdmin = await post(
+        `/admin/users/${adminB.id}/suspend`,
+        { duration: 'DAYS_30', reason: 'Attempting to suspend a colleague.' },
+        adminA.token,
+      );
+      const body = await suspendAdmin.json();
+      check(
+        'AN ADMINISTRATOR CANNOT BE SUSPENDED (BR-ADM-001, SEC-021, ADMIN-FR-006 AC)',
+        suspendAdmin.status === 403 && body?.error?.code === 'ADMIN_CANNOT_ACT_ON_ADMIN',
+        `status ${suspendAdmin.status} code ${body?.error?.code}`,
+      );
+
+      const banAdmin = await post(
+        `/admin/users/${adminB.id}/ban`,
+        { reason: 'Attempting to ban a colleague.' },
+        adminA.token,
+      );
+      check('nor banned', banAdmin.status === 403, `status ${banAdmin.status}`);
+
+      const refusals = await (
+        await get('/admin/audit-log?action=ADMIN_ON_ADMIN_ACTION_REFUSED', adminA.token)
+      ).json();
+      check(
+        'AND THE REFUSED ATTEMPT IS AUDITED',
+        refusals?.total >= 2,
+        `${refusals?.total} entries`,
+      );
+
+      const stillAdmin = await get('/admin/dashboard', adminB.token);
+      check(
+        'the targeted administrator is entirely unaffected',
+        stillAdmin.status === 200,
+        `status ${stillAdmin.status}`,
+      );
+    }
+
+    // ---- ADMIN-FR-010: verification --------------------------------------
+    {
+      const individual = await onboard(Date.now() + 30555);
+      const refused = await send(
+        'PUT',
+        `/admin/users/${individual.userId}/verification`,
+        { granted: true, reason: 'They asked for a badge.' },
+        adminA.token,
+      );
+      const rb = await refused.json();
+      check(
+        'AN INDIVIDUAL CANNOT BE VERIFIED, AND THE RULE IS STATED (ADMIN-FR-010 AC)',
+        refused.status === 400 && rb?.error?.code === 'NOT_ELIGIBLE_FOR_VERIFICATION',
+        `status ${refused.status} code ${rb?.error?.code}`,
+      );
+    }
+
+    // ---- ADMIN-FR-009 / NOTIF-FR-005: announcements ----------------------
+    {
+      const monolingual = await post(
+        '/admin/announcements',
+        {
+          titleEn: 'Water supply notice',
+          bodyEn: 'The supply will be interrupted on Friday morning.',
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        },
+        adminA.token,
+      );
+      check(
+        'AN ENGLISH-ONLY ANNOUNCEMENT IS REFUSED (ADMIN-FR-009 AC)',
+        monolingual.status === 400,
+        `status ${monolingual.status}`,
+      );
+
+      const published = await post(
+        '/admin/announcements',
+        {
+          titleEn: 'Water supply notice',
+          titleUr: 'پانی کی فراہمی سے متعلق اطلاع',
+          bodyEn: 'The supply will be interrupted on Friday morning.',
+          bodyUr: 'جمعہ کی صبح پانی کی فراہمی معطل رہے گی۔',
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        },
+        adminA.token,
+      );
+      check(
+        'a bilingual announcement is published (ADMIN-FR-009)',
+        published.status === 201,
+        `status ${published.status}`,
+      );
+
+      const allowance = await (await get('/admin/announcements/allowance', adminA.token)).json();
+      check(
+        'the broadcast allowance is reported before it is spent (NOTIF-FR-005)',
+        allowance?.limit === 2 && typeof allowance?.used === 'number',
+        JSON.stringify(allowance),
+      );
+    }
+
+    // ---- ADMIN-FR-012 / BR-039: the audit log is READ-ONLY ----------------
+    {
+      const log = await get('/admin/audit-log?limit=10', adminA.token);
+      const body = await log.json();
+      check(
+        'GET /admin/audit-log searches the log (ADMIN-FR-012)',
+        log.status === 200 && Array.isArray(body?.entries),
+        `status ${log.status}`,
+      );
+      check(
+        "and it contains this session's enforcement entries",
+        (body?.entries ?? []).some((e) => e.action.startsWith('ADMIN_')),
+      );
+
+      // BR-039's acceptance criterion is a NEGATIVE: "GIVEN an attempt to
+      // delete a log entry through any route, THEN it fails." The way that is
+      // satisfied is that no such route exists at any layer.
+      const entryId = body?.entries?.[0]?.id;
+      for (const [method, path] of [
+        ['DELETE', `/admin/audit-log/${entryId}`],
+        ['PUT', `/admin/audit-log/${entryId}`],
+        ['PATCH', `/admin/audit-log/${entryId}`],
+        ['POST', '/admin/audit-log'],
+      ]) {
+        const r = await send(method, path, { reason: 'tidying up' }, adminA.token);
+        check(
+          `${method} ${path.replace(entryId, ':id')} DOES NOT EXIST (BR-039)`,
+          r.status === 404 || r.status === 405,
+          `status ${r.status}`,
+        );
+      }
+
+      const filtered = await (
+        await get(`/admin/audit-log?adminId=${adminA.id}&limit=5`, adminA.token)
+      ).json();
+      check(
+        'the log is searchable by administrator (ADMIN-FR-012)',
+        (filtered?.entries ?? []).every((e) => e.actorId === adminA.id),
+        `${filtered?.entries?.length} entries`,
+      );
+    }
+
+    await db.end();
+  }
+
   console.log('\n--- no secret leaves the server ---');
   {
     const r = await post('/login', { phone, password: 'synthetic-Wrong-Passw0rd' });

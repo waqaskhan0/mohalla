@@ -102,12 +102,17 @@ export class FeedService {
    * Takes no viewer on purpose. Kept as its own endpoint "by requirement, not
    * by convenience" (§145): it must render before follow data resolves.
    */
-  async featured(): Promise<FeaturedItem[]> {
+  async featured(locale: 'en' | 'ur' = 'en'): Promise<FeaturedItem[]> {
     const rows = await this.repo.featured(FEATURED_LIMIT);
+    // ADMIN-FR-009 stores both versions; the reader gets theirs. Picked HERE
+    // rather than in SQL so a language switch changes what is already on
+    // screen (LOCALE-FR-002) without another round trip - and so the two
+    // versions stay one row, which is what makes "both are required"
+    // enforceable at all.
     return rows.map((a: AnnouncementRecord) => ({
       id: a.id,
-      title: a.title,
-      body: a.body,
+      title: locale === 'ur' ? a.titleUr : a.titleEn,
+      body: locale === 'ur' ? a.bodyUr : a.bodyEn,
       expiresAt: a.expiresAt.toISOString(),
     }));
   }
