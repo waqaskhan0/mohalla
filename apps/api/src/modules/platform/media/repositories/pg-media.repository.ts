@@ -6,6 +6,7 @@ import type {
   MediaRecord,
   MediaRepository,
   MediaState,
+  MediaVisibility,
 } from './media.repository.port.js';
 
 interface Row {
@@ -13,6 +14,7 @@ interface Row {
   owner_id: string;
   kind: MediaKind;
   state: MediaState;
+  visibility: MediaVisibility;
   quarantine_key: string;
   storage_key: string | null;
   mime_verified: string | null;
@@ -29,6 +31,7 @@ const toMedia = (r: Row): MediaRecord => ({
   ownerId: r.owner_id,
   kind: r.kind,
   state: r.state,
+  visibility: r.visibility,
   quarantineKey: r.quarantine_key,
   storageKey: r.storage_key,
   mimeVerified: r.mime_verified,
@@ -53,15 +56,21 @@ export class PgMediaRepository implements MediaRepository {
   }
 
   async createSlot(
-    input: { id: string; ownerId: string; kind: MediaKind; quarantineKey: string },
+    input: {
+      id: string;
+      ownerId: string;
+      kind: MediaKind;
+      visibility: MediaVisibility;
+      quarantineKey: string;
+    },
     client?: PoolClient,
   ): Promise<MediaRecord> {
     const r = await this.q<Row>(
       client,
-      `INSERT INTO media (id, owner_id, kind, state, quarantine_key)
-       VALUES ($1, $2, $3, 'PENDING_UPLOAD', $4)
+      `INSERT INTO media (id, owner_id, kind, state, visibility, quarantine_key)
+       VALUES ($1, $2, $3, 'PENDING_UPLOAD', $4, $5)
        RETURNING *`,
-      [input.id, input.ownerId, input.kind, input.quarantineKey],
+      [input.id, input.ownerId, input.kind, input.visibility, input.quarantineKey],
     );
     const row = r.rows[0];
     if (row === undefined) throw new Error('media slot insert returned no row');

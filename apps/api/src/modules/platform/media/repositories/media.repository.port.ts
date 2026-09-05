@@ -5,11 +5,28 @@ export const MEDIA_REPOSITORY = Symbol.for('mohalla.media.repository');
 export type MediaKind = 'IMAGE' | 'DOCUMENT';
 export type MediaState = 'PENDING_UPLOAD' | 'PROCESSING' | 'READY' | 'REJECTED';
 
+/**
+ * Who may fetch this object by id (MSG-FR-008).
+ *
+ * PUBLIC is the default and is right for a post: the post is public, so its
+ * image is too, and one cacheable route serves it. RESTRICTED objects are not
+ * served by that route AT ALL - the module that owns the containing record
+ * serves them after its own access check.
+ *
+ * The split exists because an id is not a secret. It sits in the sender's own
+ * client, in access logs, and in any backup of either device, so "you need the
+ * id" is not an access control - which is precisely what MSG-FR-008's
+ * acceptance criterion asks for: an image sent in a message must not be
+ * retrievable by anyone outside that conversation.
+ */
+export type MediaVisibility = 'PUBLIC' | 'RESTRICTED';
+
 export interface MediaRecord {
   id: string;
   ownerId: string;
   kind: MediaKind;
   state: MediaState;
+  visibility: MediaVisibility;
   quarantineKey: string;
   storageKey: string | null;
   mimeVerified: string | null;
@@ -23,7 +40,13 @@ export interface MediaRecord {
 
 export interface MediaRepository {
   createSlot(
-    input: { id: string; ownerId: string; kind: MediaKind; quarantineKey: string },
+    input: {
+      id: string;
+      ownerId: string;
+      kind: MediaKind;
+      visibility: MediaVisibility;
+      quarantineKey: string;
+    },
     client?: PoolClient,
   ): Promise<MediaRecord>;
 

@@ -4,6 +4,10 @@ import { ProfileModule } from '../profile/profile.module.js';
 import { SafetyModule } from '../safety/safety.module.js';
 import { FOLLOW_REPOSITORY } from './repositories/follow.repository.port.js';
 import { PgFollowRepository } from './repositories/pg-follow.repository.js';
+import { REQUEST_PROMOTION } from './ports/request-promotion.port.js';
+import { RequestPromotionAdapter } from '../messaging/adapters/request-promotion.adapter.js';
+import { MESSAGING_REPOSITORY } from '../messaging/repositories/messaging.repository.port.js';
+import { PgMessagingRepository } from '../messaging/repositories/pg-messaging.repository.js';
 import { FollowService } from './application/follow.service.js';
 import { FollowController } from './transport/follow.controller.js';
 
@@ -29,6 +33,15 @@ import { FollowController } from './transport/follow.controller.js';
   providers: [
     PgFollowRepository,
     { provide: FOLLOW_REPOSITORY, useExisting: PgFollowRepository },
+
+    // MSG-FR-005 A3: following someone promotes their pending request, in the
+    // same transaction as the follow. The edge is inverted for the reason given
+    // in `ports/request-promotion.port.ts`.
+    PgMessagingRepository,
+    { provide: MESSAGING_REPOSITORY, useExisting: PgMessagingRepository },
+    RequestPromotionAdapter,
+    { provide: REQUEST_PROMOTION, useExisting: RequestPromotionAdapter },
+
     FollowService,
   ],
   // Exported for the feed (EPIC-07), which needs "whom does this person

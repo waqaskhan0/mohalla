@@ -4,6 +4,7 @@ import { FollowService } from './follow.service.js';
 import type { FollowPage, FollowRepository } from '../repositories/follow.repository.port.js';
 import type { BlockService } from '../../safety/application/block.service.js';
 import type { ProfileService } from '../../profile/application/profile.service.js';
+import type { RequestPromotion } from '../ports/request-promotion.port.js';
 import type { DatabaseService } from '../../../../database/database.service.js';
 import type { StructuredLogger } from '../../../../common/logging/structured.logger.js';
 
@@ -91,6 +92,17 @@ function build() {
     },
   } as unknown as BlockService;
 
+  // Records each promotion attempt, so MSG-FR-005 A3 is asserted as behaviour
+  // rather than as a call that happened to be made.
+  const promotions: [string, string][] = [];
+  let pendingRequestExists = false;
+  const requests: RequestPromotion = {
+    async promotePendingRequest(followerId, followeeId) {
+      promotions.push([followerId, followeeId]);
+      return pendingRequestExists;
+    },
+  };
+
   const db = {
     withTransaction: async <T>(fn: (c: never) => Promise<T>): Promise<T> => fn(undefined as never),
   } as unknown as DatabaseService;
@@ -101,9 +113,13 @@ function build() {
   } as unknown as StructuredLogger;
 
   return {
-    service: new FollowService(db, repo, blocks, profiles, logger),
+    service: new FollowService(db, repo, requests, blocks, profiles, logger),
     repo,
     logs,
+    promotions,
+    setPendingRequest: (v: boolean) => {
+      pendingRequestExists = v;
+    },
     /** Make a user invisible to the read path (banned, deleted or blocked). */
     hide: (id: string) => unavailable.add(id),
   };
@@ -175,6 +191,31 @@ describe('FollowService.follow (SOCIAL-FR-001, EDGE-015/016)', () => {
       expect(line).not.toContain(a);
       expect(line).not.toContain(b);
     }
+  });
+
+  it('PROMOTES A PENDING MESSAGE REQUEST FROM THE PERSON FOLLOWED (MSG-FR-005 A3)', async () => {
+    ctx.setPendingRequest(true);
+    await ctx.service.follow(a, b);
+
+    // The FOLLOWER holds the request; the person they followed is the sender
+    // whose message is waiting. This pair the wrong way round would promote
+    // nothing and fail silently, so the order is asserted, not just the call.
+    expect(ctx.promotions).toEqual([[a, b]]);
+  });
+
+  it('runs the promotion even on a REPEAT follow', async () => {
+    await ctx.service.follow(a, b);
+    await ctx.service.follow(a, b);
+
+    // One UPDATE that usually matches nothing, and it repairs the state if an
+    // earlier attempt was interrupted between the two writes.
+    expect(ctx.promotions).toHaveLength(2);
+  });
+
+  it('does not log a promotion that did not happen', async () => {
+    ctx.setPendingRequest(false);
+    await ctx.service.follow(a, b);
+    expect(ctx.logs.some((l) => l.includes('message_request_promoted'))).toBe(false);
   });
 });
 

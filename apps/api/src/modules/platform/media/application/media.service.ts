@@ -13,6 +13,7 @@ import {
   type MediaKind,
   type MediaRecord,
   type MediaRepository,
+  type MediaVisibility,
 } from '../repositories/media.repository.port.js';
 
 /** How long an upload slot stays usable. */
@@ -23,6 +24,12 @@ export interface RequestSlotCommand {
   kind: MediaKind;
   /** Advisory. Re-measured from the stored object before anything is served. */
   declaredBytes: number;
+  /**
+   * MSG-FR-008. Defaults to PUBLIC because that is what a post attachment is;
+   * a caller that wants an object unreachable by id must ask for it, and the
+   * module that owns the containing record then serves it itself.
+   */
+  visibility?: MediaVisibility | undefined;
 }
 
 export type RequestSlotResult =
@@ -98,10 +105,17 @@ export class MediaService {
     // overwrite another object or aim bytes at the served prefix.
     const quarantineKey = `quarantine/${randomKey()}`;
 
-    await this.repo.createSlot({ id, ownerId: cmd.ownerId, kind: cmd.kind, quarantineKey });
+    const visibility = cmd.visibility ?? 'PUBLIC';
+    await this.repo.createSlot({
+      id,
+      ownerId: cmd.ownerId,
+      kind: cmd.kind,
+      visibility,
+      quarantineKey,
+    });
     const upload = await this.storage.presignUpload(quarantineKey, SLOT_TTL_SECONDS);
 
-    this.log('media_slot_issued', { mediaId: id, kind: cmd.kind });
+    this.log('media_slot_issued', { mediaId: id, kind: cmd.kind, visibility });
     return { status: 'SLOT_ISSUED', mediaId: id, upload };
   }
 
@@ -212,8 +226,43 @@ export class MediaService {
     return true;
   }
 
-  /** Read a served object, for MED-API-003. Only READY media is servable. */
+  /**
+   * Read a served object, for MED-API-003. Only READY media is servable.
+   *
+   * PUBLIC only. A RESTRICTED object is not served through this route at all -
+   * not "unless the caller is allowed", but never, because this module has no
+   * way to evaluate the access rule and must not guess at one. MSG-FR-008's
+   * criterion is that a message image "is not retrievable by anyone outside
+   * that conversation", and only the messaging module knows who that is; it
+   * calls `readServedRestricted` after checking.
+   *
+   * The refusal is the same `null` as a missing object, so a caller holding an
+   * id cannot learn from this route whether it names anything.
+   */
   async readServed(mediaId: string): Promise<{ bytes: Uint8Array; mime: string } | null> {
+    const media = await this.repo.findById(mediaId);
+    if (media === null || media.visibility !== 'PUBLIC') return null;
+    if (media.state !== 'READY' || media.storageKey === null) return null;
+
+    const bytes = await this.storage.readServed(media.storageKey);
+    if (bytes === null) return null;
+    return { bytes, mime: media.mimeVerified ?? 'application/octet-stream' };
+  }
+
+  /**
+   * Read a RESTRICTED object on behalf of the module that owns its container.
+   *
+   * THE ACCESS DECISION IS THE CALLER'S, and the name says so: nothing here
+   * checks who may see this, because nothing here could. The contract is that
+   * a caller reaches this only after answering that question for its own
+   * record - the messaging module after confirming the viewer is a participant
+   * in the conversation the message belongs to.
+   *
+   * Kept as a separate method rather than a flag on `readServed`, so that
+   * bypassing the check is a deliberate call to a differently-named method
+   * rather than a boolean somebody passed wrongly.
+   */
+  async readServedRestricted(mediaId: string): Promise<{ bytes: Uint8Array; mime: string } | null> {
     const media = await this.repo.findById(mediaId);
     if (media === null || media.state !== 'READY' || media.storageKey === null) return null;
 

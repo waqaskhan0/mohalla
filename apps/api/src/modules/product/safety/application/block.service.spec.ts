@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { BlockService } from './block.service.js';
 import type { BlockRepository, BlockRow } from '../repositories/block.repository.port.js';
 import type { FollowRemoval } from '../ports/follow-removal.port.js';
+import type { ConversationHiding } from '../ports/conversation-hiding.port.js';
 import type { DatabaseService } from '../../../../database/database.service.js';
 import type { StructuredLogger } from '../../../../common/logging/structured.logger.js';
 
@@ -60,6 +61,16 @@ function build() {
     },
   };
 
+  // Records every hide and restore, so the MSG-FR-003 assertions are about
+  // observable behaviour rather than call order.
+  const hides: [string, string, Date | null][] = [];
+  const conversations: ConversationHiding = {
+    async setHiddenForBlocker(blockerId, blockedId, hiddenAt) {
+      hides.push([blockerId, blockedId, hiddenAt]);
+      return 1;
+    },
+  };
+
   const db = {
     withTransaction: async <T>(fn: (c: never) => Promise<T>): Promise<T> => fn(undefined as never),
   } as unknown as DatabaseService;
@@ -70,9 +81,10 @@ function build() {
   } as unknown as StructuredLogger;
 
   return {
-    service: new BlockService(db, blocks, follows, logger),
+    service: new BlockService(db, blocks, follows, conversations, logger),
     blocks,
     removals,
+    hides,
     logs,
     setFollowsToRemove: (n: number) => {
       followsToRemove = n;
@@ -105,6 +117,28 @@ describe('BlockService.block (SAFETY-FR-005, BR-024/025)', () => {
     // they acted to stop, and they would have no reason to check.
     expect(r).toEqual({ status: 'BLOCKED', followsRemoved: 2 });
     expect(ctx.removals).toEqual([[a, b]]);
+  });
+
+  it('HIDES THE CONVERSATION FROM THE BLOCKER ONLY (MSG-FR-003, EDGE-019)', async () => {
+    await ctx.service.block(a, b);
+
+    // One call, naming the blocker first. The blocked user's copy is untouched
+    // on purpose: MSG-FR-006 says "the blocked user is never told a block
+    // exists", and a thread vanishing from their inbox would announce it.
+    expect(ctx.hides).toHaveLength(1);
+    const [blocker, blocked, hiddenAt] = ctx.hides[0]!;
+    expect([blocker, blocked]).toEqual([a, b]);
+    expect(hiddenAt).toBeInstanceOf(Date);
+  });
+
+  it('RESTORES THE CONVERSATION ON UNBLOCK (MSG-FR-003 AC)', async () => {
+    await ctx.service.block(a, b);
+    await ctx.service.unblock(a, b);
+
+    // "AND WHEN A unblocks B, THEN it reappears with its history intact."
+    // Clearing the timestamp is the whole restoration - nothing was deleted, so
+    // there is nothing to rebuild.
+    expect(ctx.hides.map((h) => h[2])).toEqual([expect.any(Date), null]);
   });
 
   it('IS IDEMPOTENT — a second block still succeeds', async () => {

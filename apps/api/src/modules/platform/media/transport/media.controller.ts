@@ -28,6 +28,13 @@ const slotBody = z
     kind: z.enum(['IMAGE', 'DOCUMENT']),
     /** Advisory. The stored object is re-measured (SEC-012). */
     declaredBytes: z.coerce.number().int().min(1).max(MAX_DOCUMENT_BYTES),
+    /**
+     * MSG-FR-008. A RESTRICTED object is never served by `GET /media/{id}`;
+     * the module owning the record it is attached to serves it after its own
+     * access check. Optional, defaulting to PUBLIC, so existing post uploads
+     * are unaffected - and so asking for privacy is an explicit act.
+     */
+    visibility: z.enum(['PUBLIC', 'RESTRICTED']).optional(),
   })
   .strict();
 type SlotBody = z.infer<typeof slotBody>;
@@ -78,6 +85,7 @@ export class MediaController {
       ownerId: principal.userId,
       kind: body.kind,
       declaredBytes: body.declaredBytes,
+      visibility: body.visibility,
     });
 
     if (result.status === 'REJECTED') {
@@ -188,9 +196,11 @@ export class MediaController {
   @ApiOperation({
     summary: 'Read a media object (MED-API-003).',
     description:
-      'Serves READY media only - quarantined and rejected objects are unreachable. The ' +
-      'Content-Type is the VERIFIED type from inspection, never a client claim, and nosniff ' +
-      'stops a browser second-guessing it.',
+      'Serves READY, PUBLIC media only. Quarantined, rejected and RESTRICTED objects are ' +
+      'all unreachable here, and all give the same 404 - a message attachment is not ' +
+      'retrievable by id (MSG-FR-008), and this route cannot say so without disclosing that ' +
+      'the id names something. The Content-Type is the VERIFIED type from inspection, never ' +
+      'a client claim, and nosniff stops a browser second-guessing it.',
   })
   async read(
     @Param(new ZodValidationPipe(mediaIdParam)) params: MediaIdParam,

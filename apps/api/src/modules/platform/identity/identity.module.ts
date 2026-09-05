@@ -104,6 +104,10 @@ import { AdminSessionGuard } from './transport/admin-session.guard.js';
   // Exported so later epics can resolve a principal and revoke sessions
   // (moderation suspends, settings deletes). The repositories are NOT exported:
   // nothing outside identity may read a password hash or an identifier row.
-  exports: [SessionService, AdminAuthService],
+  // `CLOCK` is exported because it is infrastructure, not an identity concept:
+  // any module with a rule that is a statement about time needs the same
+  // injectable clock, and a second one would mean a test could freeze one and
+  // not the other. EPIC-09's request quota is the first outside caller.
+  exports: [SessionService, AdminAuthService, CLOCK],
 })
 export class IdentityModule {}

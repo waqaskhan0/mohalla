@@ -3,6 +3,10 @@ import { IdentityModule } from '../../platform/identity/identity.module.js';
 import { BLOCK_REPOSITORY } from './repositories/block.repository.port.js';
 import { PgBlockRepository } from './repositories/pg-block.repository.js';
 import { FOLLOW_REMOVAL } from './ports/follow-removal.port.js';
+import { CONVERSATION_HIDING } from './ports/conversation-hiding.port.js';
+import { ConversationHidingAdapter } from '../messaging/adapters/conversation-hiding.adapter.js';
+import { MESSAGING_REPOSITORY } from '../messaging/repositories/messaging.repository.port.js';
+import { PgMessagingRepository } from '../messaging/repositories/pg-messaging.repository.js';
 import { FollowRemovalAdapter } from '../social-graph/adapters/follow-removal.adapter.js';
 import { FOLLOW_REPOSITORY } from '../social-graph/repositories/follow.repository.port.js';
 import { PgFollowRepository } from '../social-graph/repositories/pg-follow.repository.js';
@@ -44,6 +48,14 @@ import { BlockController } from './transport/block.controller.js';
     { provide: FOLLOW_REPOSITORY, useExisting: PgFollowRepository },
     FollowRemovalAdapter,
     { provide: FOLLOW_REMOVAL, useExisting: FollowRemovalAdapter },
+
+    // Conversation hiding for MSG-FR-003 / EDGE-019, bound the same way and for
+    // the same reason: `conversation_participants` keeps one writer, and the
+    // hide has to commit with the block.
+    PgMessagingRepository,
+    { provide: MESSAGING_REPOSITORY, useExisting: PgMessagingRepository },
+    ConversationHidingAdapter,
+    { provide: CONVERSATION_HIDING, useExisting: ConversationHidingAdapter },
 
     BlockService,
   ],

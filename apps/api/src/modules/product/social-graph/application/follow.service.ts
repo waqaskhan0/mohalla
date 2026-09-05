@@ -8,6 +8,7 @@ import {
   type FollowPage,
   type FollowRepository,
 } from '../repositories/follow.repository.port.js';
+import { REQUEST_PROMOTION, type RequestPromotion } from '../ports/request-promotion.port.js';
 
 export type FollowResult =
   | { status: 'FOLLOWING'; created: boolean }
@@ -48,6 +49,7 @@ export class FollowService {
   constructor(
     private readonly db: DatabaseService,
     @Inject(FOLLOW_REPOSITORY) private readonly repo: FollowRepository,
+    @Inject(REQUEST_PROMOTION) private readonly requests: RequestPromotion,
     private readonly blocks: BlockService,
     private readonly profiles: ProfileService,
     private readonly logger: StructuredLogger,
@@ -67,10 +69,21 @@ export class FollowService {
     return this.db.withTransaction(async (client) => {
       const created = await this.repo.follow(followerId, followeeId, client);
 
+      // MSG-FR-005 A3: "Recipient later follows the sender -> any pending
+      // request is promoted to the inbox automatically." Same transaction, so a
+      // follow that commits cannot leave the message it was about still sitting
+      // in a request area the user rarely looks at.
+      //
+      // Run even when `created` is false. It costs one UPDATE that usually
+      // matches nothing, and it repairs the state if an earlier attempt was
+      // interrupted between the two writes.
+      const promoted = await this.requests.promotePendingRequest(followerId, followeeId, client);
+
       // TODO(EPIC-11): emit `social.followed` so the target is notified
       // (NOTIF-FR-003). Only when `created` is true - a repeat follow must not
       // produce a second notification.
       this.log(created ? 'follow_created' : 'follow_repeated');
+      if (promoted) this.log('message_request_promoted');
       return { status: 'FOLLOWING', created } as const;
     });
   }

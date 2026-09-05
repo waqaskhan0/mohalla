@@ -84,6 +84,7 @@ class InMemoryMedia implements MediaRepository {
       ownerId: input.ownerId,
       kind: input.kind,
       state: 'PENDING_UPLOAD',
+      visibility: 'PUBLIC',
       quarantineKey: input.quarantineKey,
       storageKey: null,
       mimeVerified: null,

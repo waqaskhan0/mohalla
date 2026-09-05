@@ -4,6 +4,7 @@ import { DatabaseService } from '../../../../database/database.service.js';
 import { StructuredLogger } from '../../../../common/logging/structured.logger.js';
 import { BLOCK_REPOSITORY, type BlockRepository } from '../repositories/block.repository.port.js';
 import { FOLLOW_REMOVAL, type FollowRemoval } from '../ports/follow-removal.port.js';
+import { CONVERSATION_HIDING, type ConversationHiding } from '../ports/conversation-hiding.port.js';
 
 export type BlockResult =
   { status: 'BLOCKED'; followsRemoved: number } | { status: 'CANNOT_BLOCK_SELF' };
@@ -42,6 +43,7 @@ export class BlockService {
     private readonly db: DatabaseService,
     @Inject(BLOCK_REPOSITORY) private readonly blocks: BlockRepository,
     @Inject(FOLLOW_REMOVAL) private readonly follows: FollowRemoval,
+    @Inject(CONVERSATION_HIDING) private readonly conversations: ConversationHiding,
     private readonly logger: StructuredLogger,
   ) {}
 
@@ -64,7 +66,22 @@ export class BlockService {
       // two writes on an older version of this code.
       const followsRemoved = await this.follows.removeBothDirections(blockerId, blockedId, client);
 
-      this.log('user_blocked', { created, followsRemoved });
+      // Same transaction, same reason as the follow removal (MSG-FR-003,
+      // EDGE-019). A block that commits while the conversation is still listed
+      // leaves the blocked person's thread in the blocker's inbox with an
+      // unread badge - the contact they just acted to end.
+      //
+      // The BLOCKER's side only. The blocked user's copy is untouched, because
+      // a thread vanishing from their inbox would announce the block that
+      // BR-025 says they are never told about.
+      const conversationsHidden = await this.conversations.setHiddenForBlocker(
+        blockerId,
+        blockedId,
+        this.now(),
+        client,
+      );
+
+      this.log('user_blocked', { created, followsRemoved, conversationsHidden });
       return { status: 'BLOCKED', followsRemoved } as const;
     });
   }
@@ -80,6 +97,12 @@ export class BlockService {
   async unblock(blockerId: string, blockedId: string): Promise<UnblockResult> {
     await this.db.withTransaction(async (client) => {
       await this.blocks.remove(blockerId, blockedId, client);
+
+      // MSG-FR-003's second half: "WHEN A unblocks B, THEN it reappears with
+      // its history intact." Clearing one timestamp is the whole restoration -
+      // nothing was deleted, so there is nothing to rebuild. That is why the
+      // hide is a column rather than a delete.
+      await this.conversations.setHiddenForBlocker(blockerId, blockedId, null, client);
     });
     this.log('user_unblocked', {});
     return { status: 'UNBLOCKED' };
@@ -105,6 +128,18 @@ export class BlockService {
   ): Promise<{ blockedUserId: string; createdAt: Date }[]> {
     const rows = await this.blocks.listBlockedBy(blockerId, limit, before);
     return rows.map((r) => ({ blockedUserId: r.blockedId, createdAt: r.createdAt }));
+  }
+
+  /**
+   * The instant a hide takes effect.
+   *
+   * `hidden_at` is a marker, not a deadline: nothing computes an interval from
+   * it, and nothing expires. So this reads the wall clock rather than taking a
+   * dependency on `Clock`, which exists for rules that ARE statements about
+   * time and would otherwise be untestable without waiting.
+   */
+  private now(): Date {
+    return new Date();
   }
 
   private log(event: string, extra: Record<string, unknown>): void {

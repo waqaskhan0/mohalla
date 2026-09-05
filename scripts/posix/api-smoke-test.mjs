@@ -1679,6 +1679,537 @@ async function main() {
     }
   }
 
+  console.log('\n--- messaging over HTTP (EPIC-09) ---');
+  {
+    const sender = await onboard(Date.now() + 111);
+    const recipient = await onboard(Date.now() + 222);
+
+    const openConversation = async (targetUserId, token) => {
+      const r = await post('/conversations', { userId: targetUserId }, token);
+      return { status: r.status, body: await r.json() };
+    };
+
+    // ---- MSG-FR-001: one conversation per pair, ever ---------------------
+    let conversationId;
+    {
+      const first = await openConversation(recipient.userId, sender.token);
+      check(
+        'POST /conversations opens a thread',
+        first.status === 200,
+        `status ${first.status} ${JSON.stringify(first.body).slice(0, 120)}`,
+      );
+      conversationId = first.body?.conversationId;
+
+      const second = await openConversation(recipient.userId, sender.token);
+      check(
+        'THE EXISTING THREAD REOPENS RATHER THAN A SECOND BEING CREATED (MSG-FR-001 AC)',
+        second.body?.conversationId === conversationId,
+        `${conversationId} vs ${second.body?.conversationId}`,
+      );
+
+      const fromOtherSide = await openConversation(sender.userId, recipient.token);
+      check(
+        'and approaching from the OTHER SIDE finds the same one (BR-024)',
+        fromOtherSide.body?.conversationId === conversationId,
+        `${conversationId} vs ${fromOtherSide.body?.conversationId}`,
+      );
+
+      const self = await openConversation(sender.userId, sender.token);
+      check('a user cannot message themselves', self.status === 400, `status ${self.status}`);
+    }
+
+    // ---- MSG-FR-002 / EDGE-020 / EDGE-021: idempotency -------------------
+    {
+      const clientMessageId = randomUUID();
+      const sendSame = () =>
+        post(
+          `/conversations/${conversationId}/messages`,
+          { clientMessageId, body: 'salaam, pani ka masla hai' },
+          sender.token,
+        );
+
+      const first = await sendSame();
+      const firstBody = await first.json();
+      check(
+        'a message is created with 201',
+        first.status === 201,
+        `status ${first.status} ${JSON.stringify(firstBody).slice(0, 120)}`,
+      );
+
+      const retry = await sendSame();
+      const retryBody = await retry.json();
+      check(
+        'A RETRY WITH THE SAME CLIENT ID RETURNS THE ORIGINAL, WITH 200 (EDGE-020/021)',
+        retry.status === 200 && retryBody?.id === firstBody?.id,
+        `status ${retry.status} ${firstBody?.id} vs ${retryBody?.id}`,
+      );
+
+      const third = await sendSame();
+      check('and a third attempt still returns it', third.status === 200);
+
+      const history = await (
+        await get(`/conversations/${conversationId}/messages`, sender.token)
+      ).json();
+      check(
+        'EXACTLY ONE MESSAGE IS DELIVERED (MSG-FR-002 AC)',
+        history?.messages?.length === 1,
+        `${history?.messages?.length} messages`,
+      );
+    }
+    {
+      const r = await post(
+        `/conversations/${conversationId}/messages`,
+        { clientMessageId: randomUUID(), body: '   ' },
+        sender.token,
+      );
+      const body = await r.json();
+      check(
+        'a whitespace-only message is refused',
+        r.status === 400 && body?.error?.code === 'VALIDATION_FAILED',
+        `status ${r.status} code ${body?.error?.code}`,
+      );
+    }
+    {
+      const r = await post(
+        `/conversations/${conversationId}/messages`,
+        { clientMessageId: randomUUID(), body: 'a'.repeat(2001) },
+        sender.token,
+      );
+      check('over 2,000 characters is refused', r.status === 400, `status ${r.status}`);
+    }
+
+    // ---- MSG-FR-005: it landed as a REQUEST ------------------------------
+    {
+      const requests = await (await get('/conversations?section=REQUESTS', recipient.token)).json();
+      check(
+        'A FIRST MESSAGE FROM A NON-FOLLOWER IS A MESSAGE REQUEST (MSG-FR-005)',
+        requests?.conversations?.some((c) => c.conversationId === conversationId),
+        `${requests?.conversations?.length} requests`,
+      );
+
+      const inbox = await (await get('/conversations', recipient.token)).json();
+      check(
+        'and it is NOT in the ordinary inbox - a separate section',
+        (inbox?.conversations ?? []).every((c) => c.conversationId !== conversationId),
+      );
+
+      const senderInbox = await (await get('/conversations', sender.token)).json();
+      check(
+        'THE SENDER SEES AN ORDINARY THREAD, not a request (the BR-028 mechanism)',
+        senderInbox?.conversations?.some(
+          (c) => c.conversationId === conversationId && c.requestState === 'ACCEPTED',
+        ),
+      );
+
+      const counts = await (await get('/conversations/unread', recipient.token)).json();
+      check(
+        'the request count is separate from the conversation count',
+        counts?.requests === 1 && counts?.conversations === 0,
+        JSON.stringify(counts),
+      );
+    }
+
+    // ---- MSG-FR-009: reading a request signals nothing --------------------
+    {
+      const marked = await post(
+        `/conversations/${conversationId}/read`,
+        undefined,
+        recipient.token,
+      );
+      check('a request can be read', marked.status === 204, `status ${marked.status}`);
+
+      const senderView = await (
+        await get(`/conversations/${conversationId}/messages`, sender.token)
+      ).json();
+      check(
+        'READING A MESSAGE REQUEST PRODUCES NO READ RECEIPT (MSG-FR-009 AC)',
+        senderView?.messages?.[0]?.readAt === null,
+        `readAt ${senderView?.messages?.[0]?.readAt}`,
+      );
+    }
+
+    // ---- accepting turns receipts on -------------------------------------
+    {
+      const accepted = await post(
+        `/conversations/${conversationId}/accept`,
+        undefined,
+        recipient.token,
+      );
+      check('a request can be accepted', accepted.status === 204, `status ${accepted.status}`);
+
+      const inbox = await (await get('/conversations', recipient.token)).json();
+      check(
+        'and it moves to the main inbox',
+        inbox?.conversations?.some((c) => c.conversationId === conversationId),
+      );
+
+      await post(`/conversations/${conversationId}/read`, undefined, recipient.token);
+      const senderView = await (
+        await get(`/conversations/${conversationId}/messages`, sender.token)
+      ).json();
+      check(
+        'NOW a read receipt appears for the sender',
+        typeof senderView?.messages?.[0]?.readAt === 'string',
+        `readAt ${senderView?.messages?.[0]?.readAt}`,
+      );
+
+      const recipientView = await (
+        await get(`/conversations/${conversationId}/messages`, recipient.token)
+      ).json();
+      check(
+        'but not on the reader own view of the same message',
+        recipientView?.messages?.[0]?.readAt === null,
+      );
+    }
+
+    // ---- MSG-FR-004 E1: reconnect ----------------------------------------
+    {
+      const boundary = new Date().toISOString();
+      await post(
+        `/conversations/${conversationId}/messages`,
+        { clientMessageId: randomUUID(), body: 'after the boundary' },
+        sender.token,
+      );
+
+      const missed = await (
+        await get(
+          `/conversations/${conversationId}/messages/since?since=${encodeURIComponent(boundary)}`,
+          recipient.token,
+        )
+      ).json();
+      check(
+        'the reconnect path returns only what was missed (MSG-FR-004 E1)',
+        missed?.messages?.length === 1 && missed.messages[0].body === 'after the boundary',
+        `${missed?.messages?.length} messages`,
+      );
+    }
+
+    // ---- MSG-FR-006 / EDGE-019: blocking ---------------------------------
+    {
+      await send('PUT', `/users/${sender.userId}/block`, undefined, recipient.token);
+
+      const inbox = await (await get('/conversations', recipient.token)).json();
+      check(
+        'A BLOCK HIDES THE CONVERSATION FROM THE BLOCKER (MSG-FR-003 AC)',
+        (inbox?.conversations ?? []).every((c) => c.conversationId !== conversationId),
+        `${inbox?.conversations?.length} conversations`,
+      );
+
+      const refused = await post(
+        `/conversations/${conversationId}/messages`,
+        { clientMessageId: randomUUID(), body: 'are you there?' },
+        sender.token,
+      );
+      const refusedBody = await refused.json();
+      check(
+        'THE BLOCKED SENDER IS REFUSED WITHOUT BEING TOLD (MSG-FR-006 AC)',
+        refused.status === 404 && refusedBody?.error?.code === 'RESOURCE_UNAVAILABLE',
+        `status ${refused.status} code ${refusedBody?.error?.code}`,
+      );
+
+      const nonexistent = await post(
+        `/conversations/${randomUUID()}/messages`,
+        { clientMessageId: randomUUID(), body: 'anything' },
+        sender.token,
+      );
+      const nonexistentBody = await nonexistent.json();
+      check(
+        'and the refusal is IDENTICAL to a conversation that never existed',
+        nonexistent.status === refused.status &&
+          nonexistentBody?.error?.code === refusedBody?.error?.code,
+        `${nonexistent.status}/${nonexistentBody?.error?.code}`,
+      );
+
+      const history = await get(`/conversations/${conversationId}/messages`, sender.token);
+      check('history is unreachable across a block', history.status === 404);
+
+      // ---- SAFETY-FR-006: unblocking restores it intact ------------------
+      await send('DELETE', `/users/${sender.userId}/block`, undefined, recipient.token);
+
+      const restored = await (await get('/conversations', recipient.token)).json();
+      check(
+        'UNBLOCKING RESTORES THE CONVERSATION WITH ITS HISTORY INTACT (MSG-FR-003 AC)',
+        restored?.conversations?.some((c) => c.conversationId === conversationId),
+      );
+
+      const messages = await (
+        await get(`/conversations/${conversationId}/messages`, recipient.token)
+      ).json();
+      check(
+        'and nothing was lost while it was hidden',
+        (messages?.messages?.length ?? 0) >= 2,
+        `${messages?.messages?.length} messages`,
+      );
+    }
+
+    // ---- MSG-FR-005 A1: a decline is silent -------------------------------
+    {
+      const stranger = await onboard(Date.now() + 333);
+      const opened = await (
+        await post('/conversations', { userId: recipient.userId }, stranger.token)
+      ).json();
+      await post(
+        `/conversations/${opened.conversationId}/messages`,
+        { clientMessageId: randomUUID(), body: 'hello neighbour' },
+        stranger.token,
+      );
+
+      const before = await (await get('/conversations', stranger.token)).json();
+      await post(`/conversations/${opened.conversationId}/decline`, undefined, recipient.token);
+      const after = await (await get('/conversations', stranger.token)).json();
+
+      check(
+        'A DECLINE CHANGES NOTHING THE SENDER CAN SEE (BR-028)',
+        JSON.stringify(before) === JSON.stringify(after),
+        'the sender view differs after the decline',
+      );
+
+      const followUp = await post(
+        `/conversations/${opened.conversationId}/messages`,
+        { clientMessageId: randomUUID(), body: 'still here' },
+        stranger.token,
+      );
+      check(
+        'a further message is ACCEPTED, not refused - refusing would disclose the decline',
+        followUp.status === 201,
+        `status ${followUp.status}`,
+      );
+
+      const requests = await (await get('/conversations?section=REQUESTS', recipient.token)).json();
+      check(
+        'but it raises NO NEW REQUEST (MSG-FR-005 A1)',
+        (requests?.conversations ?? []).every((c) => c.conversationId !== opened.conversationId),
+      );
+    }
+
+    // ---- MSG-FR-005 A3: following promotes a pending request --------------
+    {
+      const admirer = await onboard(Date.now() + 444);
+      const opened = await (
+        await post('/conversations', { userId: recipient.userId }, admirer.token)
+      ).json();
+      await post(
+        `/conversations/${opened.conversationId}/messages`,
+        { clientMessageId: randomUUID(), body: 'assalam o alaikum' },
+        admirer.token,
+      );
+
+      const asRequest = await (
+        await get('/conversations?section=REQUESTS', recipient.token)
+      ).json();
+      check(
+        'it starts as a request',
+        asRequest?.conversations?.some((c) => c.conversationId === opened.conversationId),
+      );
+
+      await send('PUT', `/users/${admirer.userId}/follow`, undefined, recipient.token);
+
+      const inbox = await (await get('/conversations', recipient.token)).json();
+      check(
+        'FOLLOWING THE SENDER PROMOTES THE REQUEST TO THE INBOX (MSG-FR-005 A3)',
+        inbox?.conversations?.some((c) => c.conversationId === opened.conversationId),
+        `${inbox?.conversations?.length} conversations`,
+      );
+    }
+
+    // ---- opening a thread notifies nobody ---------------------------------
+    {
+      const shy = await onboard(Date.now() + 555);
+      const quiet = await onboard(Date.now() + 666);
+      await post('/conversations', { userId: quiet.userId }, shy.token);
+
+      const counts = await (await get('/conversations/unread', quiet.token)).json();
+      check(
+        'OPENING A THREAD AND SAYING NOTHING RAISES NO REQUEST BADGE',
+        counts?.requests === 0 && counts?.conversations === 0,
+        JSON.stringify(counts),
+      );
+    }
+
+    // ---- the routes are guarded -------------------------------------------
+    {
+      const anon = await get('/conversations');
+      check('messaging routes are guarded like everything else', anon.status === 401);
+
+      const stranger = await onboard(Date.now() + 777);
+      const peek = await get(`/conversations/${conversationId}/messages`, stranger.token);
+      check(
+        'a non-participant cannot read a conversation (SEC-011)',
+        peek.status === 404,
+        `status ${peek.status}`,
+      );
+
+      const intrude = await post(
+        `/conversations/${conversationId}/messages`,
+        { clientMessageId: randomUUID(), body: 'let me in' },
+        stranger.token,
+      );
+      check('nor write to one', intrude.status === 404, `status ${intrude.status}`);
+    }
+  }
+
+  console.log('\n--- messaging over the socket (ADR-009) ---');
+  {
+    const { io } = await import('socket.io-client');
+    const socketPath = process.env.SOCKET_IO_PATH ?? '/realtime';
+    const connect = (token) =>
+      io(`${base}/messaging`, {
+        path: socketPath,
+        transports: ['websocket'],
+        timeout: 5000,
+        reconnection: false,
+        ...(token === undefined ? {} : { auth: { token } }),
+      });
+
+    const settle = (socket, extra) =>
+      new Promise((done) => {
+        const timer = setTimeout(() => done('no answer'), 5000);
+        socket.on('connect_error', () => {
+          clearTimeout(timer);
+          done('refused');
+        });
+        socket.on('disconnect', () => {
+          clearTimeout(timer);
+          done('disconnected');
+        });
+        socket.on('connect', () => {
+          if (extra === undefined) {
+            clearTimeout(timer);
+            done('connected');
+          }
+        });
+      });
+
+    // ---- ADR-009: the handshake is authenticated --------------------------
+    {
+      const anon = connect(undefined);
+      const outcome = await settle(anon);
+      anon.close();
+      check(
+        'AN UNAUTHENTICATED SOCKET IS REFUSED AT HANDSHAKE (ADR-009)',
+        outcome === 'refused' || outcome === 'disconnected',
+        `outcome ${outcome}`,
+      );
+    }
+    {
+      const bogus = connect('not-a-real-token');
+      const outcome = await settle(bogus);
+      bogus.close();
+      check(
+        'and so is a bogus token',
+        outcome === 'refused' || outcome === 'disconnected',
+        `outcome ${outcome}`,
+      );
+    }
+
+    // ---- delivery within 3 seconds (NFR-PERF-007) -------------------------
+    {
+      const a = await onboard(Date.now() + 888);
+      const b = await onboard(Date.now() + 999);
+      // Followed, so the thread is an ordinary conversation rather than a
+      // request - a request is deliberately quieter, and this assertion is
+      // about the transport rather than about the request rules.
+      await send('PUT', `/users/${a.userId}/follow`, undefined, b.token);
+
+      const socketA = connect(a.token);
+      const socketB = connect(b.token);
+
+      const connected = await Promise.all(
+        [socketA, socketB].map(
+          (s) =>
+            new Promise((done) => {
+              const timer = setTimeout(() => done(false), 5000);
+              s.on('connect', () => {
+                clearTimeout(timer);
+                done(true);
+              });
+              s.on('connect_error', () => {
+                clearTimeout(timer);
+                done(false);
+              });
+            }),
+        ),
+      );
+      check(
+        'an authenticated socket connects',
+        connected.every(Boolean),
+        JSON.stringify(connected),
+      );
+
+      const clientMessageId = randomUUID();
+      const delivered = new Promise((done) => {
+        const timer = setTimeout(() => done(null), 3000);
+        socketB.on('message:new', (m) => {
+          clearTimeout(timer);
+          done(m);
+        });
+      });
+
+      const ack = await new Promise((done) => {
+        const timer = setTimeout(() => done(null), 5000);
+        socketA.emit(
+          'message:send',
+          { recipientId: b.userId, clientMessageId, body: 'socket salaam' },
+          (answer) => {
+            clearTimeout(timer);
+            done(answer);
+          },
+        );
+      });
+      check(
+        'the socket acknowledges a send',
+        ack?.ok === true,
+        JSON.stringify(ack ?? null).slice(0, 160),
+      );
+
+      const received = await delivered;
+      check(
+        'A MESSAGE REACHES THE RECIPIENT WITHIN 3 SECONDS (NFR-PERF-007)',
+        received?.clientMessageId === clientMessageId,
+        `received ${JSON.stringify(received ?? null).slice(0, 160)}`,
+      );
+
+      // ---- the SAME id over REST does not duplicate (ADR-009 step 6) ------
+      const overRest = await post(
+        `/conversations/${received?.conversationId}/messages`,
+        { clientMessageId, body: 'socket salaam' },
+        a.token,
+      );
+      const overRestBody = await overRest.json();
+      check(
+        'SWITCHING TRANSPORT WITH THE SAME CLIENT ID CANNOT DUPLICATE (ADR-009 step 6)',
+        overRest.status === 200 && overRestBody?.id === received?.id,
+        `status ${overRest.status} ${received?.id} vs ${overRestBody?.id}`,
+      );
+
+      // ---- per-event re-authorisation (BR-035) ----------------------------
+      await post('/logout', {}, a.token);
+      const afterRevoke = await new Promise((done) => {
+        const timer = setTimeout(() => done('no answer'), 5000);
+        socketA.on('disconnect', () => {
+          clearTimeout(timer);
+          done('disconnected');
+        });
+        socketA.emit(
+          'message:send',
+          { recipientId: b.userId, clientMessageId: randomUUID(), body: 'after logout' },
+          (answer) => {
+            clearTimeout(timer);
+            done(answer?.ok === true ? 'accepted' : 'refused');
+          },
+        );
+      });
+      check(
+        'A REVOKED SESSION STOPS WORKING MID-STREAM (BR-035, ADR-009)',
+        afterRevoke === 'refused' || afterRevoke === 'disconnected',
+        `outcome ${afterRevoke}`,
+      );
+
+      socketA.close();
+      socketB.close();
+    }
+  }
+
   console.log('\n--- no secret leaves the server ---');
   {
     const r = await post('/login', { phone, password: 'synthetic-Wrong-Passw0rd' });
