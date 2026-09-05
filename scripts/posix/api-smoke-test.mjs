@@ -3051,6 +3051,294 @@ async function main() {
     }
   }
 
+  console.log('\n--- reporting and the auto-hide threshold (EPIC-12) ---');
+  {
+    const author = await onboard(Date.now() + 20111);
+    const reporters = [];
+    for (let i = 0; i < 4; i += 1) reporters.push(await onboard(Date.now() + 20200 + i));
+
+    const fileReport = (reporter, targetType, targetId, reasonCode, note) =>
+      post(
+        '/reports',
+        { targetType, targetId, reasonCode, ...(note ? { note } : {}) },
+        reporter.token,
+      );
+
+    const postVisibleTo = async (viewer, id) => (await get(`/posts/${id}`, viewer.token)).status;
+
+    // ---- SAFETY-FR-001: one acknowledgement, always the same -------------
+    let postId;
+    {
+      const created = await (
+        await post(
+          '/posts',
+          { body: 'The council has not fixed the drain for six weeks' },
+          author.token,
+        )
+      ).json();
+      postId = created.id;
+
+      const first = await fileReport(reporters[0], 'POST', postId, 'SPAM_OR_MISLEADING');
+      const firstBody = await first.json();
+      check(
+        'POST /reports acknowledges with 202 (SAFE-API-001)',
+        first.status === 202,
+        `status ${first.status} ${JSON.stringify(firstBody)}`,
+      );
+
+      const repeat = await fileReport(reporters[0], 'POST', postId, 'SPAM_OR_MISLEADING');
+      const repeatBody = await repeat.json();
+      check(
+        'A REPEAT REPORT RETURNS AN IDENTICAL ACKNOWLEDGEMENT (SAFETY-FR-001 AC)',
+        repeat.status === first.status && JSON.stringify(repeatBody) === JSON.stringify(firstBody),
+        `${repeat.status}/${JSON.stringify(repeatBody)} vs ${first.status}/${JSON.stringify(firstBody)}`,
+      );
+      check(
+        'and it carries NO TALLY - not a count, not a state, not a digit',
+        !/\d/.test(JSON.stringify(firstBody)),
+        JSON.stringify(firstBody),
+      );
+
+      const own = await fileReport(author, 'POST', postId, 'SPAM_OR_MISLEADING');
+      const ownBody = await own.json();
+      check(
+        'a user cannot report their own content',
+        own.status === 400 && ownBody?.error?.details?.[0]?.message === 'CANNOT_REPORT_OWN_CONTENT',
+        `status ${own.status} ${JSON.stringify(ownBody?.error?.details)}`,
+      );
+    }
+
+    // ---- SAFETY-FR-004 / BR-032: three distinct reporters hide it --------
+    {
+      check(
+        'the post is still visible after one reporter',
+        (await postVisibleTo(reporters[1], postId)) === 200,
+      );
+
+      await fileReport(reporters[1], 'POST', postId, 'HARASSMENT_OR_BULLYING');
+      check(
+        'and after two - EDGE-023 means the repeat above did not count',
+        (await postVisibleTo(reporters[2], postId)) === 200,
+      );
+
+      await fileReport(reporters[2], 'POST', postId, 'SPAM_OR_MISLEADING');
+      check(
+        'AT THREE DISTINCT REPORTERS IT IS AUTO-HIDDEN (SAFETY-FR-004, BR-032)',
+        (await postVisibleTo(reporters[3], postId)) === 404,
+        `status ${await postVisibleTo(reporters[3], postId)}`,
+      );
+
+      const toAuthor = await (await get(`/posts/${postId}`, author.token)).json();
+      check(
+        'BUT ITS AUTHOR STILL SEES IT, MARKED UNDER REVIEW (PROFILE-FR-004 AC)',
+        toAuthor?.underReview === true,
+        JSON.stringify({ underReview: toAuthor?.underReview }),
+      );
+
+      check(
+        'and it was HIDDEN, never deleted - the automatic step is reversible (BR-032)',
+        toAuthor?.id === postId,
+      );
+    }
+
+    // ---- SAFETY-FR-002: a profile is never auto-hidden -------------------
+    {
+      const target = await onboard(Date.now() + 20333);
+      for (let i = 0; i < 4; i += 1) {
+        const r = await onboard(Date.now() + 20400 + i);
+        await fileReport(r, 'PROFILE', target.userId, 'HARASSMENT_OR_BULLYING');
+      }
+
+      const stillThere = await get(`/users/${target.userId}`, reporters[0].token);
+      check(
+        'AN ACCOUNT REPORTED BY FOUR DISTINCT USERS REMAINS VISIBLE (SAFETY-FR-002 AC)',
+        stillThere.status === 200,
+        `status ${stillThere.status}`,
+      );
+    }
+
+    // ---- BR-044: an event hides at TWO ------------------------------------
+    {
+      const organiser = await onboard(Date.now() + 20555);
+      const event = await (
+        await post(
+          '/events',
+          {
+            title: 'Free food distribution tomorrow',
+            description: 'Come to the corner at noon; there is enough for everyone.',
+            startsAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+            eventType: 'PHYSICAL',
+            locationText: 'The corner by the bakery',
+          },
+          organiser.token,
+        )
+      ).json();
+
+      await fileReport(reporters[0], 'EVENT', event.id, 'FALSE_INFORMATION');
+      check(
+        'one report leaves the event visible',
+        (await get(`/events/${event.id}`, reporters[2].token)).status === 200,
+      );
+
+      await fileReport(reporters[1], 'EVENT', event.id, 'FALSE_INFORMATION');
+      check(
+        'AT TWO REPORTS AN EVENT IS HIDDEN - lower than a post (BR-044)',
+        (await get(`/events/${event.id}`, reporters[2].token)).status === 404,
+        `status ${(await get(`/events/${event.id}`, reporters[2].token)).status}`,
+      );
+    }
+
+    // ---- SAFETY-FR-003: severity is not the reporter's to choose ---------
+    {
+      const r = await post(
+        '/reports',
+        {
+          targetType: 'POST',
+          targetId: postId,
+          reasonCode: 'SPAM_OR_MISLEADING',
+          severity: 'CRITICAL',
+        },
+        reporters[3].token,
+      );
+      check(
+        'a reporter cannot set severity - the field is rejected outright',
+        r.status === 400,
+        `status ${r.status}`,
+      );
+    }
+    {
+      const r = await post(
+        '/reports',
+        { targetType: 'POST', targetId: postId, reasonCode: 'BECAUSE_I_SAID_SO' },
+        reporters[3].token,
+      );
+      check('an invented reason is refused', r.status === 400, `status ${r.status}`);
+    }
+    {
+      const r = await post(
+        '/reports',
+        {
+          targetType: 'POST',
+          targetId: postId,
+          reasonCode: 'SPAM_OR_MISLEADING',
+          note: 'x'.repeat(2500),
+        },
+        reporters[3].token,
+      );
+      check('an oversized note is refused', r.status === 400, `status ${r.status}`);
+    }
+
+    // ---- SAFETY-FR-009: the report rate limit ----------------------------
+    {
+      const prolific = await onboard(Date.now() + 20777);
+      const filler = await onboard(Date.now() + 20888);
+      let limited = null;
+
+      for (let i = 0; i < 21 && limited === null; i += 1) {
+        const target = await (
+          await post('/posts', { body: `Something to report number ${i}` }, filler.token)
+        ).json();
+        const r = await fileReport(prolific, 'POST', target.id, 'SPAM_OR_MISLEADING');
+        if (r.status === 429) limited = await r.json();
+      }
+
+      check(
+        'THE TWENTY-FIRST REPORT IN A DAY IS REFUSED (SAFETY-FR-009)',
+        limited !== null && limited?.error?.code === 'RATE_LIMITED',
+        `code ${limited?.error?.code}`,
+      );
+      check(
+        'and the refusal states the limit and the reset time, not a silent failure',
+        /20 reports/.test(String(limited?.error?.message)) &&
+          typeof limited?.error?.details?.[0]?.message === 'string',
+        `${limited?.error?.message} | ${limited?.error?.details?.[0]?.message}`,
+      );
+    }
+
+    // ---- EDGE-025: the author deleted it first ---------------------------
+    {
+      const quick = await onboard(Date.now() + 20999);
+      const doomed = await (
+        await post('/posts', { body: 'This will be deleted before review' }, quick.token)
+      ).json();
+
+      for (let i = 0; i < 3; i += 1) {
+        const r = await onboard(Date.now() + 21100 + i);
+        await fileReport(r, 'POST', doomed.id, 'SPAM_OR_MISLEADING');
+      }
+      check(
+        'it is hidden by the threshold first',
+        (await get(`/posts/${doomed.id}`, reporters[0].token)).status === 404,
+      );
+
+      const deleted = await send('DELETE', `/posts/${doomed.id}`, undefined, quick.token);
+      check(
+        'THE AUTHOR CAN STILL DELETE THEIR OWN AUTO-HIDDEN CONTENT (EDGE-025)',
+        deleted.status === 204,
+        `status ${deleted.status}`,
+      );
+      check(
+        'and then it is gone even for them',
+        (await get(`/posts/${doomed.id}`, quick.token)).status === 404,
+      );
+    }
+
+    // ---- MSG-FR-007: reporting a conversation ----------------------------
+    {
+      const a = await onboard(Date.now() + 21222);
+      const b = await onboard(Date.now() + 21333);
+      const opened = await (await post('/conversations', { userId: b.userId }, a.token)).json();
+      await post(
+        `/conversations/${opened.conversationId}/messages`,
+        { clientMessageId: randomUUID(), body: 'something a moderator would need to read' },
+        a.token,
+      );
+
+      const reported = await fileReport(
+        b,
+        'CONVERSATION',
+        opened.conversationId,
+        'HARASSMENT_OR_BULLYING',
+      );
+      check(
+        'A PARTICIPANT CAN REPORT A CONVERSATION (MSG-FR-007)',
+        reported.status === 202,
+        `status ${reported.status}`,
+      );
+
+      const stranger = await onboard(Date.now() + 21444);
+      const byStranger = await fileReport(
+        stranger,
+        'CONVERSATION',
+        opened.conversationId,
+        'HARASSMENT_OR_BULLYING',
+      );
+      check(
+        'a non-participant reporting it changes nothing about their access',
+        (await get(`/conversations/${opened.conversationId}/messages`, stranger.token)).status ===
+          404,
+        `report status ${byStranger.status}`,
+      );
+
+      const stillReadable = await get(`/conversations/${opened.conversationId}/messages`, b.token);
+      check(
+        'A REPORTED CONVERSATION IS NEVER AUTO-HIDDEN (MSG-FR-007)',
+        stillReadable.status === 200,
+        `status ${stillReadable.status}`,
+      );
+    }
+
+    // ---- the route is guarded --------------------------------------------
+    {
+      const anon = await post('/reports', {
+        targetType: 'POST',
+        targetId: postId,
+        reasonCode: 'SPAM_OR_MISLEADING',
+      });
+      check('reporting is guarded like everything else', anon.status === 401);
+    }
+  }
+
   console.log('\n--- no secret leaves the server ---');
   {
     const r = await post('/login', { phone, password: 'synthetic-Wrong-Passw0rd' });

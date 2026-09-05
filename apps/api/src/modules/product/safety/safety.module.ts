@@ -10,16 +10,32 @@ import { PgMessagingRepository } from '../messaging/repositories/pg-messaging.re
 import { FollowRemovalAdapter } from '../social-graph/adapters/follow-removal.adapter.js';
 import { FOLLOW_REPOSITORY } from '../social-graph/repositories/follow.repository.port.js';
 import { PgFollowRepository } from '../social-graph/repositories/pg-follow.repository.js';
+import { AuditModule } from '../../platform/audit/audit.module.js';
+import { REPORT_REPOSITORY } from './repositories/report.repository.port.js';
+import { PgReportRepository } from './repositories/pg-report.repository.js';
+import { ReportService } from './application/report.service.js';
+import { ReportController } from './transport/report.controller.js';
 import { BlockService } from './application/block.service.js';
 import { BlockController } from './transport/block.controller.js';
 
 /**
- * `safety` — product tier. Blocking half of EPIC-05; reports and moderation
- * cases follow in EPIC-12.
+ * `safety` — product tier. Blocking (EPIC-05) and reporting, the auto-hide
+ * threshold and moderation cases (EPIC-12).
  *
  * Owns `blocks` and the SHARED block predicate (§165), which every read path in
  * the product consults. One implementation, because there are nine read paths
  * and a block that leaks on any one of them leaks entirely.
+ *
+ * Also owns `reports`, `moderation_cases` and `enforcement_actions`. The
+ * threshold that hides content lives here rather than in the modules that own
+ * the content, because it is ONE rule with per-type numbers - and a copy in
+ * posts, another in comments and a third in events would be three chances to
+ * get BR-032 wrong in the permissive direction.
+ *
+ * `AuditModule` is imported because every auto-hide and every moderation
+ * decision is audited IN THE SAME TRANSACTION as the act. An audit row for a
+ * hide that rolled back is a false record; a hide with no audit row is an
+ * invisible act of moderation. Both are worse than either being late.
  *
  * WHY THIS MODULE WIRES SOCIAL-GRAPH'S REPOSITORY.
  *
@@ -36,8 +52,8 @@ import { BlockController } from './transport/block.controller.js';
  * creates no import edge back into `SocialGraphModule`.
  */
 @Module({
-  imports: [IdentityModule],
-  controllers: [BlockController],
+  imports: [IdentityModule, AuditModule],
+  controllers: [BlockController, ReportController],
   providers: [
     PgBlockRepository,
     { provide: BLOCK_REPOSITORY, useExisting: PgBlockRepository },
@@ -58,10 +74,15 @@ import { BlockController } from './transport/block.controller.js';
     { provide: CONVERSATION_HIDING, useExisting: ConversationHidingAdapter },
 
     BlockService,
+
+    // EPIC-12. Reporting, the auto-hide threshold and moderation cases.
+    PgReportRepository,
+    { provide: REPORT_REPOSITORY, useExisting: PgReportRepository },
+    ReportService,
   ],
   // `BlockService` is the block predicate for the rest of the product. The
   // repository is not exported: nothing outside safety reads or writes `blocks`
   // directly, so "who blocked whom" has exactly one gatekeeper.
-  exports: [BlockService],
+  exports: [BlockService, ReportService],
 })
 export class SafetyModule {}

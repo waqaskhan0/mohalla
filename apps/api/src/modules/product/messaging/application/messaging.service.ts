@@ -505,6 +505,50 @@ export class MessagingService {
     );
   }
 
+  // ---------------------------------------------------- reporting (MSG-FR-007)
+  /**
+   * A bounded excerpt of a conversation, for a report.
+   *
+   * MSG-FR-007: "the report and A BOUNDED EXCERPT of that conversation enter
+   * the moderation queue." Bounded is the operative word — an administrator
+   * reviewing a harassment report needs enough to judge it, and PRIV-009 says
+   * they "may read only the reported conversation, only after the report".
+   * Handing over the entire history would exceed what the report justifies.
+   *
+   * ONLY A PARTICIPANT MAY PRODUCE ONE. The check is the same `access` every
+   * other path uses, so a stranger reporting a conversation id they guessed
+   * gets the same nothing they would get anywhere else — and cannot use the
+   * report endpoint to extract messages.
+   *
+   * THE ACCESS IS AUDITED WHERE IT IS READ, not here. This produces the text;
+   * `13` §6 requires the audit entry when an ADMINISTRATOR reads it, which is
+   * EPIC-13's route. Auditing at production time would record the reporter
+   * rather than the reader, and PRIV-009's promise is about the reader.
+   */
+  async excerptForReport(
+    viewerId: string,
+    conversationId: string,
+    limit = 20,
+  ): Promise<{ messages: MessageView[]; totalInConversation: number } | null> {
+    const access = await this.access(viewerId, conversationId);
+    if (access === null) return null;
+
+    const page = await this.repo.listMessages(conversationId, clampLimit(limit, 50), undefined);
+
+    // Receipts are irrelevant to a moderator and would leak read state into a
+    // surface the participants never see, so the excerpt carries none.
+    return {
+      messages: page.messages.map((m) =>
+        this.toMessageView(m, {
+          otherLastReadAt: null,
+          receiptsAllowed: false,
+          viewerId,
+        }),
+      ),
+      totalInConversation: page.messages.length,
+    };
+  }
+
   // -------------------------------------------------------- media (MSG-FR-008)
   /**
    * Is this media attached to a message in a conversation the viewer is in?
