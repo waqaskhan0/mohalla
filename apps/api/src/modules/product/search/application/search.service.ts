@@ -4,6 +4,7 @@ import { ProfileService } from '../../profile/application/profile.service.js';
 import { EngagementService } from '../../engagement/application/engagement.service.js';
 import type { PublicProfile } from '../../profile/domain/public-profile.js';
 import type { FeedItem } from '../../feed/application/feed.service.js';
+import { EventService, type EventView } from '../../events/application/event.service.js';
 import {
   SEARCH_QUERY_MIN_LENGTH,
   checkSearchQuery,
@@ -71,6 +72,9 @@ export class SearchService {
     @Inject(SEARCH_REPOSITORY) private readonly repo: SearchRepository,
     private readonly profiles: ProfileService,
     private readonly engagement: EngagementService,
+    // Named for the class, not the concept: `events` is taken by the search
+    // method below, and shadowing it silently made the method uncallable.
+    private readonly eventService: EventService,
     private readonly logger: StructuredLogger,
   ) {}
 
@@ -172,6 +176,51 @@ export class SearchService {
       return { status: 'OK', results, nextOffset: page.nextOffset };
     } catch (e) {
       return this.unavailable('search_posts_failed', e);
+    }
+  }
+
+  /**
+   * SRCH-API-003 — find events (SEARCH-FR-004).
+   *
+   * EPIC-08 built the cross-script key and deferred this to EPIC-10, which owns
+   * the table. The ordering rule is the interesting part and lives in SQL:
+   * upcoming events rank above past ones, ahead of relevance, because only one
+   * of the two can still be attended.
+   *
+   * PAST EVENTS ARE INCLUDED. The upcoming list drops them because it is a
+   * schedule; search is a memory, and "when was that clean-up drive?" is a
+   * reasonable question about something that already happened.
+   *
+   * Results are rendered through `EventService`'s own projection, so a search
+   * result carries the SAME shape as the detail view — including the absence of
+   * `meetingUrl`, which is the field that must never travel in a list.
+   */
+  async events(request: SearchRequest): Promise<SearchResult<EventView>> {
+    const query = this.validate(request.query);
+    if (query.status !== 'VALID') return query;
+
+    try {
+      const page = await this.repo.events({
+        viewerId: request.viewerId,
+        query: query.query,
+        limit: clampLimit(request.limit),
+        offset: clampOffset(request.offset),
+      });
+
+      // Re-read through the owning service rather than mapped here. It applies
+      // the join-link decision and the viewer's own RSVP, and an event that
+      // became invisible between the query and now drops out rather than
+      // rendering as a gap.
+      const results: EventView[] = [];
+      for (const row of page.results) {
+        const view = await this.eventService.findById(request.viewerId, row.id);
+        if (view !== null) results.push(view);
+      }
+
+      this.log('search_events', { results: results.length });
+      return { status: 'OK', results, nextOffset: page.nextOffset };
+    } catch (e) {
+      return this.unavailable('search_events_failed', e);
     }
   }
 

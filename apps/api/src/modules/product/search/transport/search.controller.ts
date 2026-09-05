@@ -25,7 +25,7 @@ const searchQuery = z
 type SearchQuery = z.infer<typeof searchQuery>;
 
 /**
- * Search (SRCH-API-001…003).
+ * Search (SRCH-API-001…003) - people, posts and events.
  *
  * THE STATUS CODES CARRY A DISTINCTION THE REST OF THIS API DELIBERATELY
  * COLLAPSES. Everywhere else, failures become one neutral answer so a caller
@@ -83,6 +83,30 @@ export class SearchController {
   ) {
     return this.render(
       await this.search.posts({
+        viewerId: principal.userId,
+        query: query.q,
+        ...(query.limit !== undefined ? { limit: query.limit } : {}),
+        ...(query.offset !== undefined ? { offset: query.offset } : {}),
+      }),
+    );
+  }
+
+  @Get('search/events')
+  @ApiOperation({
+    summary: 'Find events by title and description (SRCH-API-003, SEARCH-FR-004).',
+    description:
+      'UPCOMING EVENTS RANK ABOVE PAST ONES, ahead of relevance - a perfectly-matching event ' +
+      'that happened last year is less useful than a near-matching one next week, because ' +
+      'only one of them can still be attended. Past events are ranked DOWN rather than ' +
+      'excluded: the upcoming list is a schedule, but search is a memory. Cross-script, like ' +
+      'every other search here. No result carries a meetingUrl.',
+  })
+  async events(
+    @Principal() principal: AuthenticatedPrincipal,
+    @Query(new ZodValidationPipe(searchQuery)) query: SearchQuery,
+  ) {
+    return this.render(
+      await this.search.events({
         viewerId: principal.userId,
         query: query.q,
         ...(query.limit !== undefined ? { limit: query.limit } : {}),

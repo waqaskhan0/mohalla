@@ -1,5 +1,6 @@
 import type { PoolClient } from 'pg';
 import type { PostRecord } from '../../posts/repositories/post.repository.port.js';
+import type { EventRecord } from '../../events/repositories/event.repository.port.js';
 
 export const SEARCH_REPOSITORY = Symbol.for('mohalla.search.repository');
 
@@ -35,4 +36,19 @@ export interface SearchRepository {
    * is not found by searching its exact text.
    */
   posts(request: SearchRequest, client?: PoolClient): Promise<SearchPage<PostRecord>>;
+
+  /**
+   * SEARCH-FR-004 — find events by title and description.
+   *
+   * "Upcoming events rank above past ones", which is a THIRD ordering rule on
+   * top of relevance and recency, and the acceptance criterion is exactly that:
+   * "GIVEN a past and an upcoming event both matching the query, WHEN results
+   * render, THEN the upcoming event appears first."
+   *
+   * Past events are RANKED DOWN rather than excluded. The upcoming list drops
+   * them (EVENT-FR-005) because it is a schedule; search is a memory, and
+   * "when was that clean-up drive?" is a reasonable question about something
+   * that already happened.
+   */
+  events(request: SearchRequest, client?: PoolClient): Promise<SearchPage<EventRecord>>;
 }

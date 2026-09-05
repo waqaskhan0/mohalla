@@ -2210,6 +2210,454 @@ async function main() {
     }
   }
 
+  console.log('\n--- events (EPIC-10) ---');
+  {
+    const organiser = await onboard(Date.now() + 1111);
+    const attendee = await onboard(Date.now() + 2222);
+
+    const inDays = (n) => new Date(Date.now() + n * 24 * 60 * 60 * 1000).toISOString();
+    const soon = () => new Date(Date.now() + 20 * 60 * 1000).toISOString();
+
+    const physical = {
+      title: 'Mohalla clean-up',
+      description: 'Bring gloves and a bag; we start at the corner shop.',
+      startsAt: inDays(7),
+      eventType: 'PHYSICAL',
+      locationText: 'Gulberg Park, Block C',
+    };
+
+    // ---- EVENT-FR-001 -----------------------------------------------------
+    let eventId;
+    {
+      const r = await post('/events', physical, organiser.token);
+      const body = await r.json();
+      check(
+        'POST /events publishes immediately, no approval step (EVENT-FR-001)',
+        r.status === 201,
+        `status ${r.status} ${JSON.stringify(body).slice(0, 140)}`,
+      );
+      eventId = body?.id;
+
+      check(
+        'ANY ACTIVE USER MAY CREATE ONE - no verification required (BR-043)',
+        body?.creatorId === organiser.userId,
+      );
+    }
+    {
+      const r = await post('/events', { ...physical, startsAt: inDays(-1) }, organiser.token);
+      const body = await r.json();
+      check(
+        'a date in the past is refused (E1)',
+        r.status === 400 && body?.error?.details?.[0]?.message === 'MUST_BE_IN_THE_FUTURE',
+        `status ${r.status} ${JSON.stringify(body?.error?.details)}`,
+      );
+    }
+    {
+      const r = await post(
+        '/events',
+        {
+          title: 'Water committee',
+          description: 'Discussing the supply schedule for next month.',
+          startsAt: inDays(7),
+          eventType: 'ONLINE',
+        },
+        organiser.token,
+      );
+      const body = await r.json();
+      check(
+        'an ONLINE event with no link is refused (E2)',
+        r.status === 400 && body?.error?.details?.[0]?.path === 'meetingUrl',
+        `status ${r.status} ${JSON.stringify(body?.error?.details)}`,
+      );
+    }
+    {
+      const r = await post(
+        '/events',
+        {
+          title: 'Water committee',
+          description: 'Discussing the supply schedule for next month.',
+          startsAt: inDays(7),
+          eventType: 'ONLINE',
+          meetingUrl: 'javascript:alert(1)',
+        },
+        organiser.token,
+      );
+      const body = await r.json();
+      check(
+        'A javascript: URL IS REFUSED, not stored (SEC-016)',
+        r.status === 400 && body?.error?.details?.[0]?.message === 'SCHEME_NOT_ALLOWED',
+        `status ${r.status} ${JSON.stringify(body?.error?.details)}`,
+      );
+    }
+
+    // ---- EVENT-FR-004: RSVP ------------------------------------------------
+    {
+      const interested = await send(
+        'PUT',
+        `/events/${eventId}/rsvp`,
+        { response: 'INTERESTED' },
+        attendee.token,
+      );
+      const ib = await interested.json();
+      check(
+        'RSVP Interested is recorded',
+        interested.status === 200 && ib?.interestedCount === 1 && ib?.goingCount === 0,
+        `status ${interested.status} ${JSON.stringify(ib).slice(0, 120)}`,
+      );
+
+      const going = await send(
+        'PUT',
+        `/events/${eventId}/rsvp`,
+        { response: 'GOING' },
+        attendee.token,
+      );
+      const gb = await going.json();
+      check(
+        'CHANGING INTERESTED TO GOING COUNTS THE PERSON ONCE (EVENT-FR-004 AC)',
+        gb?.goingCount === 1 && gb?.interestedCount === 0,
+        `going ${gb?.goingCount} interested ${gb?.interestedCount}`,
+      );
+
+      const detail = await (await get(`/events/${eventId}`, attendee.token)).json();
+      check(
+        'the detail view carries the count (EVENT-FR-006)',
+        detail?.goingCount === 1 && detail?.myResponse === 'GOING',
+        JSON.stringify({ going: detail?.goingCount, mine: detail?.myResponse }),
+      );
+
+      check(
+        'THERE IS NO ATTENDEE LIST IN THE BODY (ARCH-CONFLICT-006)',
+        detail?.attendees === undefined && !/attendee/i.test(Object.keys(detail).join(',')),
+        Object.keys(detail ?? {}).join(','),
+      );
+
+      const attendees = await get(`/events/${eventId}/attendees`, attendee.token);
+      check(
+        'AND NO /attendees ROUTE EXISTS AT ALL',
+        attendees.status === 404,
+        `status ${attendees.status}`,
+      );
+    }
+
+    // ---- EVENT-FR-003: the join link --------------------------------------
+    let onlineId;
+    {
+      const created = await (
+        await post(
+          '/events',
+          {
+            title: 'Water committee meeting',
+            description: 'Discussing the supply schedule for the next month.',
+            startsAt: inDays(3),
+            eventType: 'ONLINE',
+            meetingUrl: 'https://meet.example.com/abc-defg-hij',
+          },
+          organiser.token,
+        )
+      ).json();
+      onlineId = created?.id;
+
+      check(
+        'THE DETAIL BODY NEVER CARRIES THE MEETING LINK (EVENT-FR-003)',
+        !JSON.stringify(created).includes('meet.example.com'),
+        JSON.stringify(created).slice(0, 160),
+      );
+
+      const list = await (await get('/events', attendee.token)).json();
+      check('nor does the list', !JSON.stringify(list).includes('meet.example.com'));
+
+      const notAttending = await post(`/events/${onlineId}/join`, undefined, attendee.token);
+      const nab = await notAttending.json();
+      check(
+        'JOIN IS REFUSED WITHOUT AN RSVP, with a reason (403 not 404)',
+        notAttending.status === 403 && nab?.error?.code === 'RSVP_REQUIRED',
+        `status ${notAttending.status} code ${nab?.error?.code}`,
+      );
+
+      await send('PUT', `/events/${onlineId}/rsvp`, { response: 'GOING' }, attendee.token);
+      const tooEarly = await post(`/events/${onlineId}/join`, undefined, attendee.token);
+      const teb = await tooEarly.json();
+      check(
+        'AND REFUSED WHEN TOO EARLY - WITH THE AVAILABILITY TIME STATED (AC)',
+        tooEarly.status === 403 &&
+          teb?.error?.code === 'JOIN_LINK_NOT_YET_AVAILABLE' &&
+          typeof teb?.error?.details?.[0]?.message === 'string',
+        `status ${tooEarly.status} code ${teb?.error?.code} from ${teb?.error?.details?.[0]?.message}`,
+      );
+      check(
+        'and the refusal still does not leak the link',
+        !JSON.stringify(teb).includes('meet.example.com'),
+      );
+    }
+    {
+      // An event 20 minutes away is inside the 30-minute window.
+      const imminent = await (
+        await post(
+          '/events',
+          {
+            title: 'Emergency water meeting',
+            description: 'The supply has been cut; joining now to plan a response.',
+            startsAt: soon(),
+            eventType: 'ONLINE',
+            meetingUrl: 'https://meet.example.com/urgent-room',
+          },
+          organiser.token,
+        )
+      ).json();
+
+      await send('PUT', `/events/${imminent.id}/rsvp`, { response: 'GOING' }, attendee.token);
+      const joined = await post(`/events/${imminent.id}/join`, undefined, attendee.token);
+      const jb = await joined.json();
+      check(
+        'INSIDE THE 30-MINUTE WINDOW, AN ATTENDEE GETS THE LINK (EVENT-FR-003)',
+        joined.status === 200 && jb?.meetingUrl === 'https://meet.example.com/urgent-room',
+        `status ${joined.status} ${JSON.stringify(jb).slice(0, 120)}`,
+      );
+
+      const stranger = await onboard(Date.now() + 3333);
+      const refused = await post(`/events/${imminent.id}/join`, undefined, stranger.token);
+      check(
+        'but a non-attendee still cannot, even inside the window',
+        refused.status === 403,
+        `status ${refused.status}`,
+      );
+
+      const physicalJoin = await post(`/events/${eventId}/join`, undefined, attendee.token);
+      const pjb = await physicalJoin.json();
+      check(
+        'a physical event has no link to give',
+        physicalJoin.status === 400 && pjb?.error?.code === 'NOT_AN_ONLINE_EVENT',
+        `status ${physicalJoin.status} code ${pjb?.error?.code}`,
+      );
+    }
+
+    // ---- EVENT-FR-002: the type freezes -----------------------------------
+    {
+      const r = await send(
+        'PATCH',
+        `/events/${eventId}`,
+        { eventType: 'ONLINE', meetingUrl: 'https://meet.example.com/x', locationText: null },
+        organiser.token,
+      );
+      const body = await r.json();
+      check(
+        'THE TYPE CANNOT CHANGE ONCE PEOPLE HAVE RESPONDED (EVENT-FR-002 AC)',
+        r.status === 400 && body?.error?.code === 'EVENT_TYPE_FROZEN',
+        `status ${r.status} code ${body?.error?.code}`,
+      );
+      check(
+        'and the refusal states the reason rather than being neutral',
+        /responded/i.test(String(body?.error?.message)),
+        String(body?.error?.message),
+      );
+    }
+    {
+      // A fresh organiser: EVENT-FR-001 E4 allows five events per user per day,
+      // and the one above has spent theirs. The limit is the feature working,
+      // not the test being awkward - a smoke test that quietly stayed under it
+      // would stop exercising it.
+      const typeChanger = await onboard(Date.now() + 5555);
+      const fresh = await (
+        await post('/events', { ...physical, title: 'Type change test' }, typeChanger.token)
+      ).json();
+      const r = await send(
+        'PATCH',
+        `/events/${fresh.id}`,
+        { eventType: 'ONLINE', meetingUrl: 'https://meet.example.com/y', locationText: null },
+        typeChanger.token,
+      );
+      const body = await r.json();
+      check(
+        'A TYPE CHANGE IS ALLOWED WHILE NOBODY HAS RESPONDED',
+        r.status === 200 && body?.eventType === 'ONLINE' && body?.locationText === null,
+        `status ${r.status} type ${body?.eventType} location ${body?.locationText}`,
+      );
+    }
+
+    // ---- EVENT-FR-007: edit notices ---------------------------------------
+    {
+      const typo = await send(
+        'PATCH',
+        `/events/${eventId}`,
+        { description: 'Bring gloves and a bag; we meet at the corner shop by the bakery.' },
+        organiser.token,
+      );
+      const tb = await typo.json();
+      check(
+        'A DESCRIPTION FIX NOTIFIES NOBODY (EVENT-FR-007)',
+        typo.status === 200 && tb?.notifiedAttendees === 0,
+        `notified ${tb?.notifiedAttendees}`,
+      );
+
+      const moved = await send(
+        'PATCH',
+        `/events/${eventId}`,
+        { startsAt: inDays(8) },
+        organiser.token,
+      );
+      const mb = await moved.json();
+      check(
+        'A TIME CHANGE NOTIFIES EVERY ATTENDEE (EVENT-FR-007 AC)',
+        moved.status === 200 && mb?.notifiedAttendees === 1,
+        `notified ${mb?.notifiedAttendees}`,
+      );
+
+      const byStranger = await send(
+        'PATCH',
+        `/events/${eventId}`,
+        { title: 'Hijacked' },
+        attendee.token,
+      );
+      check(
+        'a non-creator gets the same neutral 404 as a missing event',
+        byStranger.status === 404,
+        `status ${byStranger.status}`,
+      );
+    }
+
+    // ---- EVENT-FR-005: the upcoming list ----------------------------------
+    {
+      const list = await (await get('/events?limit=50', attendee.token)).json();
+      const times = (list?.events ?? []).map((e) => e.startsAt);
+      const sorted = [...times].sort();
+      check(
+        'the upcoming list is SOONEST FIRST (EVENT-FR-005)',
+        JSON.stringify(times) === JSON.stringify(sorted),
+        `${times.length} events`,
+      );
+
+      const lister = await onboard(Date.now() + 6666);
+      const another = await (
+        await post(
+          '/events',
+          { ...physical, title: 'Another gathering', startsAt: inDays(1) },
+          lister.token,
+        )
+      ).json();
+      check('a future event appears', another?.id !== undefined, JSON.stringify(another));
+    }
+
+    // ---- EVENT-FR-007: cancel vs delete -----------------------------------
+    {
+      const quiet = await onboard(Date.now() + 7777);
+      const throwaway = await (
+        await post('/events', { ...physical, title: 'Nobody came' }, quiet.token)
+      ).json();
+      const deleted = await send('DELETE', `/events/${throwaway.id}`, undefined, quiet.token);
+      const db2 = await deleted.json();
+      check(
+        'WITH NO RSVPS THE EVENT IS DELETED',
+        deleted.status === 200 && db2?.outcome === 'DELETED',
+        `status ${deleted.status} ${JSON.stringify(db2)}`,
+      );
+      const gone = await get(`/events/${throwaway.id}`, attendee.token);
+      check('and it is gone', gone.status === 404, `status ${gone.status}`);
+    }
+    {
+      const cancelled = await send('DELETE', `/events/${eventId}`, undefined, organiser.token);
+      const cb = await cancelled.json();
+      check(
+        'ONCE ANYBODY HAS RESPONDED IT IS CANCELLED, NOT DELETED (EVENT-FR-007)',
+        cancelled.status === 200 && cb?.outcome === 'CANCELLED' && cb?.notifiedAttendees === 1,
+        `status ${cancelled.status} ${JSON.stringify(cb)}`,
+      );
+
+      const detail = await (await get(`/events/${eventId}`, attendee.token)).json();
+      check(
+        'A CANCELLED EVENT STAYS VISIBLE, MARKED - so attendees still find out',
+        detail?.status === 'CANCELLED',
+        `status ${detail?.status}`,
+      );
+
+      const list = await (await get('/events?limit=50', attendee.token)).json();
+      check(
+        'and it is still in the upcoming list until its original date passes',
+        (list?.events ?? []).some((e) => e.id === eventId),
+      );
+
+      const lateRsvp = await send(
+        'PUT',
+        `/events/${eventId}/rsvp`,
+        { response: 'GOING' },
+        (await onboard(Date.now() + 4444)).token,
+      );
+      const lb = await lateRsvp.json();
+      check(
+        'but nobody can RSVP to it any more',
+        lateRsvp.status === 400 && lb?.error?.code === 'EVENT_CANCELLED',
+        `status ${lateRsvp.status} code ${lb?.error?.code}`,
+      );
+    }
+
+    // ---- SEARCH-FR-004: events search, deferred from EPIC-08 --------------
+    {
+      const urduOrganiser = await onboard(Date.now() + 8888);
+      const urduEvent = await (
+        await post(
+          '/events',
+          {
+            title: 'محلے کی صفائی مہم',
+            description: 'ہم سب مل کر گلی کی صفائی کریں گے، دستانے ساتھ لائیں۔',
+            startsAt: inDays(5),
+            eventType: 'PHYSICAL',
+            locationText: 'گلبرگ پارک',
+          },
+          urduOrganiser.token,
+        )
+      ).json();
+      check('the Urdu event was created', urduEvent?.id !== undefined, JSON.stringify(urduEvent));
+
+      const roman = await get('/search/events?q=safai', attendee.token);
+      const rb = await roman.json();
+      check(
+        'A ROMAN QUERY FINDS AN URDU EVENT (SEARCH-FR-004 + BR-042)',
+        roman.status === 200 && (rb?.results ?? []).some((e) => e.id === urduEvent.id),
+        `status ${roman.status} ${rb?.results?.length} results`,
+      );
+
+      const byTitle = await (await get('/search/events?q=clean-up', attendee.token)).json();
+      check(
+        'and an English query finds an English title',
+        (byTitle?.results ?? []).length > 0,
+        `${byTitle?.results?.length} results`,
+      );
+
+      check(
+        'NO SEARCH RESULT CARRIES A MEETING LINK',
+        !JSON.stringify(byTitle).includes('meet.example.com'),
+      );
+
+      const short = await get('/search/events?q=a', attendee.token);
+      check(
+        'the same minimum-length rule applies as every other search',
+        short.status === 400,
+        `status ${short.status}`,
+      );
+    }
+
+    // ---- EVENT-FR-001 E4: five a day ---------------------------------------
+    {
+      const prolific = await onboard(Date.now() + 9999);
+      for (let i = 0; i < 5; i += 1) {
+        const r = await post('/events', { ...physical, title: `Gathering ${i}` }, prolific.token);
+        check(`event ${i + 1} of 5 is allowed`, r.status === 201, `status ${r.status}`);
+      }
+      const sixth = await post('/events', { ...physical, title: 'One too many' }, prolific.token);
+      const sb = await sixth.json();
+      check(
+        'THE SIXTH EVENT IN A DAY IS REFUSED (EVENT-FR-001 E4)',
+        sixth.status === 429 && sb?.error?.code === 'RATE_LIMITED',
+        `status ${sixth.status} code ${sb?.error?.code}`,
+      );
+    }
+
+    // ---- guards ------------------------------------------------------------
+    {
+      const anon = await get('/events');
+      check('event routes are guarded like everything else', anon.status === 401);
+    }
+  }
+
   console.log('\n--- no secret leaves the server ---');
   {
     const r = await post('/login', { phone, password: 'synthetic-Wrong-Passw0rd' });
