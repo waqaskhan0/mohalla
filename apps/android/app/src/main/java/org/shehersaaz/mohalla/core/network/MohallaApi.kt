@@ -136,6 +136,35 @@ interface MohallaApi {
     @GET("posts/{id}")
     suspend fun post(@Path("id") id: String): Response<PostResponse>
 
+    /**
+     * Publish a post (POST-FR-001).
+     *
+     * Body is 1-3,000 GRAPHEME CLUSTERS (BR-012), and is optional when an
+     * attachment is present. Up to four media ids IN THE ORDER GIVEN (BR-013,
+     * POST-FR-003), each of which must already be READY - the database refuses
+     * a post referencing media still under inspection (ADR-013 step 7), which
+     * arrives as a 409 `MEDIA_NOT_READY`.
+     */
+    @POST("posts")
+    suspend fun createPost(@Body body: CreatePostBody): Response<PostResponse>
+
+    /**
+     * Edit own post (POST-FR-008).
+     *
+     * TEXT AND CATEGORY ONLY. [UpdatePostBody] has no `mediaIds` field because
+     * BR-014 forbids changing a post's images after publishing, and the
+     * server's schema is strict - sending it is REJECTED rather than ignored,
+     * so an author who tries is told rather than left believing it worked.
+     */
+    @PATCH("posts/{id}")
+    suspend fun updatePost(
+        @Path("id") id: String,
+        @Body body: UpdatePostBody,
+    ): Response<PostResponse>
+
+    @DELETE("posts/{id}")
+    suspend fun deletePost(@Path("id") id: String): Response<Unit>
+
     @PUT("posts/{id}/like")
     suspend fun like(@Path("id") id: String): Response<Unit>
 
@@ -628,6 +657,35 @@ data class CancelEventResponse(
 @Serializable
 data class JoinEventResponse(
     val meetingUrl: String,
+)
+
+/**
+ * A new post (POST-FR-001).
+ *
+ * `mediaIds` is nullable rather than defaulted to an empty list: the server's
+ * schema makes it optional, and sending `[]` is a claim about attachments where
+ * omitting the key is the absence of one. With `explicitNulls = false` a null
+ * is dropped from the JSON entirely, which is what is wanted.
+ */
+@Serializable
+data class CreatePostBody(
+    val body: String,
+    val categorySlug: String? = null,
+    /** Up to four, IN THE CHOSEN ORDER (BR-013 · POST-FR-003). */
+    val mediaIds: List<String>? = null,
+)
+
+/**
+ * An edit (POST-FR-008).
+ *
+ * NO `mediaIds`, and that absence is BR-014 rather than an oversight - a post's
+ * images cannot change after publishing, and the server rejects the field
+ * outright rather than ignoring it.
+ */
+@Serializable
+data class UpdatePostBody(
+    val body: String? = null,
+    val categorySlug: String? = null,
 )
 
 @Serializable

@@ -31,6 +31,7 @@
       Required by LOCALE-FR-003, BR-041 and REL-002.
     -->
     <application
+        android:name=".MohallaApplication"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"

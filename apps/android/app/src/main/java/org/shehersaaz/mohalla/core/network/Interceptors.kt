@@ -24,6 +24,19 @@ const val SESSION_TOKEN_KEY = "session.token"
 const val USER_ID_KEY = "session.userId"
 
 /**
+ * The signed-in person's own name, handle and photo.
+ *
+ * Cached so the composer's author row can confirm whose name is about to be
+ * attached to a post without waiting on a request (UI/UX §19 item 3). Under the
+ * same `session.` prefix as the token, so `SecureStorage.clear()` on sign-out
+ * takes them with it — a name left behind would greet the next account with the
+ * previous one's.
+ */
+const val USERNAME_KEY = "session.username"
+const val DISPLAY_NAME_KEY = "session.displayName"
+const val PHOTO_KEY = "session.photoMediaId"
+
+/**
  * `Authorization: Bearer` on every request that has a token.
  *
  * ADDS NOTHING WHEN THERE IS NO TOKEN, rather than sending an empty header.

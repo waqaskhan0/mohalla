@@ -251,4 +251,50 @@
     <string name="event_problem_both">Choose one: a meeting link for an online event, or a location for an in-person one. For both, choose in person and put the link in the description.</string>
     <string name="state_restricted_body">Your account cannot do this right now.</string>
     <string name="action_report">Report</string>
+    <!-- Media -->
+    <string name="media_unavailable">Image unavailable</string>
+    <string name="media_more_count">+%1$d</string>
+    <string name="a11y_post_image">Attached image</string>
+
+    <!-- Composer (UX-CREATE-001) -->
+    <string name="composer_title">New post</string>
+    <string name="composer_post">Post</string>
+    <string name="composer_close">Close</string>
+    <string name="composer_placeholder">What\'s happening in your area?</string>
+    <string name="composer_counter">%1$d / %2$d</string>
+    <string name="composer_add_category">Add a category</string>
+    <string name="composer_clear_category">Remove the category</string>
+    <string name="composer_image_limit">You can attach up to %1$d images.</string>
+    <string name="composer_blocked_too_long">This post is longer than the limit. Shorten it to publish.</string>
+    <string name="composer_blocked_uploading">One image is still uploading.</string>
+    <string name="composer_blocked_upload_failed">One image didn\'t upload. Tap retry — your other images and text are saved.</string>
+    <string name="composer_blocked_upload_rejected">One image could not be used. Remove it and choose another.</string>
+    <string name="composer_offline">You are offline, so nothing was published. Your text is saved.</string>
+    <string name="composer_media_not_ready">An attachment is still being processed. Try again in a moment.</string>
+    <string name="composer_needs_profile">Set up your profile before posting.</string>
+    <string name="composer_discard_title">Discard this post?</string>
+    <string name="composer_discard_body">Your text and attachments will be lost.</string>
+    <string name="composer_discard_confirm">Discard</string>
+    <string name="composer_keep_writing">Keep writing</string>
+
+    <!-- Upload tile -->
+    <string name="upload_percent">%1$d%%</string>
+    <string name="upload_working">…</string>
+    <string name="upload_retry">Retry</string>
+    <string name="upload_rejected">Not supported</string>
+    <string name="upload_remove">Remove this image</string>
+    <string name="upload_add">Add an image</string>
+
+    <!-- Attachment sheet (UX-CREATE-003) -->
+    <string name="attach_title">Add to your post</string>
+    <string name="attach_images">Photos</string>
+    <string name="attach_link_hint">Paste a link into your post and a preview is added for you. Mohalla fetches it, so the site never sees your device.</string>
+
+    <!-- Category picker (UX-CREATE-004) -->
+    <string name="category_title">Choose a category</string>
+    <string name="category_unavailable">Categories could not be loaded. You can post without one.</string>
+
+    <!-- Shared actions -->
+    <string name="action_next">Next</string>
+    <string name="action_done">Done</string>
 </resources>

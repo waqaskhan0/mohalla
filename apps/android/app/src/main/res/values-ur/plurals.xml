@@ -14,4 +14,9 @@
         <item quantity="one">%1$d کو دلچسپی ھے</item>
         <item quantity="other">%1$d کو دلچسپی ھے</item>
     </plurals>
+
+    <plurals name="attach_images_remaining">
+        <item quantity="one">%1$d مزید شامل ھو سکتی ھے</item>
+        <item quantity="other">%1$d مزید شامل ھو سکتی ھیں</item>
+    </plurals>
 </resources>

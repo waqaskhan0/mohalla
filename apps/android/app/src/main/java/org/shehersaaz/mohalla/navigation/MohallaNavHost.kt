@@ -9,6 +9,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -19,8 +20,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.launch
 import org.shehersaaz.mohalla.core.di.AppContainer
+import org.shehersaaz.mohalla.core.media.rememberImagePickerLauncher
 import org.shehersaaz.mohalla.core.ui.ContentUnavailable
+import org.shehersaaz.mohalla.core.ui.MohallaDateTimePicker
 import org.shehersaaz.mohalla.feature.auth.ForgotPasswordScreen
 import org.shehersaaz.mohalla.feature.auth.LoginScreen
 import org.shehersaaz.mohalla.feature.auth.LoginViewModel
@@ -37,6 +41,8 @@ import org.shehersaaz.mohalla.feature.auth.ResetPasswordScreen
 import org.shehersaaz.mohalla.feature.auth.RestoreAccountScreen
 import org.shehersaaz.mohalla.feature.auth.RestoreAccountViewModel
 import org.shehersaaz.mohalla.feature.auth.WelcomeScreen
+import org.shehersaaz.mohalla.feature.create.ComposerScreen
+import org.shehersaaz.mohalla.feature.create.ComposerViewModel
 import org.shehersaaz.mohalla.feature.events.EventComposerScreen
 import org.shehersaaz.mohalla.feature.events.EventComposerViewModel
 import org.shehersaaz.mohalla.feature.events.EventDetailScreen
@@ -113,6 +119,15 @@ fun MohallaNavHost(
             }
         }
 
+        // UX-CREATE-001. A destination rather than a tab, so returning from
+        // it leaves the previously selected tab intact.
+        composable(Routes.COMPOSER) {
+            ComposerRoute(
+                container = container,
+                onDone = { navController.popBackStack() },
+            )
+        }
+
         // UX-EVENT-004 and UX-EVENT-005 — one screen, two entry points.
         composable(Routes.EVENT_CREATE) {
             EventComposerRoute(
@@ -182,10 +197,9 @@ private fun ShellRoute(
     MohallaShell(
         state = state,
         onSelectTab = shell::selectTab,
-        // The composer arrives with its own group. Until then the tap is
-        // acknowledged as unavailable rather than opening a screen that cannot
-        // publish — the same reason a suspended account never reaches it.
-        onCreate = {},
+        // A suspended account never gets here: the shell diverts the tap to the
+        // explainer before any navigation happens (BR-034, §6.2).
+        onCreate = { navController.navigate(Routes.COMPOSER) },
         onShowSuspensionExplainer = { explainerVisible = true },
     ) { tab ->
         when (tab) {
@@ -244,6 +258,58 @@ private fun HomeRoute(container: AppContainer) {
         onShare = {},
         onOpenAnnouncement = {},
         onFindPeople = {},
+    )
+}
+
+/**
+ * UX-CREATE-001 — the composer.
+ *
+ * THE PICKER LAUNCHER LIVES HERE, not in the ViewModel. An
+ * `ActivityResultLauncher` has to be registered during composition against this
+ * destination's own lifecycle; a ViewModel that held one would outlive the
+ * registration and deliver its result to a dead callback. So the ViewModel owns
+ * the attachment state machine and the screen owns the platform contract.
+ */
+@Composable
+private fun ComposerRoute(
+    container: AppContainer,
+    onDone: () -> Unit,
+) {
+    val vm: ComposerViewModel = viewModel(
+        factory = ComposerViewModel.Factory(
+            posts = container.postRepository,
+            images = container.imagePicker,
+            drafts = container.draftStore,
+        ),
+    )
+    val state by vm.state.collectAsState()
+
+    // Capped at what remains of the four, so the picker never lets somebody
+    // select images the app is about to discard (BR-013).
+    val pickImages = rememberImagePickerLauncher(
+        remaining = state.remainingImages,
+        // `Uri` becomes a `String` here, at the boundary. The ViewModel holds
+        // no Android types, which is what lets EDGE-013's sequencing be
+        // asserted in a plain JVM test.
+        onPicked = { uris -> vm.onImagesPicked(uris.map { it.toString() }) },
+    )
+
+    ComposerScreen(
+        state = state,
+        // The author block confirms whose name is about to be attached (§19
+        // item 3). Resolved from the cached session profile rather than a
+        // fresh request: the composer opens on a tap and must not wait.
+        author = remember { container.sessionRepository.cachedIdentity()?.asProfile() },
+        onBodyChanged = vm::onBodyChanged,
+        onPickImages = pickImages,
+        onRetryAttachment = vm::retryAttachment,
+        onRemoveAttachment = vm::removeAttachment,
+        onCategoryChanged = vm::onCategoryChanged,
+        onPublish = vm::publish,
+        onClose = onDone,
+        onDiscard = vm::discard,
+        onPublished = onDone,
+        isUrdu = container.localeStore.stored()?.isRtl == true,
     )
 }
 
@@ -350,17 +416,27 @@ private fun EventComposerRoute(
     )
     val state by vm.state.collectAsState()
 
+    var pickingDateTime by remember { mutableStateOf(false) }
+
+    if (pickingDateTime) {
+        MohallaDateTimePicker(
+            initialEpochMillis = state.startsAtMillis,
+            zone = container.displayZone(),
+            onDismiss = { pickingDateTime = false },
+            onPicked = { millis ->
+                pickingDateTime = false
+                vm.onStartsAtChanged(millis)
+            },
+        )
+    }
+
     EventComposerScreen(
         state = state,
         locale = container.formattingLocale(),
         zone = container.displayZone(),
         onTitleChanged = vm::onTitleChanged,
         onDescriptionChanged = vm::onDescriptionChanged,
-        // The platform date and time pickers belong to the screen's own host;
-        // wired with the picker in the next slice, and until then the field
-        // reports that nothing is chosen rather than accepting a typed date
-        // that would have to be parsed against a locale.
-        onPickStartsAt = {},
+        onPickStartsAt = { pickingDateTime = true },
         onTypeChanged = vm::onTypeChanged,
         onMeetingUrlChanged = vm::onMeetingUrlChanged,
         onLocationChanged = vm::onLocationChanged,
@@ -571,16 +647,33 @@ private fun NavGraphBuilder.setupGraph(
             ),
         )
         val state by vm.state.collectAsState()
+        val scope = rememberCoroutineScope()
+
+        // PROFILE-FR-002's optional photo, now real. One image, so the single
+        // picker contract — and the bytes are read and compressed off the main
+        // thread before the ViewModel sees them, which is why this needs a
+        // scope rather than calling straight through.
+        val pickPhoto = rememberImagePickerLauncher(remaining = 1) { uris ->
+            val uri = uris.firstOrNull() ?: return@rememberImagePickerLauncher
+            scope.launch {
+                val picked = container.imagePicker.read(uri)
+                if (picked != null) {
+                    vm.onPhotoSelected(picked.bytes)
+                } else {
+                    // Unreadable, or no quality step reached the 500KB ceiling.
+                    // Reported as a rejection rather than a failure: retrying
+                    // the same file cannot help, so the screen asks for another.
+                    vm.onPhotoUnusable()
+                }
+            }
+        }
 
         ProfileSetupScreen(
             state = state,
             onDisplayNameChanged = vm::onDisplayNameChanged,
             onCityChanged = vm::onCityChanged,
             onBioChanged = vm::onBioChanged,
-            // The photo picker is an Activity-result contract and belongs to the
-            // media group; the screen already renders and submits without one,
-            // because the photo is optional by requirement (PROFILE-FR-002).
-            onPickPhoto = {},
+            onPickPhoto = pickPhoto,
             onRetryPhoto = vm::retryPhotoUpload,
             onRemovePhoto = vm::removePhoto,
             onSubmit = vm::submit,

@@ -18,8 +18,12 @@ import okhttp3.MediaType.Companion.toMediaType
 import org.shehersaaz.mohalla.core.network.ConnectivityObserver
 import org.shehersaaz.mohalla.core.network.MohallaApi
 import org.shehersaaz.mohalla.core.network.MohallaJson
+import org.shehersaaz.mohalla.core.media.ImagePicker
 import org.shehersaaz.mohalla.core.media.ImageUploader
 import org.shehersaaz.mohalla.feature.auth.AuthRepository
+import org.shehersaaz.mohalla.feature.create.DraftStore
+import org.shehersaaz.mohalla.feature.create.PostRepository
+import org.shehersaaz.mohalla.feature.create.SecureDraftStore
 import org.shehersaaz.mohalla.feature.events.EventRepository
 import org.shehersaaz.mohalla.feature.home.FeedRepository
 import org.shehersaaz.mohalla.feature.setup.SetupRepository
@@ -114,6 +118,20 @@ class AppContainer private constructor(
     val feedRepository: FeedRepository = FeedRepository(api)
 
     val eventRepository: EventRepository = EventRepository(api)
+
+    val postRepository: PostRepository = PostRepository(api, imageUploader)
+
+    /** MEDIA-FR-001 - the photo picker's read-and-compress side. */
+    val imagePicker: ImagePicker = ImagePicker(context)
+
+    /**
+     * The composer's draft (SS19 - "draft persists locally, never uploads").
+     *
+     * Keystore-backed rather than plain preferences. See [SecureDraftStore] for
+     * why an UNPUBLISHED draft is the one piece of user text on this device
+     * whose exposure the author has not consented to yet.
+     */
+    val draftStore: DraftStore = SecureDraftStore(secureStorage)
 
     /**
      * The reader's locale as a `java.util.Locale`, for date and number

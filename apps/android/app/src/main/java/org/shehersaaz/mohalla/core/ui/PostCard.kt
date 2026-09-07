@@ -3,7 +3,6 @@ package org.shehersaaz.mohalla.core.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,7 +10,6 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -22,11 +20,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import org.shehersaaz.mohalla.R
 import org.shehersaaz.mohalla.core.design.MohallaTheme
@@ -63,6 +58,8 @@ fun PostCard(
     onShare: () -> Unit,
     modifier: Modifier = Modifier,
     likePending: Boolean = false,
+    /** MEDIA-FR-002 - the full-screen viewer, which arrives with group 09. */
+    onOpenMedia: ((index: Int) -> Unit)? = null,
 ) {
     Column(
         modifier = modifier
@@ -101,7 +98,13 @@ fun PostCard(
         )
 
         if (post.mediaIds.isNotEmpty()) {
-            MediaPlaceholder(count = post.mediaIds.size)
+            // The first image, with a count over the rest. Four inline would
+            // make one post own a whole 720x1280 screen, and MEDIA-FR-002 puts
+            // the full set in the viewer where it can be swiped.
+            MohallaImageStrip(
+                mediaIds = post.mediaIds,
+                onOpen = onOpenMedia?.let { open -> { index -> open(index) } },
+            )
         }
 
         EngagementRow(
@@ -138,10 +141,12 @@ private fun AuthorRow(post: FeedItemResponse, onOpenAuthor: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MohallaTheme.spacing.Space2),
     ) {
-        Box(
-            modifier = Modifier
-                .size(MohallaTheme.spacing.Space12)
-                .background(MohallaTheme.colors.SurfaceSunken, CircleShape),
+        MohallaAvatar(
+            mediaId = post.author.photoMediaId,
+            // The name beside it already identifies the person; describing the
+            // photo too would make a screen reader say it twice.
+            contentDescription = null,
+            size = MohallaTheme.spacing.Space12,
         )
 
         Column(modifier = Modifier.weight(1f)) {
@@ -281,62 +286,6 @@ private fun EngagementAction(
         }
     }
 }
-
-/**
- * The reserved box for attached images.
- *
- * A RATIO, NOT A HEIGHT. UI/UX §34 asks for "a surface-sunken block at the
- * correct aspect ratio so no layout shift occurs", and §26 lists media height
- * under what GROWS with the viewport with "ratio held" — so a fixed dp height
- * would be wrong twice: it would be a number off the 4dp spacing scale (§17:
- * "any value not on this scale is a defect"), and it would keep the box the same
- * height on a 360dp phone and a 600dp tablet while the image inside it did not.
- *
- * Reserving the box before the bytes arrive is the point. A card that grows when
- * its image decodes shifts everything below it mid-scroll, and on a slow
- * connection the reader loses their place repeatedly.
- *
- * TODO(EPIC-06): render through Coil, fading in over `base` (180ms) per §34, and
- * hold each image's OWN ratio once the media metadata carries its dimensions.
- * Until then every placeholder uses [MEDIA_DEFAULT_RATIO].
- */
-@Composable
-private fun MediaPlaceholder(count: Int) {
-    val mediaDescription = pluralStringResource(R.plurals.a11y_post_images, count, count)
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(MEDIA_DEFAULT_RATIO)
-            .background(MohallaTheme.colors.SurfaceSunken, MohallaTheme.radius.ShapeMd)
-            .semantics {
-                contentDescription = mediaDescription
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        // The visible count appears only when there is more than one — a "1"
-        // over a single image is noise. A screen reader needs to know either
-        // way, so the description sits on the box and uses a PLURAL resource
-        // rather than "%d images": Urdu and English agree on having a singular
-        // and a plural here, but concatenating a number to a noun is the bug
-        // that produces "1 تصاویر", and only a plurals table avoids it.
-        Text(
-            text = if (count > 1) count.toString() else "",
-            style = MohallaTheme.text(MohallaType.Label),
-            color = MohallaTheme.colors.TextTertiary,
-        )
-    }
-}
-
-/**
- * The ratio a placeholder holds before the real image's dimensions are known.
- *
- * 4:3 rather than 1:1 or 16:9 because it is what a phone camera produces by
- * default, so for most posts the reserved box is close to the right shape and
- * the fade-in barely moves the card. It is a fallback, not a crop: nothing is
- * ever letterboxed to this.
- */
-private const val MEDIA_DEFAULT_RATIO = 4f / 3f
 
 /**
  * The localisation key the server sends for a departed author (BR-009).

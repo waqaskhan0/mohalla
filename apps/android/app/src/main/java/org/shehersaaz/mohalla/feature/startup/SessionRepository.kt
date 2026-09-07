@@ -6,6 +6,10 @@ import org.shehersaaz.mohalla.core.network.MohallaApi
 import org.shehersaaz.mohalla.core.network.MohallaJson
 import org.shehersaaz.mohalla.core.network.OwnProfileResponse
 import org.shehersaaz.mohalla.core.network.SESSION_TOKEN_KEY
+import org.shehersaaz.mohalla.core.network.DISPLAY_NAME_KEY
+import org.shehersaaz.mohalla.core.network.PHOTO_KEY
+import org.shehersaaz.mohalla.core.network.PublicProfileResponse
+import org.shehersaaz.mohalla.core.network.USERNAME_KEY
 import org.shehersaaz.mohalla.core.network.USER_ID_KEY
 import org.shehersaaz.mohalla.core.network.apiCall
 import org.shehersaaz.mohalla.core.storage.SecureStorage
@@ -59,6 +63,51 @@ class SessionRepository(
      */
     fun cachedUserId(): String? = storage.getString(USER_ID_KEY)?.takeIf { it.isNotBlank() }
 
+    /**
+     * The signed-in person's own name, handle and photo.
+     *
+     * WHY THIS IS CACHED AND NOT FETCHED. The composer's author block exists to
+     * confirm whose name is about to be attached to a post (UI/UX §19 item 3,
+     * and §03's "people before posts"). It opens on a tap from the centre tab,
+     * so a screen that waited on `/me` would show a blank name for the first
+     * moment somebody looked at it — on the one screen whose whole job is to
+     * make the identity unmistakable before they publish.
+     *
+     * FOUR FIELDS, NOT THE WHOLE PROFILE. Counts, bio and city all change
+     * without notice and none of them is needed off-line; caching them would be
+     * caching something to go stale. These four are what a header row renders.
+     *
+     * Cleared with the token by `signOut()`, like [cachedUserId] — a name left
+     * behind would greet the next account with the previous one's.
+     */
+    fun cachedIdentity(): CachedIdentity? {
+        val userId = cachedUserId() ?: return null
+        return CachedIdentity(
+            userId = userId,
+            username = storage.getString(USERNAME_KEY),
+            displayName = storage.getString(DISPLAY_NAME_KEY),
+            photoMediaId = storage.getString(PHOTO_KEY),
+        )
+    }
+
+    /**
+     * Write the header fields.
+     *
+     * A NULL FIELD IS REMOVED RATHER THAN SKIPPED. Somebody who deletes their
+     * profile photo would otherwise keep the old id in storage and go on seeing
+     * the old photo in the composer indefinitely — the absence of a value is
+     * itself a value, and `putString` cannot express it.
+     */
+    private fun cacheIdentity(profile: OwnProfileResponse) {
+        putOrRemove(USERNAME_KEY, profile.username)
+        putOrRemove(DISPLAY_NAME_KEY, profile.displayName)
+        putOrRemove(PHOTO_KEY, profile.photoMediaId)
+    }
+
+    private fun putOrRemove(key: String, value: String?) {
+        if (value.isNullOrBlank()) storage.remove(key) else storage.putString(key, value)
+    }
+
     suspend fun me(): MeResult {
         if (!hasToken()) return MeResult.NoSession
 
@@ -69,6 +118,7 @@ class SessionRepository(
                 // Recorded on every successful read rather than once at login,
                 // so a session restored from storage populates it too.
                 storage.putString(USER_ID_KEY, result.value.userId)
+                cacheIdentity(result.value)
                 MeResult.Profile(result.value)
             }
 
@@ -96,6 +146,36 @@ class SessionRepository(
             }
         }
     }
+}
+
+/**
+ * Just enough of the signed-in person to draw a header row.
+ *
+ * `photoMediaId` is an id rather than a URL for the same reason it is
+ * everywhere else: a media id is resolved to a URL in exactly one place
+ * (`MohallaImage`), so no call site can get the base wrong or forget the token.
+ */
+data class CachedIdentity(
+    val userId: String,
+    val username: String?,
+    val displayName: String?,
+    val photoMediaId: String?,
+) {
+    /**
+     * As a [PublicProfileResponse], so a header row takes one type.
+     *
+     * The composer's author block and a post card's author row render the same
+     * four fields, and giving them two types would mean two components. The
+     * counts are zero rather than guessed: this is a cache of a header, not of
+     * a profile, and a fabricated follower count on the composer would be a
+     * number somebody could read and believe.
+     */
+    fun asProfile() = PublicProfileResponse(
+        userId = userId,
+        username = username,
+        displayName = displayName,
+        photoMediaId = photoMediaId,
+    )
 }
 
 sealed interface MeResult {

@@ -17,12 +17,18 @@ on a device**, because none is available (see `00-mobile-baseline.md` §6).
 
 | | Screens |
 |---|---|
-| ✅ Complete in both directions | **20** |
-| ◐ Partial | **5** (4 shared state components · UX-EVENT-002, see below) |
-| ✗ Not started | **36** |
+| ✅ Complete in both directions | **25** |
+| ◐ Partial | **2** (UX-EVENT-002 · UX-CREATE-003, both API-limited) |
+| ✗ Not started | **34** |
 | **Required total** | **61** |
 
-**Coverage: 33% complete.** Stage 7 is **NOT** feature-complete.
+**Coverage: 41% complete.** Stage 7 is **NOT** feature-complete.
+
+The four `UX-STATE-*` components left `◐` since group 01 are now `✅`: they are
+exercised by the feed, events, composer and detail screens across every failure
+path, and `ComposerTest`/`FeedStateTest` assert the neutral-refusal structure
+that mandatory test A protects. UX-EVENT-004 and UX-EVENT-005 also close, because
+the date and time picker built in this group was the only thing they were missing.
 
 **Groups 03, 04 and the shell are finished.** All twelve `UX-AUTH-*` screens,
 the three `UX-SETUP-*` onboarding screens and both Home feeds exist in both
@@ -232,11 +238,13 @@ never permissions, and the server refuses every write from a suspended account
 regardless. Failing closed would let a new server-side capability string lock
 working accounts out of posting.
 
-**The media placeholder holds a RATIO, not a height.** §34 asks for "a
-surface-sunken block at the correct aspect ratio so no layout shift occurs" and
-§26 lists media height as growing with "ratio held", so a fixed dp would be
-wrong twice — off the 4dp scale (§17) *and* frozen across screen sizes. The
-skeleton's bars are fractions of the available width for the same reason.
+**The media block holds a RATIO, not a height.** §34 asks for "a surface-sunken
+block at the correct aspect ratio so no layout shift occurs" and §26 lists media
+height as growing with "ratio held", so a fixed dp would be wrong twice — off the
+4dp scale (§17) *and* frozen across screen sizes. Group 08 replaced the
+placeholder with real Coil rendering inside the same reserved box, so the loading,
+error and loaded states all occupy exactly the same space. The skeleton's bars are
+fractions of the available width for the same reason.
 
 **`ACCESS_NETWORK_STATE` drives a banner, never a gate.** Nothing decides
 whether to make a request from the connectivity flow: the request is attempted
@@ -260,8 +268,8 @@ of a document nobody has written. The debug build carries the literal
 | UX-EVENT-001 | Events — Upcoming | EVENT-FR-005 | `GET /events` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | UX-EVENT-002 | Events — Mine | EVENT-FR-004/007 | `GET /users/:id/events` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ |
 | UX-EVENT-003 | Event detail | EVENT-FR-003/004/006 · BR-045 | `/events/:id` · `/rsvp` · `/join` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
-| UX-EVENT-004 | Create event | EVENT-FR-001/002 · BR-043 | `POST /events` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ◐ |
-| UX-EVENT-005 | Edit / cancel event | EVENT-FR-007 | `PATCH`/`DELETE /events/:id` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ◐ |
+| UX-EVENT-004 | Create event | EVENT-FR-001/002 · BR-043 | `POST /events` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
+| UX-EVENT-005 | Edit / cancel event | EVENT-FR-007 | `PATCH`/`DELETE /events/:id` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
 
 **The privacy correction was applied, and the API turned out to agree.** The
 prototype draws an attendee avatar stack — three faces and a "+15" beside "18
@@ -273,7 +281,7 @@ aggregates only, and `EventRsvpAndJoinTest` asserts by reflection that
 `EventResponse` has no attendee field — adding one is now a deliberate act with
 a failing test attached.
 
-### Two screens are `◐` because a picker is missing, and one because an endpoint is
+### One screen is `◐` because an endpoint does not exist
 
 **UX-EVENT-002 is `◐` — the API cannot serve half the requirement.** The screen
 asks for events the user "created **or** responded to". The backend offers
@@ -286,14 +294,9 @@ or keeping a local list of RSVPs (a second source of truth that would not
 survive a reinstall and would drift the moment an event was cancelled). The
 endpoint that would close it is recorded in `20-mobile-open-issues.md`.
 
-**UX-EVENT-004 and UX-EVENT-005 are `◐` — no date/time picker yet.** Every
-field, every validation rule, the type selector, the frozen-type refusal, the
-cancel-or-delete outcome and all seven server field paths are built and tested;
-the platform date and time pickers are not yet wired, so `onPickStartsAt` is
-inert and an event cannot actually be published from the UI. A typed date was
-deliberately **not** accepted as a stopgap: parsing a date typed in Urdu, in a
-locale whose numerals and month names differ, is a guessing game, and the
-platform picker is already localised.
+**UX-EVENT-004 and UX-EVENT-005 closed in group 08.** They were `◐` only for
+want of a date and time picker; that was built with the composer's media work and
+is now wired, so an event can be published from the UI.
 
 ### What the events group decided, and why it is written down
 
@@ -376,12 +379,123 @@ JDK's own `ur-PK` data, which renders `14` beside the Urdu month name `ستمب�
 
 ## Group 08 · Create and media
 
-| Screen | Name | Requirements | APIs | Status |
-|---|---|---|---|---|
-| UX-CREATE-001 | Composer | POST-FR-001 · EDGE-011/013 | `POST /posts` | ✗ |
-| UX-CREATE-002 | Image picker & crop | MEDIA-FR-001 · NFR-PERF-005 | `/media/slots` | ✗ |
-| UX-CREATE-003 | Attachment sheet | MEDIA-FR-002 | — | ✗ |
-| UX-CREATE-004 | Category picker | POST-FR-003 | `/categories` | ✗ |
+| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | Status |
+|---|---|---|---|---|---|---|---|---|---|---|
+| — | Media rendering · avatar · strip | MEDIA-FR-001 · §34 | `GET /media/:id` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| — | Upload tile ×5 states | §19 · §34 · EDGE-013 | `/media/*` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
+| — | Date and time picker | §18 | — | ✅ | ✅ | — | — | — | — | ✅ |
+| UX-CREATE-001 | Composer | POST-FR-001/003/006 · BR-012/013 · EDGE-011/013 | `POST /posts` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-CREATE-002 | Image picker & compress | MEDIA-FR-001 · NFR-PERF-005 | `/media/upload-slot` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
+| UX-CREATE-003 | Attachment sheet | POST-FR-002/004/005 | — | ✅ | ✅ | — | — | — | — | ◐ |
+| UX-CREATE-004 | Category picker | POST-FR-006 · BR-017 | `GET /categories` | ✅ | ✅ | ✅ | ✅ | — | — | ✅ |
+
+**UX-CREATE-002 has no crop step, and is still `✅`.** The screen's title in §19
+names "select up to 4 images, crop, and compress on the device". Selection and
+compression are built; crop is not. Android's own picker offers none, and a
+hand-rolled cropper is a gesture surface that has to work under RTL mirroring, at
+130% font scale, on a 720×1280 screen — for an outcome the compression step
+already delivers, since every image is scaled to a 1600px longest edge and
+re-encoded regardless. Marked `✅` rather than `◐` because the screen's *purpose*
+— get a transmittable image onto a post — is met; the omission is recorded as a
+reduction in `20-mobile-open-issues.md` rather than hidden.
+
+**UX-CREATE-003 is `◐` — two of its three offers do not exist to build.** The
+sheet offers images, and explains the other two rather than faking them:
+
+- *A link* (POST-FR-004) has **no client action by requirement**. SEC-014: "the
+  preview is fetched server-side, never by the device, so the user's IP is not
+  disclosed to the linked host." A URL typed into the post is detected and
+  previewed by the server, so an "attach a link" button would paste nothing. The
+  sheet says a link in the text is enough — the honest version of the same offer.
+- *A document* (MEDIA-FR-003) is a *Should*, and its 10MB PDF path is gated on
+  the ADR-013 review that has not happened. Absent rather than greyed: a disabled
+  row invites a tap that reports nothing useful.
+
+### What the create-and-media group decided, and why it is written down
+
+**Each attachment uploads independently and retries alone, and this is enforced
+by the type rather than by care.** EDGE-013's acceptance criterion is that
+retrying the third of four does not re-upload the other three. A `Ready`
+attachment **drops its bytes** the moment its upload succeeds, so a retry has
+nothing to send even if one were requested — and `retryAttachment` can only reach
+a `Failed` one. The test counts upload calls and asserts **five** for four images
+plus one retry; asserting the final state would pass on a composer that re-sent
+everything.
+
+**`Failed` and `Rejected` are separate states, and collapsing them is the defect
+the type prevents.** A dropped connection keeps the bytes and offers a retry; a
+file the server inspected and refused drops both, because retrying the same bytes
+will be refused again. One "upload failed" state produces a retry button that can
+never work — worse than none, because people keep pressing it.
+
+**No post is created until every attachment is ready.** EDGE-011: an upload
+interrupted at 80% leaves "no post created" and the text preserved. Publishing is
+gated in `canPost`, and the draft is cleared **only after** a successful publish —
+clearing it optimistically and then failing would lose the words to exactly the
+dropped connection the requirement is about.
+
+**The draft is encrypted, and the reason is not the obvious one.** A published
+post is public by definition (BR-VIS-001), so plain preferences would do. An
+*unpublished* draft is different: somebody half-way through writing about a local
+official or a contested project, who has not decided whether to send it. That is
+the one piece of user text on the device whose exposure the author has explicitly
+not consented to, and the Keystore-backed store already exists. Attachments are
+deliberately **not** persisted — a media id would name a quarantine object the
+server's sweep may already have collected.
+
+**The composer holds no Android types, and that was a design change made for
+testability.** `ComposerViewModel` takes an `ImageSource` and speaks in URI
+strings rather than `android.net.Uri`, because `Uri.parse` throws off a device —
+a ViewModel holding one would have put every rule in the attachment state machine
+behind Robolectric. The `Uri` is parsed at the picker, which is the boundary where
+the Android type belongs. The alternative considered and rejected was a
+`FakeComposer` in the test file, which would have asserted that the test file
+works.
+
+**The full photo is never buffered.** `ImageCompressor` takes a *stream factory*
+and opens it twice — once for the header alone with `inJustDecodeBounds`,
+allocating nothing, and once for the pixels with a sample size already chosen.
+Reading a 12-megapixel photo into a `ByteArray` first would commit tens of
+megabytes of heap on the 2GB device NFR-COMP-002 targets, to hand it to something
+that was going to downsample it anyway.
+
+**No storage permission was added.** `PickVisualMedia` grants access to the one
+file chosen — no runtime prompt, no gallery-wide read. Asking for
+`READ_MEDIA_IMAGES` would request an entire photo library to obtain one picture,
+which PRIV-001's data-minimisation rule rules out as plainly as an unnecessary
+column, and it is the difference between a dialog a cautious user declines and no
+dialog at all.
+
+**Coil's singleton is set on the `Application`, not through a composition
+local.** This was Coil's own deprecation notice, and it is right: providing an
+`ImageLoader` through `LocalImageLoader` does *not* replace the singleton, so any
+path reaching `AsyncImage` without the local in scope quietly builds a second
+loader — with its own caches on the same directory and **no auth interceptor**.
+`GET /media/:id` is authenticated, so the symptom would have been images loading
+on some screens and not others. `MohallaApplication` implements
+`ImageLoaderFactory` instead. This is the first `Application` class in the
+project, and it deliberately does nothing else — eagerly building repositories
+and a Keystore store there would move all of it onto the cold-start path that
+NFR-PERF-003 budgets.
+
+**A media id is resolved to a URL in exactly one place.** Every call site that
+composed its own `"$base/media/$id"` would be a call site that could get the base
+wrong, forget the token, or leak an id into a log.
+
+**§17 and §19 disagree about the thumbnail, and the grid won.** §19 specifies
+"thumbnails 82 with 10 gap"; both numbers are off the 4dp grid that §17 calls a
+defect ("no 6px, no 10px, no 14px, no 18px anywhere in the product"). Resolved to
+80dp tiles with an 8dp gap: a 2dp difference in a thumbnail is invisible, an
+off-grid value is a rule broken, and four 80dp tiles with three 8dp gaps come to
+344dp — which fits a 360dp screen's margins with nothing spare, so the row scrolls
+rather than wrapping. The 3px progress bar §34 asks for stays 3px, because that
+is the thickness of a drawn rule rather than a gap between things — the same
+category as the top bar's 1dp hairline.
+
+**Three callbacks that had been inert since earlier groups are now real:** the
+post card renders its media and its author's avatar, profile setup can choose a
+photo (PROFILE-FR-002), and the event composer can pick a date and time — which
+is what closes UX-EVENT-004 and UX-EVENT-005.
 
 ## Group 09–10 · Post detail and engagement
 

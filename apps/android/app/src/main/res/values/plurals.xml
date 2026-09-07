@@ -26,4 +26,9 @@
         <item quantity="one">%1$d interested</item>
         <item quantity="other">%1$d interested</item>
     </plurals>
+
+    <plurals name="attach_images_remaining">
+        <item quantity="one">%1$d more can be added</item>
+        <item quantity="other">%1$d more can be added</item>
+    </plurals>
 </resources>

@@ -117,6 +117,15 @@ object Routes {
      * create does neither. An optional argument on one route would mean every
      * caller passing `null` and the screen branching on it anyway.
      */
+    /**
+     * The composer (UX-CREATE-001).
+     *
+     * A DESTINATION, not a tab. SS14 calls Create "the one item that reads as a
+     * button rather than a location", so tapping it pushes a full-screen modal
+     * over the shell and returning leaves the previously selected tab intact.
+     */
+    const val COMPOSER = "post/create"
+
     const val EVENT_CREATE = "event/create"
     fun eventEdit(id: String) = "event/$id/edit"
     const val EVENT_EDIT_PATTERN = "event/{eventId}/edit"

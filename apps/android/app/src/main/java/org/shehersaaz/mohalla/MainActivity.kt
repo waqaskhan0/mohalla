@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -11,6 +12,7 @@ import org.shehersaaz.mohalla.core.design.MohallaTheme
 import org.shehersaaz.mohalla.core.di.AppContainer
 import org.shehersaaz.mohalla.core.locale.AppLocale
 import org.shehersaaz.mohalla.core.ui.LoadingState
+import org.shehersaaz.mohalla.core.ui.LocalMediaBaseUrl
 import org.shehersaaz.mohalla.feature.auth.LanguageSelectionScreen
 import org.shehersaaz.mohalla.feature.startup.StartupDestination
 import org.shehersaaz.mohalla.feature.startup.StartupViewModel
@@ -49,6 +51,23 @@ class MainActivity : ComponentActivity() {
         val stored = container.localeStore.stored()
 
         setContent {
+            // The API base, provided once and read by every media composable.
+            //
+            // A COMPOSITION LOCAL because the base URL has to reach an avatar
+            // buried in a comment row without every composable between here and
+            // there threading it through — the one that forgot would render a
+            // broken image.
+            //
+            // THE IMAGE LOADER IS NOT PROVIDED HERE. Coil's `LocalImageLoader`
+            // is deprecated precisely because providing it does not replace the
+            // singleton, so a code path that missed the local would build a
+            // SECOND loader — with its own caches on the same directory and no
+            // auth interceptor. `MohallaApplication` implements
+            // `ImageLoaderFactory` instead, which is the supported mechanism
+            // and gives every entry point the same instance.
+            CompositionLocalProvider(
+                LocalMediaBaseUrl provides container.apiBaseUrl,
+            ) {
             MohallaTheme(isUrdu = stored?.isRtl == true) {
                 val startup: StartupViewModel = viewModel(
                     factory = StartupViewModel.Factory(
@@ -86,6 +105,7 @@ class MainActivity : ComponentActivity() {
                         onRequestLanguageChange = {},
                     )
                 }
+            }
             }
         }
     }

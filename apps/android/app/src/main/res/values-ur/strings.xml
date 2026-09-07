@@ -253,4 +253,50 @@
     <string name="event_problem_both">ایک منتخب کریں: آن لائن تقریب کے لیے لنک، یا بالمشافہ کے لیے مقام۔ دونوں کے لیے بالمشافہ منتخب کرکے لنک تفصیل میں لکھ دیں۔</string>
     <string name="state_restricted_body">آپ کا اکاؤنٹ اس وقت یہ نھیں کر سکتا۔</string>
     <string name="action_report">رپورٹ کریں</string>
+    <!-- Media -->
+    <string name="media_unavailable">تصویر دستیاب نھیں</string>
+    <string name="media_more_count">+%1$d</string>
+    <string name="a11y_post_image">منسلک تصویر</string>
+
+    <!-- Composer (UX-CREATE-001) -->
+    <string name="composer_title">نئی پوسٹ</string>
+    <string name="composer_post">پوسٹ کریں</string>
+    <string name="composer_close">بند کریں</string>
+    <string name="composer_placeholder">آپ کے علاقے میں کیا ھو رھا ھے؟</string>
+    <string name="composer_counter">%1$d / %2$d</string>
+    <string name="composer_add_category">زمرہ منتخب کریں</string>
+    <string name="composer_clear_category">زمرہ ھٹائیں</string>
+    <string name="composer_image_limit">آپ زیادہ سے زیادہ %1$d تصاویر منسلک کر سکتے ھیں۔</string>
+    <string name="composer_blocked_too_long">یہ پوسٹ حد سے لمبی ھے۔ شائع کرنے کے لیے مختصر کریں۔</string>
+    <string name="composer_blocked_uploading">ایک تصویر ابھی اپ لوڈ ھو رھی ھے۔</string>
+    <string name="composer_blocked_upload_failed">ایک تصویر اپ لوڈ نھیں ھوئی۔ دوبارہ کوشش پر ٹیپ کریں — آپ کی باقی تصاویر اور متن محفوظ ھیں۔</string>
+    <string name="composer_blocked_upload_rejected">ایک تصویر استعمال نھیں ھو سکی۔ اسے ھٹا کر دوسری منتخب کریں۔</string>
+    <string name="composer_offline">آپ آف لائن ھیں، اس لیے کچھ شائع نھیں ھوا۔ آپ کا متن محفوظ ھے۔</string>
+    <string name="composer_media_not_ready">ایک منسلک فائل ابھی تیار ھو رھی ھے۔ تھوڑی دیر بعد دوبارہ کوشش کریں۔</string>
+    <string name="composer_needs_profile">پوسٹ کرنے سے پھلے اپنی پروفائل بنائیں۔</string>
+    <string name="composer_discard_title">یہ پوسٹ ترک کر دیں؟</string>
+    <string name="composer_discard_body">آپ کا متن اور منسلک تصاویر ضائع ھو جائیں گی۔</string>
+    <string name="composer_discard_confirm">ترک کریں</string>
+    <string name="composer_keep_writing">لکھتے رھیں</string>
+
+    <!-- Upload tile -->
+    <string name="upload_percent">%1$d%%</string>
+    <string name="upload_working">…</string>
+    <string name="upload_retry">دوبارہ</string>
+    <string name="upload_rejected">قابلِ قبول نھیں</string>
+    <string name="upload_remove">یہ تصویر ھٹائیں</string>
+    <string name="upload_add">تصویر شامل کریں</string>
+
+    <!-- Attachment sheet (UX-CREATE-003) -->
+    <string name="attach_title">پوسٹ میں شامل کریں</string>
+    <string name="attach_images">تصاویر</string>
+    <string name="attach_link_hint">اپنی پوسٹ میں لنک لکھ دیں، پیش نزارہ خود شامل ھو جائے گا۔ محلہ اسے خود حاصل کرتا ھے، اس لیے وہ ویب سائٹ آپ کا فون نھیں دیکھ پاتی۔</string>
+
+    <!-- Category picker (UX-CREATE-004) -->
+    <string name="category_title">زمرہ منتخب کریں</string>
+    <string name="category_unavailable">زمرے لوڈ نھیں ھو سکے۔ آپ بغیر زمرے کے بھی پوسٹ کر سکتے ھیں۔</string>
+
+    <!-- Shared actions -->
+    <string name="action_next">اگلا</string>
+    <string name="action_done">ھو گیا</string>
 </resources>

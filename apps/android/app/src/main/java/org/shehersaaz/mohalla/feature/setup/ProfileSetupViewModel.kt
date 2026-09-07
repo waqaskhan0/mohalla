@@ -127,6 +127,26 @@ class ProfileSetupViewModel(
         }
     }
 
+    /**
+     * The chosen file cannot be used at all.
+     *
+     * Reached when the picker could not read it, or when no compression step
+     * got under NFR-PERF-005's 500KB ceiling — and both mean the same thing to
+     * the person choosing: pick another one. Recorded as a REJECTION rather
+     * than a failure, because a retry offer here would re-read the same file
+     * and reach the same answer, and no bytes are held to retry with.
+     */
+    fun onPhotoUnusable() {
+        _state.update {
+            it.copy(
+                uploading = false,
+                uploadFailed = true,
+                uploadRejectedReason = null,
+                pendingPhoto = null,
+            )
+        }
+    }
+
     /** EDGE-013 — retries the photo alone, using the bytes already held. */
     fun retryPhotoUpload() {
         val bytes = _state.value.pendingPhoto ?: return
