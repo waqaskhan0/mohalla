@@ -103,7 +103,11 @@ function run(
   }
 
   if (blockedExitCode !== null && r.status === blockedExitCode) {
-    results.push({ name, status: 'BLOCKED', detail: `exit ${r.status} — could not run` });
+    // Neutral wording, because exit 3 covers two different situations: a lane
+    // whose tooling is absent (nothing ran) and a lane that ran fully and
+    // reported that criteria outside its reach are unmet. Both are BLOCKED;
+    // only the lane's own output can say which, and it does.
+    results.push({ name, status: 'BLOCKED', detail: `exit ${r.status} — reported BLOCKED` });
     return;
   }
 
@@ -156,6 +160,23 @@ if (process.env.DATABASE_URL) {
   // fake SMS provider, so nothing is delivered to a real recipient.
   run('api smoke test (real HTTP)', ...npmRun('run', 'smoke:api'), { allowSkip: true });
 
+  // ---- EPIC-16: the release gate ----------------------------------------
+  //
+  // RUN ON EVERY VERIFY, not only at release time, because mandatory tests A,
+  // B and E live in it and they are regression protection rather than
+  // ceremony: block privacy across eleven surfaces, revocation on the next
+  // request, and message idempotency under concurrency are exactly the
+  // properties that break silently and are noticed by a user rather than a
+  // test.
+  //
+  // It exits 3 while release criteria remain BLOCKED - which they will until
+  // devices, policy URLs and a named owner exist - so this lane reads BLOCKED
+  // rather than FAILED. A regression inside it still exits 1 and still fails.
+  run('release gate (REL-001…008, tests A/B/E)', ...npmRun('run', 'release:gate'), {
+    allowSkip: true,
+    blockedExitCode: 3,
+  });
+
   // ---- REL-007: the restore rehearsal -----------------------------------
   //
   // SEC-026: "AN UNTESTED BACKUP IS NOT A BACKUP." This lane is what tests it,
@@ -191,6 +212,10 @@ if (process.env.DATABASE_URL) {
   blocked('migration status', 'DATABASE_URL not set — no database reachable');
   blocked('audit append-only test', 'DATABASE_URL not set — no database reachable');
   blocked('api smoke test (real HTTP)', 'DATABASE_URL not set — no database reachable');
+  blocked(
+    'release gate (REL-001…008, tests A/B/E)',
+    'DATABASE_URL not set — no database reachable',
+  );
   blocked('backup for the rehearsal (SEC-026)', 'DATABASE_URL not set — no database reachable');
   blocked('restore rehearsal (REL-007)', 'DATABASE_URL not set — no database reachable');
 }
