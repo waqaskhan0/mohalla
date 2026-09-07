@@ -1,0 +1,76 @@
+package org.shehersaaz.mohalla.core.network
+
+import okhttp3.Interceptor
+import okhttp3.Response
+import org.shehersaaz.mohalla.core.locale.AppLocale
+import org.shehersaaz.mohalla.core.storage.SecureStorage
+import java.util.UUID
+
+/**
+ * The three interceptors `04-mobile-architecture.md` §2 names: auth,
+ * correlation and language.
+ */
+
+/** Where the opaque session token lives (ADR-008 — opaque, not a JWT). */
+const val SESSION_TOKEN_KEY = "session.token"
+
+/**
+ * `Authorization: Bearer` on every request that has a token.
+ *
+ * ADDS NOTHING WHEN THERE IS NO TOKEN, rather than sending an empty header.
+ * The backend's guard is closed by default and treats a malformed header as an
+ * authentication failure, so `Bearer ` with nothing after it would turn an
+ * anonymous call into a 401 — and `/register`, `/login` and `/health` are all
+ * legitimately anonymous.
+ */
+class AuthInterceptor(private val storage: SecureStorage) : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val token = storage.getString(SESSION_TOKEN_KEY)
+        val request = if (token.isNullOrBlank()) {
+            chain.request()
+        } else {
+            chain.request().newBuilder()
+                .header("Authorization", "Bearer $token")
+                .build()
+        }
+        return chain.proceed(request)
+    }
+}
+
+/**
+ * A correlation id per request, so a user-visible failure can be traced.
+ *
+ * SRS §16 lets the user quote a correlation id to support. That only works if
+ * the id the server logs is the id the client saw, which means the CLIENT has
+ * to originate it — a server-generated id never reaches the screen when the
+ * failure is a timeout.
+ */
+class CorrelationInterceptor : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val request = chain.request().newBuilder()
+            .header("X-Correlation-Id", UUID.randomUUID().toString())
+            .build()
+        return chain.proceed(request)
+    }
+}
+
+/**
+ * `Accept-Language` from the INTERFACE language, not the device's.
+ *
+ * LOCALE-FR-006: server-composed text — notification bodies, error messages —
+ * arrives in the user's language. The device locale is the wrong source: a
+ * Pakistani handset set to English is common, and the user may have chosen Urdu
+ * in the app. The app's own choice is the only one that reflects a decision.
+ *
+ * Reads through a lambda rather than taking a value, because the language can
+ * change at runtime (LOCALE-FR-002) and an interceptor built at startup would
+ * otherwise pin the language it was born with.
+ */
+class LanguageInterceptor(private val locale: () -> AppLocale) : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val request = chain.request().newBuilder()
+            .header("Accept-Language", locale().tag)
+            .build()
+        return chain.proceed(request)
+    }
+}

@@ -1,0 +1,1643 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "HealthController_summary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Summary returned. `status` may be `degraded`."
+          }
+        },
+        "summary": "Service summary, version and dependency status",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/health/live": {
+      "get": {
+        "operationId": "HealthController_live",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The process is running."
+          }
+        },
+        "summary": "Process liveness. Consults no dependency.",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "HealthController_ready",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Every dependency answered."
+          },
+          "503": {
+            "description": "A dependency is unavailable."
+          }
+        },
+        "summary": "Dependency readiness",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/register": {
+      "post": {
+        "description": "Returns 202 whether the number was free, already registered, pending deletion or banned (SEC-006, EDGE-003/004). The distinction is delivered by the OTP, which only reaches the number's actual holder.",
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "summary": "Begin registration. Uniform 202 (AUTH-API-001).",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/otp/verify": {
+      "post": {
+        "operationId": "AuthController_verifyOtp",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Verify an OTP and consume the challenge (AUTH-API-002).",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/otp/resend": {
+      "post": {
+        "description": "60-second cooldown and 3/hour. A refusal is NOT reported: saying \"wait 41 seconds\" would confirm the number has a pending registration.",
+        "operationId": "AuthController_resendOtp",
+        "parameters": [],
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "summary": "Resend an OTP, invalidating the previous code (AUTH-API-003).",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/login": {
+      "post": {
+        "description": "A wrong password, an unknown number and a banned account return the identical 401 INVALID_CREDENTIALS, in comparable time (SEC-006).",
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Sign in. Returns a session and the account state (AUTH-API-004).",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Sign out this device only (AUTH-API-005, BR-007).",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/session/refresh": {
+      "post": {
+        "description": "The guard already slides the window on every authenticated request, so this exists for a client that wants to extend a session without making a real call - and it returns the CURRENT expiry so the client never has to guess.",
+        "operationId": "AuthController_refreshSession",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Slide the idle expiry (AUTH-API-008).",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/password/forgot": {
+      "post": {
+        "description": "Same response whether or not the number exists.",
+        "operationId": "AuthController_forgotPassword",
+        "parameters": [],
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "summary": "Request a password reset code (AUTH-API-006).",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/password/reset": {
+      "post": {
+        "description": "Public, so the request carries its own proof: phone, code and new password together. Every session is revoked in the same transaction as the password change (BR-035).",
+        "operationId": "AuthController_resetPassword",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Complete a password reset. Invalidates ALL sessions (AUTH-API-007).",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/password/change": {
+      "post": {
+        "description": "Requires the current password even though the caller holds a session: a borrowed phone must not be enough to lock the owner out. Other devices are signed out.",
+        "operationId": "AuthController_changePassword",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Change the password while signed in (SET-FR-002).",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/admin/login": {
+      "post": {
+        "description": "Separate credential store from users. 8-hour absolute session (SEC-024), 5 failures then a 30-minute lockout, and every attempt audited (SEC-021).",
+        "operationId": "AuthController_adminLogin",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Administrator sign-in. Admin store ONLY (AUTH-API-010, SEC-020).",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/admin/logout": {
+      "post": {
+        "operationId": "AuthController_adminLogout",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "End an administrator session (AUTH-API-011). Audited.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/media/upload-slot": {
+      "post": {
+        "description": "Returns a media id and an upload target scoped to a SERVER-CHOSEN quarantine key. The declared size is advisory - it refuses an oversized upload before the bytes move, but the stored object is re-measured and a client that under-declares is caught then (SEC-012, MEDIA-FR-005).",
+        "operationId": "MediaController_requestSlot",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Request an upload slot (MED-API-001).",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/media/upload/{key}": {
+      "put": {
+        "description": "Not part of the frozen API. Exists because a filesystem cannot presign; the S3 adapter replaces this with a direct-to-storage upload and this route disappears.",
+        "operationId": "MediaController_uploadBytes",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Upload bytes into quarantine (local storage adapter only).",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/media/{id}/complete": {
+      "post": {
+        "description": "Runs content inspection (SEC-013): magic-byte identification, executable rejection, and a re-measure of size and dimensions. On success the object is promoted under a NEW random key. On failure the object is DELETED, not merely marked - MEDIA-FR-005 requires \"rejected and no file is stored\". Safe to call twice.",
+        "operationId": "MediaController_complete",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Report the upload finished; inspect and resolve (MED-API-002).",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/media/{id}": {
+      "get": {
+        "description": "Serves READY, PUBLIC media only. Quarantined, rejected and RESTRICTED objects are all unreachable here, and all give the same 404 - a message attachment is not retrievable by id (MSG-FR-008), and this route cannot say so without disclosing that the id names something. The Content-Type is the VERIFIED type from inspection, never a client claim, and nosniff stops a browser second-guessing it.",
+        "operationId": "MediaController_read",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Read a media object (MED-API-003).",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/notifications": {
+      "get": {
+        "description": "Newest first, keyset-paginated, rendered in the requested language. Contains everything the user was notified about INCLUDING what was never pushed - a declined push permission or a disabled category costs the buzz, never the record. Notifications whose target was deleted are already absent: they are removed rather than left to navigate nowhere.",
+        "operationId": "NotificationController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "The notification centre (NOTIF-API-001, NOTIF-FR-002).",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/unread-count": {
+      "get": {
+        "description": "One number, read on nearly every screen, so it has its own partial index.",
+        "operationId": "NotificationController_unreadCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "The unread badge (NOTIF-FR-002).",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/read": {
+      "post": {
+        "description": "Scoped to the caller's own notifications in the WHERE clause, so passing somebody else's id changes nothing rather than marking their mail read.",
+        "operationId": "NotificationController_markRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Mark notifications read (NOTIF-API-002).",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/read-all": {
+      "post": {
+        "operationId": "NotificationController_markAllRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Mark everything read (NOTIF-FR-002).",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/preferences": {
+      "get": {
+        "description": "All seven switches, with ENABLED as the default for any the user has never touched - so the settings screen shows the truth rather than an empty list that reads as everything being off. These gate PUSH ONLY.",
+        "operationId": "NotificationController_preferences",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Push preferences (NOTIF-API-003, NOTIF-FR-007, SET-FR-007).",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/preferences/{key}": {
+      "put": {
+        "description": "Gates PUSH ONLY. The in-app centre keeps recording everything, so disabling a category never loses information - which is the acceptance criterion verbatim.",
+        "operationId": "NotificationController_setPreference",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Enable or disable a push category (NOTIF-FR-007).",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/devices": {
+      "post": {
+        "description": "The LANGUAGE is required, and is the language this device chose at first launch. BR-040 says no default is pre-selected, so at registration the device knows the answer and the server may not - and a push rendered in a language nobody picked is worse than no push. Re-registering a token REASSIGNS it, so a handset that changes hands stops delivering the previous user's notifications.",
+        "operationId": "NotificationController_registerDevice",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Register a device for push (NOTIF-API-004, NOTIF-FR-001).",
+        "tags": [
+          "notifications"
+        ]
+      },
+      "delete": {
+        "description": "Called on logout. Idempotent: a token that was already gone succeeds, because the caller asked for a state and that state holds.",
+        "operationId": "NotificationController_removeDevice",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Unregister a device (ADR-014).",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/username/available": {
+      "get": {
+        "description": "A taken handle and a RESERVED handle both report `available: false` with no reason. Availability is advisory - the UNIQUE index decides when the handle is claimed (EDGE-007). A malformed handle reports its reason, since that is the caller's own input.",
+        "operationId": "ProfileController_usernameAvailable",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Is a username available? (PROF-API-001)",
+        "tags": [
+          "profile"
+        ]
+      }
+    },
+    "/me/username": {
+      "post": {
+        "description": "Stores the handle, so it is held the moment this succeeds - there is no reservation to expire, which is what makes a failed request safe to retry. IMMUTABLE afterwards: a second claim is refused even for the same handle.",
+        "operationId": "ProfileController_claimUsername",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Claim the username. Permanent (PROF-API-002, BR-005).",
+        "tags": [
+          "profile"
+        ]
+      }
+    },
+    "/me/profile": {
+      "post": {
+        "description": "Requires a claimed username. A display name alone is sufficient.",
+        "operationId": "ProfileController_createProfile",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Create the profile (PROF-API-003, PROFILE-FR-001).",
+        "tags": [
+          "profile"
+        ]
+      },
+      "patch": {
+        "description": "Owner only, and there is no route that edits anyone else - not even for an administrator (§161). `username` is rejected rather than ignored (BR-005). Send null to clear an optional field; omit it to leave it alone. Last write wins.",
+        "operationId": "ProfileController_updateProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Edit own profile (PROF-API-005, PROFILE-FR-003).",
+        "tags": [
+          "profile"
+        ]
+      }
+    },
+    "/me": {
+      "get": {
+        "description": "A superset of the public projection: adds account state, suspension expiry and chosen interests. Still carries NO phone number and no date of birth (PRIV-003).",
+        "operationId": "ProfileController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "The owner's own profile (PROF-API-004, PROFILE-FR-004).",
+        "tags": [
+          "profile"
+        ]
+      },
+      "delete": {
+        "description": "THE PASSWORD IS RE-ENTERED, because the phone is already unlocked and in somebody's hand. The account becomes invisible immediately and every session is revoked; posts and comments REMAIN, attributed to \"Deleted User\". Nothing is erased for 30 days, and logging in within that window restores everything - profile, followers, following and post attribution - because phase one changes only the STATE. AVAILABLE IN EVERY STATE EXCEPT ALREADY-DELETED, INCLUDING WHILE SUSPENDED (BR-008): a suspension must not trap somebody in the product.",
+        "operationId": "SettingsController_deleteAccount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Delete this account (SET-API-005, SET-FR-004, BR-008/009).",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/users/{id}": {
+      "get": {
+        "description": "Returns 404 RESOURCE_UNAVAILABLE for a missing, banned, deleted OR blocked profile - one neutral state that does not distinguish them (BR-025, UX-STATE-001). A suspended profile IS visible, because a suspension is temporary and hiding it would break existing conversations.",
+        "operationId": "ProfileController_viewUser",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "View another person's profile (PROF-API-006, PROFILE-FR-005).",
+        "tags": [
+          "profile"
+        ]
+      }
+    },
+    "/categories": {
+      "get": {
+        "description": "Eleven seeded rows, not user-extensible. Both language names are returned so the client renders either without a second call.",
+        "operationId": "ProfileController_categories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "The fixed category taxonomy (BR-017).",
+        "tags": [
+          "profile"
+        ]
+      }
+    },
+    "/me/interests": {
+      "put": {
+        "description": "PUT because the client sends the COMPLETE desired set - that is what makes deselection expressible. An empty array is valid: interests are optional and skipping them degrades nothing.",
+        "operationId": "ProfileController_setInterests",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Replace the interest selection (PROF-API-009, PROFILE-FR-011).",
+        "tags": [
+          "profile"
+        ]
+      }
+    },
+    "/users/{id}/block": {
+      "put": {
+        "description": "Idempotent. Removes existing follows in BOTH directions in the same transaction (BR-024). Never notifies the blocked user, and does not reveal whether the target exists - probing account existence through the block endpoint would defeat the point.",
+        "operationId": "BlockController_block",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Block a user (SAFETY-FR-005).",
+        "tags": [
+          "safety"
+        ]
+      },
+      "delete": {
+        "description": "Idempotent, and succeeds even when no block existed - reporting \"you were not blocking them\" would disclose the ABSENCE of a block, which is the same class of information as its presence. Does NOT restore the follows the block removed: re-creating a relationship the user severed would put someone back in their feed unasked.",
+        "operationId": "BlockController_unblock",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Unblock a user (SAFETY-FR-006).",
+        "tags": [
+          "safety"
+        ]
+      }
+    },
+    "/me/blocks": {
+      "get": {
+        "description": "Only ever the caller's OWN list. There is deliberately no route for who has blocked a given user - that question has no legitimate non-admin caller.",
+        "operationId": "BlockController_listBlocks",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "The accounts you have blocked (SAFETY-FR-006).",
+        "tags": [
+          "safety"
+        ]
+      }
+    },
+    "/reports": {
+      "post": {
+        "description": "ALWAYS THE SAME ACKNOWLEDGEMENT. A repeat report from the same account changes nothing and returns the same 202 - SAFETY-FR-001 requires that the reporter cannot infer the tally, because the tally is what tells a coordinated group how many more accounts they need. Posts and comments auto-hide at 3 distinct reporters, events at 2 (BR-044); PROFILES AND CONVERSATIONS NEVER auto-hide, because hiding a whole person on a report count would be trivially weaponised (SAFETY-FR-002) and a threshold between two people is meaningless (MSG-FR-007). Nothing is ever deleted automatically (BR-032).",
+        "operationId": "ReportController_report",
+        "parameters": [],
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "summary": "Report content, an account or a conversation (SAFE-API-001).",
+        "tags": [
+          "safety"
+        ]
+      }
+    },
+    "/users/{id}/follow": {
+      "put": {
+        "description": "No approval step - all profiles are public, so following needs no consent (BR-018). Idempotent: a repeat follow leaves exactly one relationship and does not change the count. Refused with a neutral 404 across a block, in either direction (BR-023).",
+        "operationId": "FollowController_follow",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Follow a user (SOC-API-001, SOCIAL-FR-001).",
+        "tags": [
+          "social-graph"
+        ]
+      },
+      "delete": {
+        "description": "Idempotent, and SILENT: no notification is ever produced (BR-020). Succeeds even when no relationship existed - the caller asked for a state, and that state now holds.",
+        "operationId": "FollowController_unfollow",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Unfollow (SOC-API-002, SOCIAL-FR-002).",
+        "tags": [
+          "social-graph"
+        ]
+      }
+    },
+    "/users/{id}/followers": {
+      "get": {
+        "description": "Paginated at 20. Excludes anyone blocked in either direction relative to the VIEWER, and excludes banned and deleted accounts. Suspended accounts are included, because a suspension is temporary and hiding them would silently rewrite the social graph.",
+        "operationId": "FollowController_followers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "A profile's followers (SOC-API-003, SOCIAL-FR-003).",
+        "tags": [
+          "social-graph"
+        ]
+      }
+    },
+    "/users/{id}/following": {
+      "get": {
+        "description": "Same rules and pagination as the follower list.",
+        "operationId": "FollowController_following",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Accounts a profile follows (SOC-API-004, SOCIAL-FR-004).",
+        "tags": [
+          "social-graph"
+        ]
+      }
+    },
+    "/suggestions": {
+      "get": {
+        "description": "Excludes self, accounts already followed, blocked accounts in either direction, and accounts that are not publicly visible. Verified organizations first, then by reach. Returns a non-empty set even when no interests are selected (PROFILE-FR-011 AC).",
+        "operationId": "FollowController_suggestions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Suggested accounts (SOC-API-005, SOCIAL-FR-005).",
+        "tags": [
+          "social-graph"
+        ]
+      }
+    },
+    "/posts": {
+      "post": {
+        "description": "Body is 1-3,000 GRAPHEME CLUSTERS (BR-012), so Urdu is not penalised. Text is optional when an attachment is present. Up to four images in the order given (BR-013), and each must already be READY - the database refuses a post that references media still under inspection (ADR-013 step 7).",
+        "operationId": "PostController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Publish a post (POST-API-001, POST-FR-001).",
+        "tags": [
+          "posts"
+        ]
+      }
+    },
+    "/posts/{id}": {
+      "get": {
+        "description": "One neutral 404 for missing, deleted, admin-removed, auto-hidden, banned-author and blocked. The AUTHOR sees their own auto-hidden post with `underReview: true` (BR-032) - so they can appeal what they can see.",
+        "operationId": "PostController_view",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "View a post (POST-API-002, POST-FR-009).",
+        "tags": [
+          "posts"
+        ]
+      },
+      "patch": {
+        "description": "Body and category only. ATTACHMENTS CANNOT BE CHANGED (BR-014), which \"prevents bait-and-switch on content that others have already endorsed\" - and sending `mediaIds` is rejected rather than ignored. Sets the \"edited\" marker. Author only: an administrator may remove a post but never edit one.",
+        "operationId": "PostController_update",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Edit own post (POST-API-003, POST-FR-008).",
+        "tags": [
+          "posts"
+        ]
+      },
+      "delete": {
+        "description": "Permanent and not user-reversible; an administrator cannot restore it (BR-014). Idempotent - deleting an already-deleted post succeeds.",
+        "operationId": "PostController_remove",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Delete own post (POST-API-004, POST-FR-007).",
+        "tags": [
+          "posts"
+        ]
+      }
+    },
+    "/users/{id}/posts": {
+      "get": {
+        "description": "Newest first, paginated at 20, keyset-paginated on (createdAt, id). Deleted posts are excluded; auto-hidden posts appear ONLY for their author, marked (BR-032).",
+        "operationId": "PostController_byAuthor",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "A profile's posts (PROF-API-007, PROFILE-FR-008).",
+        "tags": [
+          "posts"
+        ]
+      }
+    },
+    "/posts/{id}/like": {
+      "put": {
+        "description": "Idempotent by the composite PRIMARY KEY (BR-031): six rapid taps produce one row and change the count by at most one. A user MAY like their own post. Refused with a neutral 404 across a block.",
+        "operationId": "EngagementController_like",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Like a post (ENG-API-001, ENGAGE-FR-001).",
+        "tags": [
+          "engagement"
+        ]
+      },
+      "delete": {
+        "description": "Idempotent, and SILENT — \"unliking sends no notification\". Succeeds whether or not a like existed: the caller asked for a state, and that state now holds.",
+        "operationId": "EngagementController_unlike",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Unlike (ENG-API-002).",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
+    "/posts/{id}/comments": {
+      "post": {
+        "description": "1-1,000 GRAPHEME CLUSTERS, so Urdu is not penalised. If the post was deleted while the comment was being written the submission is refused - the client keeps the typed text, which the requirement asks for explicitly.",
+        "operationId": "EngagementController_comment",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Comment on a post (ENG-API-003, ENGAGE-FR-002).",
+        "tags": [
+          "engagement"
+        ]
+      },
+      "get": {
+        "description": "OLDEST first, because a thread is a conversation and reading it backwards puts replies before what they reply to. Excludes comments from blocked users in either direction.",
+        "operationId": "EngagementController_listComments",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "A post's comments (ENG-API-004).",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
+    "/comments/{id}/replies": {
+      "post": {
+        "description": "Exactly ONE level of nesting (BR-033). A reply aimed at a nested comment attaches to the same parent THREAD rather than being refused - the intent is clear, and the database refuses a third level regardless. This is the requirement that solves WhatsApp's lack of threading.",
+        "operationId": "EngagementController_reply",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Reply to a comment (ENG-API-005, ENGAGE-FR-003).",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
+    "/comments/{id}": {
+      "delete": {
+        "description": "The comment's author OR the POST's author may delete it (BR-020) - which distributes moderation away from administrators. Replies are removed with it. Anyone else gets the same neutral 404 as a missing comment, so a third party cannot probe who wrote what.",
+        "operationId": "EngagementController_deleteComment",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Delete a comment (ENG-API-006, ENGAGE-FR-004/005).",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
+    "/feed/following": {
+      "get": {
+        "description": "Posts from accounts the viewer follows, STRICTLY newest-first (BR-026) - there is no ranking and no sort parameter. Excludes blocked, auto-hidden, deleted and banned-author content (BR-027/028); posts from SUSPENDED users remain visible. Pass `since` for pull-to-refresh (FEED-API-004).",
+        "operationId": "FeedController_following",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "The following feed (FEED-API-001, FEED-FR-001).",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/feed/discover": {
+      "get": {
+        "description": "Every visible post platform-wide, newest first, whether or not the viewer follows the author. The primary answer to cold start: a brand-new account following nobody still sees the platform. Same exclusions as the following feed.",
+        "operationId": "FeedController_discover",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "The discover feed (FEED-API-002, FEED-FR-003).",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/feed/featured": {
+      "get": {
+        "description": "Up to five unexpired announcements, newest first. Resolves INDEPENDENTLY of follow data by requirement - this is the cold-start guarantee (RSK-001). An empty array means the client hides the section entirely rather than rendering an empty container.",
+        "operationId": "FeedController_featured",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Featured announcements (FEED-API-003, FEED-FR-002).",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/me/saved": {
+      "get": {
+        "description": "Newest-SAVED-first, and private to the caller. There is no route that reveals who saved a given post, and saving generates no notification to its author.",
+        "operationId": "FeedController_saved",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Saved posts (FEED-API-006, FEED-FR-007).",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/posts/{id}/save": {
+      "put": {
+        "description": "Private, idempotent, and silent - the author is never told.",
+        "operationId": "FeedController_save",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Save a post (FEED-API-005, FEED-FR-007).",
+        "tags": [
+          "feed"
+        ]
+      },
+      "delete": {
+        "operationId": "FeedController_unsave",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Remove a saved post. Idempotent.",
+        "tags": [
+          "feed"
+        ]
+      }
+    },
+    "/events": {
+      "post": {
+        "description": "Published immediately, with no approval step. BR-043: ANY active user may create events - creation is not restricted to verified organizations, so there is no role check here. An ONLINE event requires a meeting link and a PHYSICAL one a location; supplying both is refused, because V1 does not model a hybrid (EVENT-FR-001 A1).",
+        "operationId": "EventController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Create an event (EVENT-API-001, EVENT-FR-001).",
+        "tags": [
+          "events"
+        ]
+      },
+      "get": {
+        "description": "SOONEST first - the only ascending list in the product, because an events list is read by what is about to happen rather than by what is newest. Past events drop off automatically. A CANCELLED event stays until its original date passes, marked, so somebody who never opened the notification still finds out (EVENT-FR-007).",
+        "operationId": "EventController_listUpcoming",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Upcoming events (EVENT-API-002, EVENT-FR-005).",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/users/{userId}/events": {
+      "get": {
+        "description": "Newest start first, because this is a history as much as a schedule. The creator sees their own auto-hidden events marked under review (BR-032); nobody else does.",
+        "operationId": "EventController_listByCreator",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "A creator's events (EVENT-FR-001 step 8).",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/events/{id}": {
+      "get": {
+        "description": "Title, description, creator, time, type, location or join state, COUNTS and category. Deliberately no attendee array and no meetingUrl - see the class comment.",
+        "operationId": "EventController_detail",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Event detail (EVENT-API-003, EVENT-FR-006).",
+        "tags": [
+          "events"
+        ]
+      },
+      "patch": {
+        "description": "Creator only; anyone else gets the same neutral 404 as a missing event. The TYPE cannot change once anybody has responded (EVENT-FR-002) - somebody who agreed to walk to a park has not agreed to join a video call. Only a time, location or link change notifies attendees; fixing a typo at midnight must not wake fifty neighbours.",
+        "operationId": "EventController_update",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Edit an event (EVENT-API-006, EVENT-FR-007).",
+        "tags": [
+          "events"
+        ]
+      },
+      "delete": {
+        "description": "One intention - \"this is not happening\" - and the outcome is not the creator's choice. With no RSVPs the event is deleted. Once anybody has committed, deletion \"is not offered\": the event stays VISIBLE and marked cancelled until its original date passes, so somebody who never opens the notification still finds out.",
+        "operationId": "EventController_cancel",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Cancel, or delete if nobody has responded (EVENT-FR-007).",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/events/{id}/rsvp": {
+      "put": {
+        "description": "Going or Interested, one response per user. Changing from Interested to Going is an update against the composite primary key, so the person is COUNTED ONCE - which is the requirement's acceptance criterion. RSVP to a past or cancelled event is refused, and those two are told apart because they lead to different next actions.",
+        "operationId": "EventController_rsvp",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "RSVP (EVENT-API-004, EVENT-FR-004).",
+        "tags": [
+          "events"
+        ]
+      },
+      "delete": {
+        "description": "\"The user may change or withdraw the response at any time.\" Idempotent: withdrawing when nothing was recorded succeeds, because the caller asked for a state and that state now holds.",
+        "operationId": "EventController_withdraw",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Withdraw an RSVP (EVENT-FR-004).",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/events/{id}/join": {
+      "post": {
+        "description": "THE ONLY ROUTE THAT RETURNS A meetingUrl. Two conditions, both from the requirement: the caller must have RSVP'd, and the start must be within 30 minutes - \"which limits scraping of open meeting rooms\". 403 with a reason when the event is visible but the link is not yet yours; 404 only when the event itself is unavailable. BR-045: the platform hosts no video, so this always links out.",
+        "operationId": "EventController_join",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get the meeting link (EVENT-API-005, EVENT-FR-003).",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/conversations": {
+      "post": {
+        "description": "200, not 201: BR-024 says one conversation exists per pair FOREVER, so this RESOLVES a thread rather than creating one. Calling it twice returns the same conversation, which is the acceptance criterion. Opening notifies nobody and produces no request - an empty thread appears in neither inbox until something is actually sent.",
+        "operationId": "MessagingController_open",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Open the conversation with someone (MSG-FR-001).",
+        "tags": [
+          "messaging"
+        ]
+      },
+      "get": {
+        "description": "Most recent activity first. `section=REQUESTS` returns Message Requests, which are \"a separate section with its own count\" and never mixed into the main list. Conversations hidden by a block are absent while it stands and return intact on unblock.",
+        "operationId": "MessagingController_inbox",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "The inbox, or the request list (MSG-FR-003).",
+        "tags": [
+          "messaging"
+        ]
+      }
+    },
+    "/conversations/unread": {
+      "get": {
+        "description": "Two numbers, because the inbox has two sections. Counts CONVERSATIONS with something unread rather than unread messages - \"2\" on that screen means two threads, not two hundred messages across two threads.",
+        "operationId": "MessagingController_unread",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Unread badges (MSG-FR-003).",
+        "tags": [
+          "messaging"
+        ]
+      }
+    },
+    "/conversations/{id}/messages": {
+      "get": {
+        "description": "NEWEST first, keyset-paginated - a conversation is read from the bottom, unlike a comment thread. `readAt` is present only on the viewer's OWN messages, and never at all in a Message Request (MSG-FR-009).",
+        "operationId": "MessagingController_history",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Message history (MSG-API-002).",
+        "tags": [
+          "messaging"
+        ]
+      },
+      "post": {
+        "description": "Persisted BEFORE it is acknowledged (ADR-009 step 3). A repeat of the same `clientMessageId` returns the ORIGINAL message with 200 instead of creating a second with 201 - so a retry after a timeout, a duplicate delivery and a switch from socket to polling all resolve to exactly one message (EDGE-020, EDGE-021).",
+        "operationId": "MessagingController_send",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Send a message (MSG-API-001, MSG-FR-002/004/006).",
+        "tags": [
+          "messaging"
+        ]
+      }
+    },
+    "/conversations/{id}/messages/since": {
+      "get": {
+        "description": "Everything after a server timestamp, OLDEST first - the client is appending to what it already holds. This is also the POLLING FALLBACK ADR-009 names: it returns the same messages carrying the same client ids, so a client that switches transports cannot duplicate anything.",
+        "operationId": "MessagingController_since",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Reconcile after a dropped connection (MSG-FR-004 E1).",
+        "tags": [
+          "messaging"
+        ]
+      }
+    },
+    "/conversations/{id}/read": {
+      "post": {
+        "description": "Zeroes this participant's unread count. Safe to call on a Message Request: the read marker moves, and no receipt is derived from it while the thread is a request, so the sender learns nothing - \"reading a request does not signal anything to a stranger\".",
+        "operationId": "MessagingController_read",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Mark read (MSG-FR-009).",
+        "tags": [
+          "messaging"
+        ]
+      }
+    },
+    "/conversations/{id}/accept": {
+      "post": {
+        "description": "The thread moves to the main inbox and normal messaging resumes. Idempotent: accepting an already-accepted conversation succeeds.",
+        "operationId": "MessagingController_accept",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Accept a Message Request (MSG-FR-005).",
+        "tags": [
+          "messaging"
+        ]
+      }
+    },
+    "/conversations/{id}/decline": {
+      "post": {
+        "description": "THE SENDER IS TOLD NOTHING - no event, no notification, no observable change. BR-028: \"a declined message request produces no signal to the sender, because informing them invites retaliation.\" Later messages from that sender are stored in the same suppressed thread rather than raising new requests, so they remain available if the recipient reports or later accepts.",
+        "operationId": "MessagingController_decline",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Decline a Message Request (MSG-FR-005 A1, BR-028).",
+        "tags": [
+          "messaging"
+        ]
+      }
+    },
+    "/conversations/media/{mediaId}": {
+      "get": {
+        "description": "THE ONLY WAY TO REACH A MESSAGE IMAGE. `GET /media/{id}` refuses RESTRICTED objects outright, because it has no way to know who a participant is. This route checks that the caller is in the conversation the image was sent in, which is exactly MSG-FR-008's criterion: \"not retrievable by anyone outside that conversation.\" `no-store` rather than the long immutable cache post media gets - a private image should not sit in a shared cache.",
+        "operationId": "MessagingController_messageMedia",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Read an image sent in a message (MSG-FR-008).",
+        "tags": [
+          "messaging"
+        ]
+      }
+    },
+    "/search/people": {
+      "get": {
+        "description": "Cross-script: an Urdu-script name is found by its Roman spelling and the reverse (SEARCH-FR-003). Excludes blocked users in either direction and banned or deleted accounts; SUSPENDED accounts are INCLUDED, because a suspension is temporary and hiding the account would break existing conversations.",
+        "operationId": "SearchController_people",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Find people by display name or username (SRCH-API-001).",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/search/posts": {
+      "get": {
+        "description": "Ranked by relevance then recency. Cross-script, so a post written in Urdu is found by a Roman Urdu query. Auto-hidden, deleted and blocked-author posts are excluded - searching an auto-hidden post's exact text returns nothing.",
+        "operationId": "SearchController_posts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Find posts by text (SRCH-API-002).",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/search/events": {
+      "get": {
+        "description": "UPCOMING EVENTS RANK ABOVE PAST ONES, ahead of relevance - a perfectly-matching event that happened last year is less useful than a near-matching one next week, because only one of them can still be attended. Past events are ranked DOWN rather than excluded: the upcoming list is a schedule, but search is a memory. Cross-script, like every other search here. No result carries a meetingUrl.",
+        "operationId": "SearchController_events",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Find events by title and description (SRCH-API-003, SEARCH-FR-004).",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/me/language": {
+      "put": {
+        "description": "Stored on the ACCOUNT, not the device, which is what makes SET-FR-001's criterion true: \"GIVEN Urdu is selected on one device, WHEN the user logs in on another device, THEN Urdu is applied there too.\" BR-040 means no default is pre-selected, so an account that has never called this has no stored language and push falls back to whatever the DEVICE recorded at registration.",
+        "operationId": "SettingsController_setLanguage",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Set the interface language (SET-API-001, SET-FR-001, LOCALE-FR-002).",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/me/settings": {
+      "get": {
+        "description": "Language, notification preferences and the blocked-user count. Assembled here so the screen is one request rather than four, and so a client cannot render a partial screen when one of them is slow.",
+        "operationId": "SettingsController_settingsScreen",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "The settings screen (SET-API-002).",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/me/deletion-consequences": {
+      "get": {
+        "description": "PRIV-006: users \"MUST BE TOLD THIS CLEARLY BEFORE CONFIRMING, because it differs from the erasure many will assume\". Returned as localization KEYS so both languages say the same thing, and as its own endpoint so the confirmation screen cannot be built without them. The surprising line - that posts remain, attributed to \"Deleted User\" - is SECOND in the list, where it is read, rather than last where it is skipped. SERVES THE RESTORE SCREEN TOO (UX-AUTH-012). A session issued to a PENDING_DELETION account can reach this, and gets `scheduledErasureAt` as well - which is how the restore offer can say how long is left rather than just that something is pending. Null for everybody else, because there is no deletion to count down to.",
+        "operationId": "SettingsController_deletionConsequences",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "What deleting will do — BEFORE confirming (SET-FR-004, PRIV-006).",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/me/restore": {
+      "post": {
+        "description": "Reachable with a session issued by the login flow to a PENDING_DELETION account (UX-AUTH-012). NO ADMINISTRATOR INVOLVEMENT - a restoration that needed a support ticket would fail everybody who deleted in a moment they cannot face explaining. Past the 30 days the answer is a NEUTRAL not-found, because by then the account genuinely no longer exists.",
+        "operationId": "SettingsController_restore",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Restore an account inside the grace period (SET-FR-005).",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/admin/moderation/queue": {
+      "get": {
+        "description": "Ordered by SEVERITY, then distinct report count, then AGE ASCENDING - the oldest of equal cases first, because a queue that surfaced the newest would let an item at the bottom wait forever. Offset-based rather than keyset, because the ordering key is mutable: a new report changes a case's severity or count and moves it.",
+        "operationId": "ModerationController_queue",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "The moderation queue (ADMIN-API-001, ADMIN-FR-002).",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/moderation/cases/{id}": {
+      "get": {
+        "description": "Carries the target, the reports against it and THE AUTHOR'S ENFORCEMENT HISTORY - §4 says so \"so proportionality can be judged without navigating away\". An administrator deciding whether a first offence warrants 30 days should not have to open another screen to find out it is the fourth.",
+        "operationId": "ModerationController_caseDetail",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "One case, with the context needed to judge it (ADMIN-FR-002).",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/moderation/cases/{id}/conversation": {
+      "get": {
+        "description": "THE ONLY WAY AN ADMINISTRATOR SEES A PRIVATE MESSAGE, and only for a conversation that was reported. The access is audit-logged before the read - \"viewing is auditable, not only acting\" is what makes PRIV-009 verifiable rather than aspirational.",
+        "operationId": "ModerationController_reportedConversation",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "The excerpt from a reported conversation (MSG-FR-007, PRIV-009).",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/moderation/cases/{id}/restore": {
+      "post": {
+        "description": "A PEER of delete, not a lesser option. The report count RESETS so the same reporters cannot immediately re-hide it - ADMIN-FR-003 calls this \"what protects legitimate civic criticism from coordinated reporting\". A fourth restoration is still possible, and no automatic deletion ever occurs.",
+        "operationId": "ModerationController_restore",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Restore content (ADMIN-API-002, ADMIN-FR-003).",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/moderation/cases/{id}/delete": {
+      "post": {
+        "description": "A PEER of restore. Irreversible, and the ONLY path by which anything is ever deleted - BR-032 forbids automatic deletion entirely. The audit log retains what was deleted, by whom and why, even though the content is gone.",
+        "operationId": "ModerationController_remove",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Delete content permanently (ADMIN-API-003, ADMIN-FR-004).",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/moderation/cases/{id}/no-action": {
+      "post": {
+        "description": "The third peer. The content is untouched and the reports are cleared, so that one more report cannot re-hide something an administrator has just examined and approved.",
+        "operationId": "ModerationController_noAction",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Close a case without acting (ADMIN-FR-002).",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/users/search": {
+      "get": {
+        "description": "By username or display name. Returns the account view, which carries NO phone, email or date of birth - those need the sensitive endpoint, which audits every access.",
+        "operationId": "ModerationController_searchUsers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Find an account (ADMIN-API-005, ADMIN-FR-005).",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/users/{id}": {
+      "get": {
+        "description": "Profile, state, registration date, content counts, reports made and received. NO identifiers: a lookup must not itself be a sensitive-data view, or PRIV-008 would be audited on every screen and mean nothing.",
+        "operationId": "ModerationController_userView",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "The account view (ADMIN-FR-005).",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/users/{id}/sensitive": {
+      "get": {
+        "description": "THE VIEWING IS ITSELF THE AUDITABLE ACTION. The entry is written before the read and in the same transaction, so a read that happened cannot lack a record. The entry names the fields, never their values - an audit log that recorded the number to prove somebody looked at the number would be a second, worse copy of it.",
+        "operationId": "ModerationController_sensitive",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Phone and date of birth — AUDITED (ADMIN-FR-005, PRIV-008, SEC-022).",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/users/{id}/suspend": {
+      "post": {
+        "description": "All sessions are invalidated (BR-035). The user keeps READ access (BR-034) - a suspension is a pause, not an eviction, and somebody who cannot read cannot see the banner explaining why. Re-suspending REPLACES the duration rather than accumulating (EDGE-027). It lifts automatically with no administrator action (EDGE-028). AN ADMINISTRATOR ACCOUNT CAN NEVER BE SUSPENDED (BR-ADM-001, SEC-021).",
+        "operationId": "ModerationController_suspend",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Suspend for 24 hours, 7 days or 30 days (ADMIN-API-006, ADMIN-FR-006).",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/users/{id}/ban": {
+      "post": {
+        "description": "Content is HIDDEN rather than deleted, so it remains available to the audit trail if the ban is later disputed. The registered number is added to the ban list (BR-036) and a re-registration is refused with a NEUTRAL message that does not disclose the ban. AN ADMINISTRATOR ACCOUNT CAN NEVER BE BANNED.",
+        "operationId": "ModerationController_ban",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Ban permanently (ADMIN-API-007, ADMIN-FR-007).",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/users/{id}/reinstate": {
+      "post": {
+        "description": "Always available, because \"administrators make mistakes and the product must let them be corrected\". Takes the number OFF the ban list too - a reinstatement that left the person unable to register would not be a correction.",
+        "operationId": "ModerationController_reinstate",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Reinstate (ADMIN-API-008, ADMIN-FR-008).",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/users/{id}/verification": {
+      "put": {
+        "description": "Only ORGANIZATION accounts are eligible, and the refusal STATES the rule rather than being neutral - an administrator verifying an individual has made a category error, not a security probe. Verification is by invitation in V1 (S2-CR-006); there is no in-app request queue. Revocation removes the badge everywhere immediately.",
+        "operationId": "ModerationController_verification",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Grant or revoke the verified badge (ADMIN-FR-010).",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/dashboard": {
+      "get": {
+        "description": "Open reports, new users today and this week, posts today, upcoming events and actions this week. THE OPEN-REPORT COUNT is the primary operational signal - it is the number that tells one moderator whether today is an ordinary day. Aggregates only: no id appears in this response, and there is no export.",
+        "operationId": "AdminOpsController_dashboard",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Dashboard counts (ADMIN-API-009, ADMIN-FR-001/011).",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/announcements/allowance": {
+      "get": {
+        "description": "So the portal can say so before an administrator writes one, rather than refusing after they have. Two per rolling seven days.",
+        "operationId": "AdminOpsController_allowance",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "How many broadcasts remain this week (NOTIF-FR-005).",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/announcements": {
+      "post": {
+        "description": "BOTH LANGUAGES ARE REQUIRED - \"a single-language announcement fails half the audience\". Optionally broadcast as a push, capped at two per rolling week (NOTIF-FR-005) \"because over-use is a direct cause of uninstalls\"; the refusal states the limit. Every publication is audit-logged with the publishing administrator.",
+        "operationId": "AdminOpsController_publish",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Publish an announcement (ADMIN-API-010, ADMIN-FR-009).",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/audit-log": {
+      "get": {
+        "description": "By administrator, action and date range. READ ONLY, AND THERE IS NO OTHER ROUTE - no method on this controller or anywhere else writes, edits or deletes an entry (BR-039). The log records enforcement, verification, publication, SENSITIVE-DATA VIEWS and REPORTED-CONVERSATION ACCESS, because \"viewing is auditable, not only acting\" is what makes PRIV-008 and PRIV-009 verifiable rather than aspirational.",
+        "operationId": "AdminOpsController_auditLog",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Search the audit log (ADMIN-API-012, ADMIN-FR-012).",
+        "tags": [
+          "admin"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Mohalla API — foundation",
+    "description": "Shehersaaz Community Platform. STAGE 5 FOUNDATION — health endpoints only. The approved product contract is docs/architecture/contracts/openapi-v1.yaml.",
+    "version": "0.0.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "schemas": {}
+  }
+}

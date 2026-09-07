@@ -5,12 +5,58 @@
   Every key in values/strings.xml must exist here. The CI localization parity
   check treats a missing Urdu key as a build failure (LOCALE-FR-001, REL-002),
   so this file cannot silently fall behind.
+
+  PENDING DEP-011 / OD-016. The ~400 approved Urdu strings are Shehersaaz's to
+  supply. What is here is structurally correct and reads naturally, and it is
+  NOT a substitute for that review — see docs/implementation/mobile/20-mobile-open-issues.md.
+  Nothing below is machine-translated word-for-word from the English; the Urdu
+  is written as Urdu, which is why some lines are not literal renderings.
 -->
 <resources>
     <string name="app_name">محلہ</string>
-    <string name="foundation_title">محلہ — بنیاد</string>
-    <string name="foundation_subtitle">شہرساز کمیونٹی پلیٹ فارم</string>
-    <string name="foundation_body">یہ بلڈ صرف یہ ثابت کرنے کے لیے ہے کہ اینڈرائیڈ پروجیکٹ کمپائل ہوتا ہے اور درست طریقے سے آئینہ دار ہوتا ہے۔ کوئی پروڈکٹ فیچر شامل نہیں ہے۔</string>
-    <string name="foundation_direction_label">لے آؤٹ سمت</string>
-    <string name="foundation_locale_label">زبان</string>
+
+    <!-- ============================================ navigation (UI/UX §14) -->
+    <string name="nav_home">ہوم</string>
+    <string name="nav_events">تقریبات</string>
+    <string name="nav_create">نیا</string>
+    <string name="nav_messages">پیغامات</string>
+    <string name="nav_profile">پروفائل</string>
+
+    <!-- ==================================== UX-AUTH-002 Language selection -->
+    <string name="language_title">اپنی زبان منتخب کریں</string>
+    <string name="language_subtitle">آپ اسے کسی بھی وقت سیٹنگز میں تبدیل کر سکتے ہیں۔</string>
+    <string name="language_english">English</string>
+    <string name="language_urdu">اردو</string>
+    <string name="language_continue">آگے بڑھیں</string>
+
+    <!-- ================================================ UX-AUTH-003 Welcome -->
+    <string name="welcome_tagline">آپ کا محلہ، آن لائن۔</string>
+    <string name="welcome_body">اپنے علاقے کی خبریں شیئر کریں، مقامی تقریبات دیکھیں، اور اپنے پڑوسیوں سے بات کریں۔</string>
+    <string name="welcome_create_account">نیا اکاؤنٹ بنائیں</string>
+    <string name="welcome_log_in">لاگ اِن کریں</string>
+
+    <!-- ============================================== cross-cutting states -->
+    <string name="state_unavailable_title">یہ مواد دستیاب نہیں ہے</string>
+    <string name="state_unavailable_body">ممکن ہے اسے ہٹا دیا گیا ہو، یا آپ کو اس تک رسائی نہ ہو۔</string>
+
+    <string name="state_offline_title">کوئی کنکشن نہیں</string>
+    <string name="state_offline_body">آپ آف لائن ہیں۔ جو چیزیں آپ پہلے کھول چکے ہیں وہ اب بھی پڑھی جا سکتی ہیں۔</string>
+    <string name="state_offline_banner">انٹرنیٹ کنکشن نہیں ہے</string>
+
+    <string name="state_error_title">کچھ غلط ہو گیا</string>
+    <string name="state_error_body">براہِ کرم تھوڑی دیر بعد دوبارہ کوشش کریں۔</string>
+    <string name="state_error_reference">حوالہ: %1$s</string>
+
+    <string name="state_rate_limited_title">بہت زیادہ کوششیں</string>
+    <string name="state_rate_limited_body">دوبارہ کوشش کرنے سے پہلے تھوڑا انتظار کریں۔</string>
+
+    <string name="action_retry">دوبارہ کوشش کریں</string>
+    <string name="action_back">واپس</string>
+    <string name="action_close">بند کریں</string>
+    <string name="action_cancel">منسوخ کریں</string>
+
+    <!-- ================================================ accessibility only -->
+    <string name="a11y_loading">لوڈ ہو رہا ہے</string>
+    <string name="a11y_selected">منتخب شدہ</string>
+    <string name="a11y_unread_count">%1$d غیر پڑھے</string>
 </resources>

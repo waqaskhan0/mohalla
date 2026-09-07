@@ -1,9 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Mohalla</string>
-    <string name="foundation_title">Mohalla — Foundation</string>
-    <string name="foundation_subtitle">Shehersaaz Community Platform</string>
-    <string name="foundation_body">This build exists to prove the Android project compiles and mirrors correctly. No product feature is implemented.</string>
-    <string name="foundation_direction_label">Layout direction</string>
-    <string name="foundation_locale_label">Locale</string>
+
+    <!-- ============================================ navigation (UI/UX §14) -->
+    <string name="nav_home">Home</string>
+    <string name="nav_events">Events</string>
+    <string name="nav_create">Create</string>
+    <string name="nav_messages">Messages</string>
+    <string name="nav_profile">Profile</string>
+
+    <!-- ==================================== UX-AUTH-002 Language selection -->
+    <string name="language_title">Choose your language</string>
+    <string name="language_subtitle">You can change this any time in Settings.</string>
+    <string name="language_english">English</string>
+    <string name="language_urdu">اردو</string>
+    <string name="language_continue">Continue</string>
+
+    <!-- ================================================ UX-AUTH-003 Welcome -->
+    <string name="welcome_tagline">Your neighbourhood, online.</string>
+    <string name="welcome_body">Share what is happening where you live, find local events, and speak to your neighbours.</string>
+    <string name="welcome_create_account">Create account</string>
+    <string name="welcome_log_in">Log in</string>
+
+    <!-- ============================================== cross-cutting states -->
+    <!-- UX-STATE-001. ONE neutral message for deleted, hidden, blocked, banned
+         and never-existed. Deliberately says nothing about which (SEC-019). -->
+    <string name="state_unavailable_title">This content is not available</string>
+    <string name="state_unavailable_body">It may have been removed, or you may not have access to it.</string>
+
+    <!-- UX-STATE-002 -->
+    <string name="state_offline_title">No connection</string>
+    <string name="state_offline_body">You are offline. Some things you have already opened are still readable.</string>
+    <string name="state_offline_banner">No internet connection</string>
+
+    <!-- UX-STATE-003 -->
+    <string name="state_error_title">Something went wrong</string>
+    <string name="state_error_body">Please try again in a moment.</string>
+    <string name="state_error_reference">Reference: %1$s</string>
+
+    <!-- UX-STATE-004 -->
+    <string name="state_rate_limited_title">Too many attempts</string>
+    <string name="state_rate_limited_body">Please wait a little before trying again.</string>
+
+    <string name="action_retry">Try again</string>
+    <string name="action_back">Back</string>
+    <string name="action_close">Close</string>
+    <string name="action_cancel">Cancel</string>
+
+    <!-- ================================================ accessibility only -->
+    <string name="a11y_loading">Loading</string>
+    <string name="a11y_selected">Selected</string>
+    <string name="a11y_unread_count">%1$d unread</string>
 </resources>

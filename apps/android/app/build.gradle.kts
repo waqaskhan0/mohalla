@@ -4,6 +4,7 @@ plugins {
     // fails the build if it is applied alongside.
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -108,7 +109,21 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.material.icons)
     implementation(libs.kotlinx.coroutines.android)
+
+    // ---- Stage 7 ---------------------------------------------------------
+    // Each of these is named by the frozen mobile architecture
+    // (04-mobile-architecture.md §2, §4). Nothing here is a preference.
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    // SEC-004: session tokens in EncryptedSharedPreferences backed by Keystore.
+    implementation(libs.androidx.security.crypto)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.serialization)
+    implementation(libs.okhttp)
+    implementation(libs.coil.compose)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

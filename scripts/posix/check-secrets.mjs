@@ -78,6 +78,21 @@ const ALLOWED = [
   // a nearby comment, so it cannot be attached to a real credential without
   // altering that credential and breaking it.
   /['"][^'"\s]*synthetic[^'"\s]*['"]/i,
+
+  // Navigation ROUTE PATHS, not credentials.
+  //
+  // Stage 7's Android route table declares `RESET_PASSWORD = "password/reset"`
+  // and `FORGOT_PASSWORD = "password/forgot"`. The heuristic sees the name
+  // `PASSWORD`, an `=`, and a quoted string, and calls it a hardcoded
+  // credential. It is a URL path.
+  //
+  // NARROWED, NOT REMOVED, and narrowed on the VALUE rather than the name: the
+  // whole quoted value has to be a slash-separated path of lower-case words -
+  // no digits, no punctuation, no mixed case, nothing with the entropy a
+  // credential has. `password = "Tr0ub4dor/3"` is still caught, because of the
+  // digits and the capital; so is `password = "correcthorse"`, because there is
+  // no slash and a path needs one.
+  /['"][a-z]+(?:\/[a-z]+)+['"]/,
 ];
 
 /** Files whose whole job is to describe secrets without containing them. */
