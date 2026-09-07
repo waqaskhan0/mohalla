@@ -1,8 +1,15 @@
 # Stage 6 — Backend Implementation · Completion Report
 
 **Shehersaaz Community Platform (Mohalla — محلہ)**
-Branch `feature/stage-6-backend-v1` · 27 commits · `54fb3c0` … `d603dd7`
+Branch `feature/stage-6-backend-v1` · implementation commits `54fb3c0` … `d603dd7`
 Report date: **7 September 2026**
+
+📄 **Shareable page:** <https://claude.ai/code/artifact/61fa579f-fc81-4eb5-95ad-5faaf36176eb>
+
+> The page is a rendering of *this* document and carries no content the file does not.
+> It is **private** — opening it requires access granted from the artifact's own share
+> menu, which is why the URL is safe to record in a public repository. This markdown file
+> remains the version-controlled record; if the two ever disagree, this one is correct.
 
 ---
 
@@ -251,7 +258,7 @@ The safety loop is implemented and tested end to end. It has no operator.
 
 ## 8 · Publication status
 
-**No Stage 6 work has been pushed.** All 27 commits are local, per the standing instruction
+**No Stage 6 work has been pushed.** Every commit on this branch is local, per the standing instruction
 that new backend implementation must not reach the public remote until an approved
 publication-authorization record exists.
 
