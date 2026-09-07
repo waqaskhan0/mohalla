@@ -16,4 +16,14 @@
         <item quantity="one">%1$d image</item>
         <item quantity="other">%1$d images</item>
     </plurals>
+
+    <plurals name="event_going_count">
+        <item quantity="one">%1$d person going</item>
+        <item quantity="other">%1$d people going</item>
+    </plurals>
+
+    <plurals name="event_interested_count">
+        <item quantity="one">%1$d interested</item>
+        <item quantity="other">%1$d interested</item>
+    </plurals>
 </resources>

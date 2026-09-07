@@ -15,6 +15,15 @@ import java.util.UUID
 const val SESSION_TOKEN_KEY = "session.token"
 
 /**
+ * The signed-in user's own id.
+ *
+ * Beside the token deliberately: the two are written and cleared together, and
+ * a user id that outlived a sign-out would let the next account's screens ask
+ * "is this mine?" against the previous account's identity.
+ */
+const val USER_ID_KEY = "session.userId"
+
+/**
  * `Authorization: Bearer` on every request that has a token.
  *
  * ADDS NOTHING WHEN THERE IS NO TOKEN, rather than sending an empty header.

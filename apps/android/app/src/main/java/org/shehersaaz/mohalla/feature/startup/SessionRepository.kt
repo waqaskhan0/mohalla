@@ -6,6 +6,7 @@ import org.shehersaaz.mohalla.core.network.MohallaApi
 import org.shehersaaz.mohalla.core.network.MohallaJson
 import org.shehersaaz.mohalla.core.network.OwnProfileResponse
 import org.shehersaaz.mohalla.core.network.SESSION_TOKEN_KEY
+import org.shehersaaz.mohalla.core.network.USER_ID_KEY
 import org.shehersaaz.mohalla.core.network.apiCall
 import org.shehersaaz.mohalla.core.storage.SecureStorage
 
@@ -38,13 +39,38 @@ class SessionRepository(
     /** SET-FR-006 — logout clears everything, not just the token. */
     fun signOut() = storage.clear()
 
+    /**
+     * The signed-in user's own id, from the last successful `/me`.
+     *
+     * WHY IT IS CACHED AT ALL. Several screens need to know whether something is
+     * the viewer's own — a creator sees Edit on their event where everyone else
+     * sees Report (EVENT-FR-007), and "my events" is a request keyed by user id.
+     * Calling `/me` on each of those screens would spend a round trip to learn
+     * something that cannot change while the session lives.
+     *
+     * STORED WITH THE TOKEN, in the same Keystore-backed store (SEC-004), so
+     * `signOut()` clearing everything clears this too. A user id left behind
+     * after a sign-out would let the next account's screens ask "is this mine?"
+     * against the previous account's identity.
+     *
+     * Null when nothing is known yet, which is a real state: a cold start
+     * resolves the session before any screen that needs this can be reached, so
+     * a screen finding null here is a screen that raced the sign-out.
+     */
+    fun cachedUserId(): String? = storage.getString(USER_ID_KEY)?.takeIf { it.isNotBlank() }
+
     suspend fun me(): MeResult {
         if (!hasToken()) return MeResult.NoSession
 
         val result = apiCall { api.me() }
 
         return when (result) {
-            is ApiResult.Ok -> MeResult.Profile(result.value)
+            is ApiResult.Ok -> {
+                // Recorded on every successful read rather than once at login,
+                // so a session restored from storage populates it too.
+                storage.putString(USER_ID_KEY, result.value.userId)
+                MeResult.Profile(result.value)
+            }
 
             is ApiResult.Err -> when (val failure = result.failure) {
                 // EDGE-010: revocation is server-driven and lands on the next

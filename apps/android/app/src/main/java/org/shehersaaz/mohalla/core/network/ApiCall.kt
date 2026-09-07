@@ -84,6 +84,21 @@ private fun <T> parseEnvelope(response: Response<T>): ApiErrorBody? = try {
     null
 }
 
+/**
+ * The server's `details[]`, keyed by the `path` it named.
+ *
+ * A detail with no path or no message is dropped rather than given a
+ * placeholder key: a form looks entries up BY path, so an entry under `""`
+ * would never be found and an entry with a null message would render blank
+ * under a field that is actually fine.
+ */
+private fun ApiErrorBody?.detailMap(): Map<String, String> =
+    this?.details.orEmpty().mapNotNull { d ->
+        val path = d.path ?: return@mapNotNull null
+        val message = d.message ?: return@mapNotNull null
+        path to message
+    }.toMap()
+
 private fun <T> classify(
     code: Int,
     error: ApiErrorBody?,
@@ -92,9 +107,7 @@ private fun <T> classify(
 ): ApiFailure = when (code) {
     400, 422 -> ApiFailure.Validation(
         message = error?.message,
-        fieldErrors = error?.details.orEmpty()
-            .mapNotNull { d -> d.path?.let { p -> p to (d.message ?: return@mapNotNull null) } }
-            .toMap(),
+        fieldErrors = error.detailMap(),
         code = error?.code,
     )
 
@@ -103,7 +116,14 @@ private fun <T> classify(
         ApiFailure.Unauthenticated
     }
 
-    403 -> ApiFailure.Restricted(error?.message)
+    // The code and details are carried through, unlike for a 404. See
+    // `ApiFailure.Restricted` — a 403 concerns permission rather than
+    // existence, and EVENT-FR-003 requires the reason to be stated.
+    403 -> ApiFailure.Restricted(
+        message = error?.message,
+        code = error?.code,
+        details = error.detailMap(),
+    )
 
     // ONE STATE. Deleted, auto-hidden, blocked, banned, never existed — the
     // server refuses identically and so does this. There is no sub-case to add

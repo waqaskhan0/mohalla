@@ -20,6 +20,7 @@ import org.shehersaaz.mohalla.core.network.MohallaApi
 import org.shehersaaz.mohalla.core.network.MohallaJson
 import org.shehersaaz.mohalla.core.media.ImageUploader
 import org.shehersaaz.mohalla.feature.auth.AuthRepository
+import org.shehersaaz.mohalla.feature.events.EventRepository
 import org.shehersaaz.mohalla.feature.home.FeedRepository
 import org.shehersaaz.mohalla.feature.setup.SetupRepository
 import org.shehersaaz.mohalla.feature.startup.SessionRepository
@@ -111,6 +112,31 @@ class AppContainer private constructor(
     val setupRepository: SetupRepository = SetupRepository(api)
 
     val feedRepository: FeedRepository = FeedRepository(api)
+
+    val eventRepository: EventRepository = EventRepository(api)
+
+    /**
+     * The reader's locale as a `java.util.Locale`, for date and number
+     * formatting.
+     *
+     * DERIVED FROM THE APP'S OWN CHOICE, not from `Locale.getDefault()`. The two
+     * differ whenever somebody runs the app in Urdu on an English phone, which
+     * BR-040 makes a first-class case rather than an oddity - and a date
+     * formatted from the system default would come out in Latin numerals inside
+     * an Urdu sentence.
+     */
+    val formattingLocale: () -> java.util.Locale = {
+        java.util.Locale.forLanguageTag(localeManager.locale.value.tag)
+    }
+
+    /**
+     * The device's time zone, read fresh on every call.
+     *
+     * NOT cached: a phone crossing a border, or a user correcting their zone
+     * after landing, changes it mid-session - and an events list is exactly
+     * where a stale zone shows up, as every start time being an hour out.
+     */
+    val displayZone: () -> java.time.ZoneId = { java.time.ZoneId.systemDefault() }
 
     /** §43 - a banner hint, never a gate on making a request. */
     val connectivity: ConnectivityObserver = ConnectivityObserver(context)

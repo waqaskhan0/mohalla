@@ -1,11 +1,16 @@
 package org.shehersaaz.mohalla.navigation
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
@@ -32,6 +37,13 @@ import org.shehersaaz.mohalla.feature.auth.ResetPasswordScreen
 import org.shehersaaz.mohalla.feature.auth.RestoreAccountScreen
 import org.shehersaaz.mohalla.feature.auth.RestoreAccountViewModel
 import org.shehersaaz.mohalla.feature.auth.WelcomeScreen
+import org.shehersaaz.mohalla.feature.events.EventComposerScreen
+import org.shehersaaz.mohalla.feature.events.EventComposerViewModel
+import org.shehersaaz.mohalla.feature.events.EventDetailScreen
+import org.shehersaaz.mohalla.feature.events.EventDetailViewModel
+import org.shehersaaz.mohalla.feature.events.EventsScreen
+import org.shehersaaz.mohalla.feature.events.EventsViewModel
+import org.shehersaaz.mohalla.feature.events.JoinOutcome
 import org.shehersaaz.mohalla.feature.home.FeedViewModel
 import org.shehersaaz.mohalla.feature.home.HomeScreen
 import org.shehersaaz.mohalla.feature.safety.SuspensionExplainerSheet
@@ -74,8 +86,61 @@ fun MohallaNavHost(
         composable(Routes.SHELL) {
             ShellRoute(
                 container = container,
+                navController = navController,
                 onOpenSettings = onRequestLanguageChange,
             )
+        }
+
+        // UX-EVENT-003. Deep-linkable (§42): reachable from the events list, a
+        // feed card, search and a notification, so it takes its id from the
+        // route rather than from a shared object.
+        composable(Routes.EVENT_PATTERN) { entry ->
+            val eventId = entry.arguments?.getString("eventId")
+
+            // A route with no id cannot be a real event. The neutral state,
+            // not a crash and not an error — a malformed deep link and a
+            // deleted event are indistinguishable to the person who tapped it.
+            if (eventId == null) {
+                ContentUnavailable()
+            } else {
+                EventDetailRoute(
+                    container = container,
+                    eventId = eventId,
+                    onBack = { navController.popBackStack() },
+                    onEdit = { navController.navigate(Routes.eventEdit(eventId)) },
+                    onOpenCreator = { navController.navigate(Routes.profile(it)) },
+                )
+            }
+        }
+
+        // UX-EVENT-004 and UX-EVENT-005 — one screen, two entry points.
+        composable(Routes.EVENT_CREATE) {
+            EventComposerRoute(
+                container = container,
+                editingEventId = null,
+                onDone = { navController.popBackStack() },
+            )
+        }
+
+        composable(Routes.EVENT_EDIT_PATTERN) { entry ->
+            val eventId = entry.arguments?.getString("eventId")
+            if (eventId == null) {
+                ContentUnavailable()
+            } else {
+                EventComposerRoute(
+                    container = container,
+                    editingEventId = eventId,
+                    // Cancelling or saving returns past the DETAIL screen too
+                    // when the event was deleted, because a detail screen for a
+                    // deleted event would then load the neutral unavailable
+                    // state — technically correct and alarming after the
+                    // creator just chose to remove it themselves.
+                    onDone = { navController.popBackStack() },
+                    onDeleted = {
+                        navController.popBackStack(Routes.SHELL, inclusive = false)
+                    },
+                )
+            }
         }
 
         // Deep-linkable content (§42). The screens themselves arrive with their
@@ -84,7 +149,6 @@ fun MohallaNavHost(
         // UX-STATE-001 is the one state that is honest about "not available
         // here", and it says nothing about why.
         composable(Routes.POST_PATTERN) { ContentUnavailable() }
-        composable(Routes.EVENT_PATTERN) { ContentUnavailable() }
         composable(Routes.PROFILE_PATTERN) { ContentUnavailable() }
         composable(Routes.CONVERSATION_PATTERN) { ContentUnavailable() }
     }
@@ -101,6 +165,7 @@ fun MohallaNavHost(
 @Composable
 private fun ShellRoute(
     container: AppContainer,
+    navController: NavHostController,
     onOpenSettings: () -> Unit,
 ) {
     val shell: ShellViewModel = viewModel(
@@ -126,10 +191,15 @@ private fun ShellRoute(
         when (tab) {
             MohallaTab.HOME -> HomeRoute(container)
 
+            MohallaTab.EVENTS -> EventsRoute(
+                container = container,
+                onOpenEvent = { navController.navigate(Routes.event(it)) },
+                onCreateEvent = { navController.navigate(Routes.EVENT_CREATE) },
+            )
+
             // Not yet built. The shell renders and mirrors correctly with any
             // tab selected, which is what lets §36's both-directions check run
             // on the chrome before these screens exist.
-            MohallaTab.EVENTS,
             MohallaTab.MESSAGES,
             MohallaTab.PROFILE,
             -> ContentUnavailable()
@@ -174,6 +244,131 @@ private fun HomeRoute(container: AppContainer) {
         onShare = {},
         onOpenAnnouncement = {},
         onFindPeople = {},
+    )
+}
+
+/** UX-EVENT-001 · UX-EVENT-002 — the Events tab. */
+@Composable
+private fun EventsRoute(
+    container: AppContainer,
+    onOpenEvent: (String) -> Unit,
+    onCreateEvent: () -> Unit,
+) {
+    val vm: EventsViewModel = viewModel(
+        factory = EventsViewModel.Factory(
+            events = container.eventRepository,
+            viewerId = { container.sessionRepository.cachedUserId() },
+        ),
+    )
+    val state by vm.state.collectAsState()
+
+    EventsScreen(
+        state = state,
+        locale = container.formattingLocale(),
+        zone = container.displayZone(),
+        onSelectTab = vm::selectTab,
+        onRefresh = vm::refresh,
+        onLoadMore = vm::loadMore,
+        onOpenEvent = onOpenEvent,
+        onRespond = vm::respond,
+        onCreateEvent = onCreateEvent,
+    )
+}
+
+/**
+ * UX-EVENT-003 — the detail screen, and the one place a meeting link is handled.
+ *
+ * BR-045: the platform hosts no video, so a join hands the URL to the system and
+ * lets another app open it. The URL is consumed here and immediately cleared
+ * from state — see `EventDetailViewModel.onJoinHandled`.
+ */
+@Composable
+private fun EventDetailRoute(
+    container: AppContainer,
+    eventId: String,
+    onBack: () -> Unit,
+    onEdit: () -> Unit,
+    onOpenCreator: (String) -> Unit,
+) {
+    val vm: EventDetailViewModel = viewModel(
+        factory = EventDetailViewModel.Factory(
+            events = container.eventRepository,
+            eventId = eventId,
+            viewerId = { container.sessionRepository.cachedUserId() },
+        ),
+    )
+    val state by vm.state.collectAsState()
+    val context = LocalContext.current
+
+    // The join outcome is a one-shot, so it is handled in an effect and cleared.
+    // Leaving it in state would relaunch the browser on the next recomposition.
+    LaunchedEffect(state.joinOutcome) {
+        val outcome = state.joinOutcome
+        if (outcome is JoinOutcome.Open) {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(outcome.meetingUrl))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            try {
+                context.startActivity(intent)
+                vm.onJoinHandled()
+            } catch (e: ActivityNotFoundException) {
+                // EVENT-FR-003's stated error case: "no browser or meeting app
+                // installed". Caught rather than allowed to crash, and reported
+                // so the screen can offer the link to copy instead.
+                vm.onNoAppToOpenLink(outcome.meetingUrl)
+            }
+        }
+    }
+
+    EventDetailScreen(
+        state = state,
+        locale = container.formattingLocale(),
+        zone = container.displayZone(),
+        onBack = onBack,
+        onRetry = vm::load,
+        onRespond = vm::respond,
+        onJoin = vm::join,
+        onOpenCreator = onOpenCreator,
+        onEdit = onEdit,
+        // The report sheet is UX-SAFE-001, which arrives with group 17.
+        onReport = {},
+    )
+}
+
+/** UX-EVENT-004 (create) and UX-EVENT-005 (edit). */
+@Composable
+private fun EventComposerRoute(
+    container: AppContainer,
+    editingEventId: String?,
+    onDone: () -> Unit,
+    onDeleted: () -> Unit = onDone,
+) {
+    val vm: EventComposerViewModel = viewModel(
+        factory = EventComposerViewModel.Factory(
+            events = container.eventRepository,
+            editingEventId = editingEventId,
+        ),
+    )
+    val state by vm.state.collectAsState()
+
+    EventComposerScreen(
+        state = state,
+        locale = container.formattingLocale(),
+        zone = container.displayZone(),
+        onTitleChanged = vm::onTitleChanged,
+        onDescriptionChanged = vm::onDescriptionChanged,
+        // The platform date and time pickers belong to the screen's own host;
+        // wired with the picker in the next slice, and until then the field
+        // reports that nothing is chosen rather than accepting a typed date
+        // that would have to be parsed against a locale.
+        onPickStartsAt = {},
+        onTypeChanged = vm::onTypeChanged,
+        onMeetingUrlChanged = vm::onMeetingUrlChanged,
+        onLocationChanged = vm::onLocationChanged,
+        onSubmit = vm::submit,
+        onCancelEvent = vm::cancel,
+        onBack = onDone,
+        onSaved = onDone,
+        onCancelled = { outcome -> if (outcome.deleted) onDeleted() else onDone() },
     )
 }
 

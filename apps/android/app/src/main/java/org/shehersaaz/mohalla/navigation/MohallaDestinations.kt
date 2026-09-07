@@ -109,6 +109,18 @@ object Routes {
 
     const val SHELL = "shell"
 
+    /**
+     * Create an event (UX-EVENT-004), and edit one (UX-EVENT-005).
+     *
+     * TWO ROUTES FOR ONE SCREEN, because the screen needs to know which it is
+     * before it composes: an edit loads the event first and offers Cancel, and a
+     * create does neither. An optional argument on one route would mean every
+     * caller passing `null` and the screen branching on it anyway.
+     */
+    const val EVENT_CREATE = "event/create"
+    fun eventEdit(id: String) = "event/$id/edit"
+    const val EVENT_EDIT_PATTERN = "event/{eventId}/edit"
+
     /** Deep-linkable content (§42). */
     fun post(id: String) = "post/$id"
     fun event(id: String) = "event/$id"

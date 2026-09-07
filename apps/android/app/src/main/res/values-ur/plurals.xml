@@ -4,4 +4,14 @@
         <item quantity="one">%1$d تصویر</item>
         <item quantity="other">%1$d تصاویر</item>
     </plurals>
+
+    <plurals name="event_going_count">
+        <item quantity="one">%1$d فرد جا رھا ھے</item>
+        <item quantity="other">%1$d افراد جا رھے ھیں</item>
+    </plurals>
+
+    <plurals name="event_interested_count">
+        <item quantity="one">%1$d کو دلچسپی ھے</item>
+        <item quantity="other">%1$d کو دلچسپی ھے</item>
+    </plurals>
 </resources>

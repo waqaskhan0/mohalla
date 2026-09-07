@@ -190,4 +190,67 @@
 
     <!-- OD-015 -->
     <string name="register_terms_unavailable">اس بلڈ میں نئے اکاؤنٹ نھیں بن سکتے۔ شرائط و ضوابط ابھی شائع نھیں ھوئے۔</string>
+    <!-- Events (UX-EVENT-001..005) -->
+    <string name="events_tab_upcoming">آنے والے</string>
+    <string name="events_tab_mine">میرے</string>
+    <string name="events_create">تقریب بنائیں</string>
+    <string name="events_browse_upcoming">آنے والی تقاریب دیکھیں</string>
+    <string name="events_end">آنے والی تمام تقاریب دکھا دی گئی ھیں۔</string>
+    <string name="events_page_failed">مزید تقاریب لوڈ نھیں ھو سکیں۔</string>
+    <string name="events_empty_upcoming_title">کوئی تقریب متوقع نھیں</string>
+    <string name="events_empty_upcoming_body">ابھی کسی نے کچھ طے نھیں کیا۔ محلے کی تقاریب ایک شخص سے شروع ھوتی ھیں۔</string>
+    <string name="events_empty_mine_title">آپ نے کوئی تقریب نھیں بنائی</string>
+    <string name="events_empty_mine_body">آپ کی بنائی ھوئی تقاریب یھاں نزر آئیں گی۔</string>
+    <string name="events_mine_scope_notice">یھاں آپ کی بنائی ھوئی تقاریب ھیں۔ جن تقاریب میں آپ نے شرکت کی ھامی بھری، وہ ابھی اس فہرست میں شامل نھیں۔</string>
+
+    <string name="event_detail_title">تقریب</string>
+    <string name="event_organiser">منتزم</string>
+    <string name="event_type_online">آن لائن</string>
+    <string name="event_type_physical">بالمشافہ</string>
+    <string name="event_type_unknown">تفصیل بعد میں</string>
+    <string name="event_going">جا رھے ھیں</string>
+    <string name="event_interested">دلچسپی ھے</string>
+    <string name="event_join">میٹنگ میں شامل ھوں</string>
+    <string name="event_join_opens_at">شرکت کا لنک %1$s کو دستیاب ھو گا۔</string>
+    <string name="event_join_opens_minutes_before">شرکت کا لنک تقریب شروع ھونے سے %1$d منٹ پھلے دستیاب ھوتا ھے۔</string>
+    <string name="event_join_needs_rsvp">لنک حاصل کرنے کے لیے اس تقریب کے بارے میں جواب دیں۔</string>
+    <string name="event_join_too_early">شرکت کا لنک ابھی دستیاب نھیں۔</string>
+    <string name="event_join_not_online">یہ تقریب بالمشافہ ھے۔</string>
+    <string name="event_join_no_app">اس فون میں ایسی کوئی ایپ نھیں جو یہ لنک کھول سکے۔ آپ اسے کاپی کر سکتے ھیں۔</string>
+    <string name="event_join_copy_link">لنک کاپی کریں</string>
+    <string name="event_cancelled_label">منسوخ</string>
+    <string name="event_cancelled_notice">یہ تقریب منسوخ کر دی گئی ھے۔</string>
+    <string name="event_cancelled_no_rsvp">یہ تقریب منسوخ ھو چکی ھے، اس لیے جواب بند ھیں۔</string>
+    <string name="event_already_started">یہ تقریب شروع ھو چکی ھے۔</string>
+    <string name="event_under_review">زیرِ جائزہ۔ یہ تقریب صرف آپ کو نزر آ رھی ھے۔</string>
+
+    <!-- Create and edit (UX-EVENT-004/005) -->
+    <string name="event_edit">تقریب میں ترمیم</string>
+    <string name="event_publish">شائع کریں</string>
+    <string name="event_save_changes">تبدیلیاں محفوظ کریں</string>
+    <string name="event_cancel_event">یہ تقریب منسوخ کریں</string>
+    <string name="event_field_title">عنوان</string>
+    <string name="event_field_description">کیا ھو رھا ھے</string>
+    <string name="event_field_starts_at">تاریخ اور وقت</string>
+    <string name="event_field_type">کھاں ھے</string>
+    <string name="event_field_meeting_url">میٹنگ کا لنک</string>
+    <string name="event_field_location">مقام</string>
+    <string name="event_pick_date_time">تاریخ اور وقت منتخب کریں</string>
+    <string name="event_meeting_url_hint">اپنی میٹنگ کا http یا https لنک۔ شرکاء کو یہ شروع سے تیس منٹ پھلے نزر آئے گا۔</string>
+    <string name="event_meeting_url_keep_existing">موجودہ لنک برقرار رکھنے کے لیے اسے خالی چھوڑ دیں۔</string>
+    <string name="event_location_hint">پتہ یا کوئی ایسی نشانی جو پڑوسی پھچان لیں۔</string>
+    <string name="event_type_frozen">جب لوگ جواب دے دیں، اس کے بعد تقریب کی قسم تبدیل نھیں ھو سکتی۔</string>
+    <string name="event_rate_limited">آپ روز زیادہ سے زیادہ %1$d تقاریب بنا سکتے ھیں۔</string>
+    <string name="event_cancelled_result">تقریب منسوخ ھو گئی۔ جن لوگوں نے جواب دیا تھا انھیں بتا دیا گیا ھے۔</string>
+    <string name="event_deleted_result">تقریب ھٹا دی گئی۔ کسی نے اس پر جواب نھیں دیا تھا۔</string>
+
+    <string name="event_problem_empty">براہِ کرم یہ پر کریں۔</string>
+    <string name="event_problem_too_short">یہ کچھ زیادہ مختصر ھے۔</string>
+    <string name="event_problem_past">مستقبل کی تاریخ اور وقت منتخب کریں۔</string>
+    <string name="event_problem_not_a_link">http:// یا https:// سے شروع ھونے والا لنک درج کریں۔</string>
+    <string name="event_problem_link_required">آن لائن تقریب کے لیے میٹنگ کا لنک ضروری ھے۔</string>
+    <string name="event_problem_location_required">بالمشافہ تقریب کے لیے مقام ضروری ھے۔</string>
+    <string name="event_problem_both">ایک منتخب کریں: آن لائن تقریب کے لیے لنک، یا بالمشافہ کے لیے مقام۔ دونوں کے لیے بالمشافہ منتخب کرکے لنک تفصیل میں لکھ دیں۔</string>
+    <string name="state_restricted_body">آپ کا اکاؤنٹ اس وقت یہ نھیں کر سکتا۔</string>
+    <string name="action_report">رپورٹ کریں</string>
 </resources>

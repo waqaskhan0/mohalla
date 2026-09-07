@@ -85,6 +85,17 @@ interface MohallaApi {
     @GET("suggestions")
     suspend fun suggestions(@Query("limit") limit: Int): Response<SuggestionsResponse>
 
+    /**
+     * Somebody else's profile (PROFILE-FR-005).
+     *
+     * Returns the SAME neutral 404 for a missing, banned, deleted or blocked
+     * profile (BR-025) - one state, and the client must not try to tell them
+     * apart. A SUSPENDED profile is visible, because a suspension is temporary
+     * and hiding it would break conversations already under way.
+     */
+    @GET("users/{id}")
+    suspend fun user(@Path("id") userId: String): Response<PublicProfileResponse>
+
     @PUT("users/{id}/follow")
     suspend fun follow(@Path("id") userId: String): Response<Unit>
 
@@ -130,6 +141,92 @@ interface MohallaApi {
 
     @DELETE("posts/{id}/like")
     suspend fun unlike(@Path("id") id: String): Response<Unit>
+
+    // -------------------------------------------------------------------- events
+    //
+    // EVENT-FR-005: SOONEST FIRST - the only ASCENDING list in the product.
+    // Everything else is reverse chronological; an events list is read by what
+    // is about to happen rather than by what was just added. The cursor is
+    // (startsAt, id) and it walks FORWARD in time, which is why the feed's
+    // cursor type cannot be reused for it.
+    @GET("events")
+    suspend fun eventsUpcoming(
+        @Query("limit") limit: Int? = null,
+        @Query("cursorStartsAt") cursorStartsAt: String? = null,
+        @Query("cursorId") cursorId: String? = null,
+    ): Response<EventListResponse>
+
+    /**
+     * A creator's own events (EVENT-FR-001 step 8).
+     *
+     * NEWEST START FIRST, because this is a history as much as a schedule.
+     *
+     * THIS IS THE ONLY LIST BEHIND "MY EVENTS", AND IT IS NOT THE WHOLE
+     * REQUIREMENT. UX-EVENT-002 asks for events the user "created OR responded
+     * to"; the API offers created-by only, and `GET /events` takes a strict
+     * query with no `mine` parameter, so the responded-to half cannot be
+     * requested at all. The screen therefore ships the half that exists and
+     * says so, rather than filtering a page of twenty upcoming events on the
+     * device and presenting the result as the user's events - which would be
+     * wrong for anyone who responded to an event that is not on page one.
+     */
+    @GET("users/{userId}/events")
+    suspend fun eventsByCreator(
+        @Path("userId") userId: String,
+        @Query("limit") limit: Int? = null,
+        @Query("cursorStartsAt") cursorStartsAt: String? = null,
+        @Query("cursorId") cursorId: String? = null,
+    ): Response<EventListResponse>
+
+    @GET("events/{id}")
+    suspend fun event(@Path("id") id: String): Response<EventResponse>
+
+    @POST("events")
+    suspend fun createEvent(@Body body: CreateEventBody): Response<EventResponse>
+
+    @PATCH("events/{id}")
+    suspend fun updateEvent(
+        @Path("id") id: String,
+        @Body body: UpdateEventBody,
+    ): Response<EventResponse>
+
+    /**
+     * Cancel, or delete when nobody has responded (EVENT-FR-007).
+     *
+     * ONE INTENTION - "this is not happening" - and the OUTCOME IS NOT THE
+     * CREATOR'S CHOICE. The server decides: with no RSVPs the event is deleted,
+     * and once anybody has committed it stays visible and marked cancelled
+     * until its original date passes, so somebody who never opened the
+     * notification still finds out. So this returns which of the two happened
+     * and the screen reports it, rather than offering the user a choice the
+     * requirement does not give them.
+     */
+    @DELETE("events/{id}")
+    suspend fun cancelEvent(@Path("id") id: String): Response<CancelEventResponse>
+
+    @PUT("events/{id}/rsvp")
+    suspend fun rsvp(@Path("id") id: String, @Body body: RsvpBody): Response<EventResponse>
+
+    @DELETE("events/{id}/rsvp")
+    suspend fun withdrawRsvp(@Path("id") id: String): Response<EventResponse>
+
+    /**
+     * The meeting link (EVENT-FR-003 · BR-045).
+     *
+     * THE ONLY ROUTE IN THE PRODUCT THAT RETURNS A `meetingUrl`, and it is a
+     * POST rather than a GET for that reason: this is a request for a
+     * credential, not a read of a field. No list or detail body carries the
+     * URL, because a room link is a credential anybody holding it can walk in
+     * with, and the response body is what gets cached and logged.
+     *
+     * Refusals are DISTINCT here, unlike everywhere else: 403 RSVP_REQUIRED,
+     * 403 JOIN_LINK_NOT_YET_AVAILABLE (with `availableFrom` in the details),
+     * 400 NOT_AN_ONLINE_EVENT, 400 EVENT_CANCELLED. The event is already
+     * public, so a refusal discloses nothing - and the requirement's acceptance
+     * criterion demands the availability time be stated.
+     */
+    @POST("events/{id}/join")
+    suspend fun joinEvent(@Path("id") id: String): Response<JoinEventResponse>
 
     // -------------------------------------------------------------------- media
     //
@@ -406,6 +503,131 @@ data class PostResponse(
     val editedAt: String? = null,
     val createdAt: String,
     val underReview: Boolean = false,
+)
+
+/**
+ * One event, exactly as the server publishes it.
+ *
+ * THREE ABSENCES ARE THE DESIGN, not omissions to be filled in later.
+ *
+ * NO `meetingUrl`. It arrives only from `POST /events/{id}/join`
+ * (EVENT-FR-003). What this body carries instead is [joinLinkAvailable] - the
+ * server's answer to "may this caller have it yet" - and
+ * [joinLinkAvailableFrom] so the screen can state when. The gate is not the
+ * client's to apply.
+ *
+ * NO ATTENDEE IDENTITIES, and no attendees array. EVENT-FR-004 permits a public
+ * COUNT and states the attendee list is not shown in V1
+ * (ARCH-CONFLICT-006 / D-17). The prototype's avatar stack is a privacy defect
+ * carried over from a mock-up: who attends which gathering is exactly the
+ * inference a civic platform must not publish. There is nothing here to build
+ * one from, and the backend has no route that would serve one.
+ *
+ * NO CREATOR PROFILE - only [creatorId]. EVENT-FR-006 asks for "creator with
+ * badge", so the detail screen resolves the name and badge with one extra
+ * `GET /users/{id}`. Deliberately NOT done per row in a list: twenty extra
+ * round trips on a 3G connection to render twenty names would cost more than
+ * the list itself (NFR-PERF-001). Posts embed their author; events do not, and
+ * that asymmetry is the API's, not the client's.
+ */
+@Serializable
+data class EventResponse(
+    val id: String,
+    val creatorId: String,
+    val title: String,
+    val description: String,
+    /** ISO-8601 UTC. Formatted in the reader's locale and zone at the edge. */
+    val startsAt: String,
+    /** `ONLINE` or `PHYSICAL`. Exactly one, and V1 models no hybrid. */
+    val eventType: String,
+    /** Present for a PHYSICAL event; free text, never geocoded. */
+    val locationText: String? = null,
+    val categorySlug: String? = null,
+    /** `SCHEDULED` or `CANCELLED`. A cancelled event stays visible, marked. */
+    val status: String,
+    val goingCount: Int = 0,
+    val interestedCount: Int = 0,
+    /** The server's decision, never recomputed on the device. */
+    val joinLinkAvailable: Boolean = false,
+    /** When the 30-minute window opens; stated to the reader (EVENT-FR-003). */
+    val joinLinkAvailableFrom: String? = null,
+    /** `GOING`, `INTERESTED`, or null. One response per person. */
+    val myResponse: String? = null,
+    /** BR-032 - the CREATOR's own view of an auto-hidden event. */
+    val underReview: Boolean = false,
+    val editedAt: String? = null,
+    val createdAt: String,
+)
+
+@Serializable
+data class EventCursorResponse(
+    val cursorStartsAt: String,
+    val cursorId: String,
+)
+
+@Serializable
+data class EventListResponse(
+    val events: List<EventResponse> = emptyList(),
+    /** `null` means the end. Not the same as an empty page. */
+    val nextCursor: EventCursorResponse? = null,
+)
+
+/**
+ * Create an event (EVENT-FR-001).
+ *
+ * `meetingUrl` and `locationText` are both nullable and exactly one is
+ * expected: an ONLINE event needs the link, a PHYSICAL one the location, and
+ * supplying both is refused because V1 does not model a hybrid. EVENT-FR-001 A1
+ * says what to do instead - choose Physical and put the link in the description
+ * - and the composer says so rather than silently dropping one.
+ */
+@Serializable
+data class CreateEventBody(
+    val title: String,
+    val description: String,
+    val startsAt: String,
+    val eventType: String,
+    val meetingUrl: String? = null,
+    val locationText: String? = null,
+    val categorySlug: String? = null,
+)
+
+/**
+ * Edit an event (EVENT-FR-007).
+ *
+ * Every field is optional and only what changed is sent, because the server
+ * notifies attendees for a TIME, LOCATION or LINK change and for nothing else -
+ * "fixing a typo at midnight must not wake fifty neighbours". Sending the whole
+ * object back on every save would make every edit look like a reschedule.
+ */
+@Serializable
+data class UpdateEventBody(
+    val title: String? = null,
+    val description: String? = null,
+    val startsAt: String? = null,
+    val eventType: String? = null,
+    val meetingUrl: String? = null,
+    val locationText: String? = null,
+    val categorySlug: String? = null,
+)
+
+@Serializable
+data class RsvpBody(
+    /** `GOING` or `INTERESTED`. */
+    val response: String,
+)
+
+@Serializable
+data class CancelEventResponse(
+    /** `CANCELLED` or `DELETED` - the server's decision, not the creator's. */
+    val outcome: String,
+    /** How many people were told. Reported back so the creator knows. */
+    val notifiedAttendees: Int = 0,
+)
+
+@Serializable
+data class JoinEventResponse(
+    val meetingUrl: String,
 )
 
 @Serializable

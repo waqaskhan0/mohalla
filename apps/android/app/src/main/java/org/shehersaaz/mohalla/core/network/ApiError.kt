@@ -78,10 +78,31 @@ sealed interface ApiFailure {
     }
 
     /**
-     * 403 — authenticated, but this account may not. Almost always a suspension
+     * 403 — authenticated, but this account may not. Usually a suspension
      * (BR-034), which has its own explainer screen (UX-SAFE-004).
+     *
+     * THIS ONE CARRIES A CODE, AND [Unavailable] MUST NOT. The distinction is
+     * the whole reason they are separate types. A 404 is about EXISTENCE, so
+     * telling its causes apart would leak what the server withheld. A 403 says
+     * the resource is there and this caller may not have it — which discloses
+     * nothing further, and which some requirements need spelled out.
+     *
+     * EVENT-FR-003 is the case that forces it: the meeting link is refused
+     * either because the caller has not responded to the event or because the
+     * 30-minute window has not opened, and its acceptance criterion demands
+     * that "the join control is not yet active AND the availability time is
+     * stated". One anonymous 403 cannot satisfy that. The event is already
+     * public — title, time and attendee count are visible to anybody — so the
+     * refusal reveals nothing that was hidden.
+     *
+     * `details` carries the server's `details[]` keyed by `path`, which is how
+     * `availableFrom` arrives.
      */
-    data class Restricted(override val message: String?) : ApiFailure
+    data class Restricted(
+        override val message: String?,
+        val code: String? = null,
+        val details: Map<String, String> = emptyMap(),
+    ) : ApiFailure
 
     /**
      * 404 — THE NEUTRAL REFUSAL. Deleted, auto-hidden, blocked, banned or never

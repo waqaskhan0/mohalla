@@ -188,4 +188,67 @@
 
     <!-- OD-015 -->
     <string name="register_terms_unavailable">New accounts cannot be created in this build. The Terms of Service have not been published yet.</string>
+    <!-- Events (UX-EVENT-001..005) -->
+    <string name="events_tab_upcoming">Upcoming</string>
+    <string name="events_tab_mine">Mine</string>
+    <string name="events_create">Create an event</string>
+    <string name="events_browse_upcoming">Browse upcoming events</string>
+    <string name="events_end">That is everything coming up.</string>
+    <string name="events_page_failed">More events could not be loaded.</string>
+    <string name="events_empty_upcoming_title">No events coming up</string>
+    <string name="events_empty_upcoming_body">Nobody has planned anything yet. Community events start with one person.</string>
+    <string name="events_empty_mine_title">You haven\'t created any events</string>
+    <string name="events_empty_mine_body">Events you create will appear here.</string>
+    <string name="events_mine_scope_notice">This shows events you created. Events you responded to are not listed here yet.</string>
+
+    <string name="event_detail_title">Event</string>
+    <string name="event_organiser">Organiser</string>
+    <string name="event_type_online">Online</string>
+    <string name="event_type_physical">In person</string>
+    <string name="event_type_unknown">Details to follow</string>
+    <string name="event_going">Going</string>
+    <string name="event_interested">Interested</string>
+    <string name="event_join">Join the meeting</string>
+    <string name="event_join_opens_at">The joining link opens on %1$s.</string>
+    <string name="event_join_opens_minutes_before">The joining link opens %1$d minutes before the event starts.</string>
+    <string name="event_join_needs_rsvp">Respond to this event to get the joining link.</string>
+    <string name="event_join_too_early">The joining link is not open yet.</string>
+    <string name="event_join_not_online">This event is held in person.</string>
+    <string name="event_join_no_app">Nothing on this device can open the link. You can copy it instead.</string>
+    <string name="event_join_copy_link">Copy the link</string>
+    <string name="event_cancelled_label">Cancelled</string>
+    <string name="event_cancelled_notice">This event has been cancelled.</string>
+    <string name="event_cancelled_no_rsvp">This event has been cancelled, so responses are closed.</string>
+    <string name="event_already_started">This event has already started.</string>
+    <string name="event_under_review">Under review. Only you can see this event.</string>
+
+    <!-- Create and edit (UX-EVENT-004/005) -->
+    <string name="event_edit">Edit the event</string>
+    <string name="event_publish">Publish</string>
+    <string name="event_save_changes">Save changes</string>
+    <string name="event_cancel_event">Cancel this event</string>
+    <string name="event_field_title">Title</string>
+    <string name="event_field_description">What is happening</string>
+    <string name="event_field_starts_at">Date and time</string>
+    <string name="event_field_type">Where is it</string>
+    <string name="event_field_meeting_url">Meeting link</string>
+    <string name="event_field_location">Location</string>
+    <string name="event_pick_date_time">Choose a date and time</string>
+    <string name="event_meeting_url_hint">An http or https link to your meeting. Attendees see it 30 minutes before the start.</string>
+    <string name="event_meeting_url_keep_existing">Leave this empty to keep the current link.</string>
+    <string name="event_location_hint">An address or a landmark neighbours will recognise.</string>
+    <string name="event_type_frozen">The type cannot change once people have responded to this event.</string>
+    <string name="event_rate_limited">You can create up to %1$d events a day.</string>
+    <string name="event_cancelled_result">The event is cancelled. Everyone who responded has been told.</string>
+    <string name="event_deleted_result">The event has been removed. Nobody had responded to it.</string>
+
+    <string name="event_problem_empty">Please fill this in.</string>
+    <string name="event_problem_too_short">That is a little too short.</string>
+    <string name="event_problem_past">Choose a date and time in the future.</string>
+    <string name="event_problem_not_a_link">Enter a link starting with http:// or https://</string>
+    <string name="event_problem_link_required">An online event needs a meeting link.</string>
+    <string name="event_problem_location_required">An in-person event needs a location.</string>
+    <string name="event_problem_both">Choose one: a meeting link for an online event, or a location for an in-person one. For both, choose in person and put the link in the description.</string>
+    <string name="state_restricted_body">Your account cannot do this right now.</string>
+    <string name="action_report">Report</string>
 </resources>
