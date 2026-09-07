@@ -59,4 +59,56 @@
     <string name="a11y_loading">لوڈ ہو رہا ہے</string>
     <string name="a11y_selected">منتخب شدہ</string>
     <string name="a11y_unread_count">%1$d غیر پڑھے</string>
+
+    <!-- ============================================ UX-AUTH-004 and 005-008 -->
+    <string name="login_title">لاگ اِن</string>
+    <string name="login_submit">لاگ اِن کریں</string>
+    <string name="login_forgot_password">پاس ورڈ بھول گئے؟</string>
+    <string name="login_failed">یہ نمبر اور پاس ورڈ آپس میں میل نہیں کھاتے۔</string>
+
+    <string name="field_phone">موبائل نمبر</string>
+    <string name="field_phone_not_mobile">پاکستانی موبائل نمبر درج کریں، جو 03 سے شروع ہوتا ہے۔</string>
+    <string name="field_password">پاس ورڈ</string>
+    <string name="field_password_policy">آٹھ سے چونسٹھ حروف، جن میں کم از کم ایک حرف اور ایک عدد ہو۔</string>
+    <string name="field_password_too_short">کم از کم آٹھ حروف استعمال کریں۔</string>
+    <string name="field_password_needs_letter">کم از کم ایک حرف شامل کریں۔</string>
+    <string name="field_password_needs_digit">کم از کم ایک عدد شامل کریں۔</string>
+
+    <string name="register_phone_title">آپ کا موبائل نمبر کیا ہے؟</string>
+    <string name="register_phone_body">تصدیق کے لیے ہم آپ کو ایک کوڈ بھیجیں گے۔</string>
+    <string name="register_dob_title">آپ کی تاریخِ پیدائش کیا ہے؟</string>
+    <string name="register_dob_body">محلہ استعمال کرنے کے لیے آپ کی عمر کم از کم تیرہ سال ہونی چاہی۔</string>
+    <string name="register_dob_underage">محلہ استعمال کرنے کے لیے آپ کی عمر کم از کم تیرہ سال ہونی چاہی۔</string>
+    <string name="register_dob_select">اپنی تاریخِ پیدائش منتخب کریں</string>
+    <string name="register_password_title">پاس ورڈ منتخب کریں</string>
+    <string name="register_terms_title">شرائط اور کمیونٹی ہدایات</string>
+    <string name="register_terms_accept">میں نے شرائط اور کمیونٹی ہدایات پڑھ لی ہیں اور انھیں قبول کرتا ہوں۔</string>
+    <string name="register_submit">اکاؤنٹ بنائیں</string>
+    <string name="action_continue">آگے بڑھیں</string>
+
+    <!-- =============================================== UX-AUTH-009 the OTP -->
+    <string name="otp_title">اپنا کوڈ درج کریں</string>
+    <string name="otp_sent_to">ہم نے %1$s پر چھ ہندسوں کا کوڈ بھیجا ہے</string>
+    <string name="otp_submit">تصدیق کریں</string>
+    <string name="otp_resend">نیا کوڈ بھیجیں</string>
+    <string name="otp_resend_in">آپ %1$d سیکنڈ بعد نیا کوڈ منگوا سکتے ہیں</string>
+    <string name="otp_resend_exhausted">آپ نے بہت زیادہ بار نیا کوڈ منگوایا ہے۔ کچھ دیر بعد کوشش کریں۔</string>
+    <string name="otp_resent">نیا کوڈ بھیج دیا گیا ہے۔</string>
+    <string name="otp_invalid">یہ کوڈ درست نہیں ہے۔ ہندسے دیکھ کر دوبارہ کوشش کریں۔</string>
+    <string name="otp_expired">اس کوڈ کی مدت ختم ہو گئی ہے۔ نیا کوڈ منگوائیں۔</string>
+    <string name="otp_locked_out">بہت زیادہ کوششیں۔ پندرہ منٹ بعد دوبارہ کوشش کریں۔</string>
+
+    <!-- ================================== UX-AUTH-010 and 011 the password -->
+    <string name="forgot_title">پاس ورڈ دوبارہ مقرر کریں</string>
+    <string name="forgot_body">اپنا موبائل نمبر درج کریں، ہم آپ کو ایک کوڈ بھیجیں گے۔</string>
+    <string name="forgot_submit">کوڈ بھیجیں</string>
+    <string name="reset_title">نیا پاس ورڈ منتخب کریں</string>
+    <string name="reset_submit">نیا پاس ورڈ محفوظ کریں</string>
+    <string name="reset_done">آپ کا پاس ورڈ تبدیل ہو گیا ہے۔ اب آپ لاگ اِن کر سکتے ہیں۔</string>
+
+    <!-- ========================================== UX-AUTH-012 the restore -->
+    <string name="restore_title">خوش آمدید</string>
+    <string name="restore_body">آپ کا اکاؤنٹ حذف ہونے کے لیے مقرر ہے۔ اسے واپس لائیں اور آپ کا پروفائل، فالوورز اور پوسٹس سب واپس آ جائیں گے۔</string>
+    <string name="restore_submit">میرا اکاؤنٹ واپس لائیں</string>
+    <string name="restore_done">آپ کا اکاؤنٹ واپس آ گیا ہے۔</string>
 </resources>

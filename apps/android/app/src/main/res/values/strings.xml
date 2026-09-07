@@ -51,4 +51,58 @@
     <string name="a11y_loading">Loading</string>
     <string name="a11y_selected">Selected</string>
     <string name="a11y_unread_count">%1$d unread</string>
+
+    <!-- ============================================ UX-AUTH-004 and 005-008 -->
+    <string name="login_title">Log in</string>
+    <string name="login_submit">Log in</string>
+    <string name="login_forgot_password">Forgotten your password?</string>
+    <!-- SEC-006: ONE message for a wrong password, an unknown number and a
+         banned account. It says nothing about which. -->
+    <string name="login_failed">That number and password do not match.</string>
+
+    <string name="field_phone">Mobile number</string>
+    <string name="field_phone_not_mobile">Enter a Pakistani mobile number, starting 03.</string>
+    <string name="field_password">Password</string>
+    <string name="field_password_policy">8 to 64 characters, with at least one letter and one number.</string>
+    <string name="field_password_too_short">Use at least 8 characters.</string>
+    <string name="field_password_needs_letter">Add at least one letter.</string>
+    <string name="field_password_needs_digit">Add at least one number.</string>
+
+    <string name="register_phone_title">What is your mobile number?</string>
+    <string name="register_phone_body">We will send you a code to confirm it.</string>
+    <string name="register_dob_title">When were you born?</string>
+    <string name="register_dob_body">You need to be at least 13 to use Mohalla.</string>
+    <string name="register_dob_underage">You need to be at least 13 to use Mohalla.</string>
+    <string name="register_dob_select">Select your date of birth</string>
+    <string name="register_password_title">Choose a password</string>
+    <string name="register_terms_title">Terms and Community Guidelines</string>
+    <string name="register_terms_accept">I have read and accept the Terms and the Community Guidelines.</string>
+    <string name="register_submit">Create account</string>
+    <string name="action_continue">Continue</string>
+
+    <!-- =============================================== UX-AUTH-009 the OTP -->
+    <string name="otp_title">Enter your code</string>
+    <string name="otp_sent_to">We sent a 6-digit code to %1$s</string>
+    <string name="otp_submit">Verify</string>
+    <string name="otp_resend">Send a new code</string>
+    <string name="otp_resend_in">You can ask for a new code in %1$d seconds</string>
+    <string name="otp_resend_exhausted">You have asked for a new code too many times. Try again later.</string>
+    <string name="otp_resent">A new code is on its way.</string>
+    <string name="otp_invalid">That code is not correct. Check the digits and try again.</string>
+    <string name="otp_expired">That code has expired. Ask for a new one.</string>
+    <string name="otp_locked_out">Too many attempts. Try again in 15 minutes.</string>
+
+    <!-- ================================== UX-AUTH-010 and 011 the password -->
+    <string name="forgot_title">Reset your password</string>
+    <string name="forgot_body">Enter your mobile number and we will send you a code.</string>
+    <string name="forgot_submit">Send code</string>
+    <string name="reset_title">Choose a new password</string>
+    <string name="reset_submit">Save new password</string>
+    <string name="reset_done">Your password has been changed. You can log in now.</string>
+
+    <!-- ========================================== UX-AUTH-012 the restore -->
+    <string name="restore_title">Welcome back</string>
+    <string name="restore_body">Your account is scheduled for deletion. Restore it and your profile, followers and posts all come back.</string>
+    <string name="restore_submit">Restore my account</string>
+    <string name="restore_done">Your account has been restored.</string>
 </resources>

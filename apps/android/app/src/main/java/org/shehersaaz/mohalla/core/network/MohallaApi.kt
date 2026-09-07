@@ -41,6 +41,19 @@ interface MohallaApi {
     @POST("logout")
     suspend fun logout(): Response<Unit>
 
+    @POST("password/forgot")
+    suspend fun forgotPassword(@Body body: ForgotPasswordRequest): Response<AcceptedResponse>
+
+    @POST("password/reset")
+    suspend fun resetPassword(@Body body: ResetPasswordRequest): Response<AcceptedResponse>
+
+    @POST("password/change")
+    suspend fun changePassword(@Body body: ChangePasswordRequest): Response<Unit>
+
+    /** SET-FR-005 — reachable with the RESTORE_ONLY session login issues. */
+    @POST("me/restore")
+    suspend fun restoreAccount(): Response<RestoreResponse>
+
     // ------------------------------------------------------------------ profile
     @GET("me")
     suspend fun me(): Response<OwnProfileResponse>
@@ -72,6 +85,24 @@ data class VerifyOtpRequest(
 data class ResendOtpRequest(
     val phone: String,
     val purpose: String,
+)
+
+@Serializable
+data class ForgotPasswordRequest(
+    val phone: String,
+)
+
+@Serializable
+data class ResetPasswordRequest(
+    val phone: String,
+    val code: String,
+    val newPassword: String,
+)
+
+@Serializable
+data class ChangePasswordRequest(
+    val currentPassword: String,
+    val newPassword: String,
 )
 
 @Serializable
@@ -112,6 +143,11 @@ data class LoginResponse(
     /** `FULL`, `READ_ONLY` (BR-034) or `RESTORE_ONLY` (SET-FR-005). */
     val capability: String? = null,
     val suspendedUntil: String? = null,
+)
+
+@Serializable
+data class RestoreResponse(
+    val status: String? = null,
 )
 
 /**
