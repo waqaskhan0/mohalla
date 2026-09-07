@@ -1,6 +1,8 @@
 package org.shehersaaz.mohalla.feature.auth
 
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -113,6 +115,20 @@ class RegisterViewModel(
         if (!current.termsAccepted || current.password.isEmpty()) return
         val dob = current.dateOfBirth ?: return
 
+        // OD-015 — no published Terms document, so no version to record.
+        //
+        // FAILS CLOSED, and this is the one place in the app that does. What is
+        // being written here is a compliance record: "this user accepted this
+        // version of these terms on this date". Sending an empty or invented
+        // version would put a record in the database asserting an acceptance of
+        // a document nobody has written, which is worse than not registering
+        // the user at all — the record cannot be corrected later, because
+        // nobody will know what they were shown.
+        if (termsVersion.isBlank()) {
+            _state.update { it.copy(termsUnavailable = true) }
+            return
+        }
+
         _state.update { it.copy(submitting = true, submitFailure = null) }
 
         viewModelScope.launch {
@@ -146,18 +162,28 @@ class RegisterViewModel(
     fun normalisedPhone(): String? = (_state.value.phoneCheck as? PhoneCheck.Valid)?.e164
 
     /**
-     * Built with an explicit [SavedStateHandle] rather than through
-     * `CreationExtras`, because the caller already owns one and threading it in
-     * keeps this factory constructible from a plain unit test.
+     * Takes the [SavedStateHandle] from `CreationExtras`.
+     *
+     * NOT a handle passed in by the caller. A hand-constructed
+     * `SavedStateHandle()` compiles, runs, and silently saves nothing — the
+     * handle has to come from the owner's own saved-state registry to survive
+     * process death, which is the entire reason the phone number and date of
+     * birth are kept in one. A registration that loses four steps of input when
+     * Android reclaims the process is the failure §13 is written against, and it
+     * is invisible in testing unless process death is forced.
+     *
+     * The unit-test overload below takes an explicit handle, so tests stay
+     * plain JVM tests.
      */
     class Factory(
         private val auth: AuthRepository,
-        private val savedState: SavedStateHandle,
         private val termsVersion: String,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            RegisterViewModel(auth, savedState, termsVersion) as T
+        override fun <T : ViewModel> create(
+            modelClass: Class<T>,
+            extras: CreationExtras,
+        ): T = RegisterViewModel(auth, extras.createSavedStateHandle(), termsVersion) as T
     }
 
     private companion object {
@@ -193,6 +219,15 @@ data class RegisterUiState(
     val passwordServerError: String? = null,
 
     val termsAccepted: Boolean = false,
+
+    /**
+     * Set when the build carries no Terms version (OD-015).
+     *
+     * Distinct from every other failure because it is not the user's problem
+     * and no retry helps: the screen says registration is unavailable rather
+     * than blaming the network or the input.
+     */
+    val termsUnavailable: Boolean = false,
 
     val submitting: Boolean = false,
     val registered: Boolean = false,

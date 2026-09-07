@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -65,6 +66,25 @@ fun MohallaBottomNav(
     modifier: Modifier = Modifier,
     /** Unread ACCEPTED conversations only — requests never inflate it (BR-027). */
     messagesBadgeCount: Int = 0,
+    /**
+     * BR-034 · UX-SAFE-004 — a suspended account.
+     *
+     * Create renders LOCKED rather than absent or silently broken. §14: "visibly
+     * disabled with a lock affordance when the account is suspended", and §6.2:
+     * "tapping it opens the explanation rather than failing silently" — so the
+     * item stays tappable and the caller decides what the tap does. Removing it
+     * would renumber the row and move Create off centre, which is the one thing
+     * the RTL rule in [MohallaTab] depends on.
+     */
+    createLocked: Boolean = false,
+    /**
+     * §14 — "a small dot appears when the account is suspended or has content
+     * under review, so the user notices without an alarming badge".
+     *
+     * Deliberately not the red count badge Messages uses: this is information,
+     * not a demand.
+     */
+    profileAttention: Boolean = false,
 ) {
     Row(
         modifier = modifier
@@ -82,6 +102,8 @@ fun MohallaBottomNav(
                 tab = tab,
                 selected = tab == selected,
                 badgeCount = if (tab == MohallaTab.MESSAGES) messagesBadgeCount else 0,
+                locked = createLocked && tab == MohallaTab.CREATE,
+                attention = profileAttention && tab == MohallaTab.PROFILE,
                 onClick = { onSelect(tab) },
                 modifier = Modifier.weight(1f),
             )
@@ -94,14 +116,25 @@ private fun NavItem(
     tab: MohallaTab,
     selected: Boolean,
     badgeCount: Int,
+    locked: Boolean,
+    attention: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val label = stringResource(tab.labelRes)
-    val unreadLabel = if (badgeCount > 0) {
-        stringResource(R.string.a11y_unread_count, badgeCount)
-    } else {
-        null
+
+    // The count reaches a screen reader through the icon's description rather
+    // than as visible text: the visual badge is a dot, and a dot has no
+    // reading. A locked Create says so for the same reason — the padlock is the
+    // only visual cue, so it must also be the spoken one.
+    val iconDescription = when {
+        locked -> stringResource(R.string.a11y_create_locked)
+        badgeCount > 0 -> stringResource(R.string.a11y_unread_count, badgeCount)
+        attention -> stringResource(R.string.a11y_profile_attention)
+        // Otherwise silent: the label below already carries the meaning and the
+        // row announces its own selection through `Role.Tab`, so describing the
+        // icon too would make a screen reader say everything twice.
+        else -> null
     }
 
     Column(
@@ -120,18 +153,28 @@ private fun NavItem(
     ) {
         Box(contentAlignment = Alignment.TopEnd) {
             Icon(
-                imageVector = tab.vector(),
-                // The label below carries the meaning and the row announces
-                // its own selection through `Role.Tab`, so describing the icon
-                // again would make a screen reader say everything twice.
-                contentDescription = null,
-                tint = if (selected) {
-                    MohallaTheme.colors.BrandPrimary
-                } else {
-                    MohallaTheme.colors.TextTertiary
+                imageVector = if (locked) Icons.Filled.Lock else tab.vector(),
+                contentDescription = iconDescription,
+                tint = when {
+                    // Locked reads as unavailable in COLOUR AND SHAPE. §35
+                    // forbids colour as the only carrier, and a greyed plus
+                    // alone would be exactly that.
+                    locked -> MohallaTheme.colors.TextTertiary
+                    selected -> MohallaTheme.colors.BrandPrimary
+                    else -> MohallaTheme.colors.TextTertiary
                 },
                 modifier = Modifier.size(MohallaTheme.spacing.Space6),
             )
+
+            if (attention) {
+                // Neutral, not alarming: brand colour, and the same 8dp dot the
+                // badge uses so the bar's rhythm does not change.
+                Box(
+                    Modifier
+                        .size(MohallaTheme.spacing.Space2)
+                        .background(MohallaTheme.colors.BrandPrimary, CircleShape),
+                )
+            }
 
             if (badgeCount > 0) {
                 // Positioned with `TopEnd`, so the badge moves to the icon's
@@ -159,17 +202,6 @@ private fun NavItem(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-
-        // Announced but not drawn — the visual badge is a dot, and a dot has no
-        // reading. Keeps count out of the visual design and in the semantics.
-        if (unreadLabel != null) {
-            Text(
-                text = unreadLabel,
-                style = MohallaTheme.text(MohallaType.Label),
-                color = MohallaTheme.colors.TextTertiary,
-                maxLines = 1,
-            )
-        }
     }
 }
 

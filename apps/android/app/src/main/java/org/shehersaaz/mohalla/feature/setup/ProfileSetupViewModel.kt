@@ -1,6 +1,8 @@
 package org.shehersaaz.mohalla.feature.setup
 
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -183,14 +185,16 @@ class ProfileSetupViewModel(
         }
     }
 
+    /** The handle comes from `CreationExtras`; see `RegisterViewModel.Factory`. */
     class Factory(
         private val setup: SetupRepository,
         private val uploader: ImageUploader,
-        private val savedState: SavedStateHandle,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            ProfileSetupViewModel(setup, uploader, savedState) as T
+        override fun <T : ViewModel> create(
+            modelClass: Class<T>,
+            extras: CreationExtras,
+        ): T = ProfileSetupViewModel(setup, uploader, extras.createSavedStateHandle()) as T
     }
 
     private companion object {

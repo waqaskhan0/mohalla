@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Plural quantities.
+
+  Kept OUT of strings.xml deliberately: a count is never safe to build by
+  concatenation, and a separate file makes it obvious which strings carry a
+  quantity and therefore need a table rather than a "%d" glued to a noun.
+
+  Urdu and English both distinguish only ONE and OTHER, so every table here has
+  exactly those two entries. Do not add "few"/"many" - Android would never
+  select them for either locale, and a translator filling them in would be
+  writing text no user ever sees.
+-->
+<resources>
+    <plurals name="a11y_post_images">
+        <item quantity="one">%1$d image</item>
+        <item quantity="other">%1$d images</item>
+    </plurals>
+</resources>

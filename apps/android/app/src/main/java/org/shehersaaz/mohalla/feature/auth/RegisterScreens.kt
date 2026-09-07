@@ -233,7 +233,14 @@ fun RegisterTermsScreen(
         modifier = modifier,
         title = stringResource(R.string.register_terms_title),
         onBack = onBack,
-        notice = when (val failure = state.submitFailure) {
+        // OD-015 outranks every transient failure below it: the others are
+        // worth retrying and this one is not.
+        notice = if (state.termsUnavailable) {
+            AuthNotice(
+                stringResource(R.string.register_terms_unavailable),
+                AuthNoticeTone.ERROR,
+            )
+        } else when (val failure = state.submitFailure) {
             ApiFailure.Offline -> AuthNotice(
                 stringResource(R.string.state_offline_banner),
                 AuthNoticeTone.WARNING,

@@ -44,6 +44,13 @@ android {
             isMinifyEnabled = false
             // 10.0.2.2 is the host loopback as seen from the Android emulator.
             buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:3000\"")
+            // OD-015 is unresolved: no Terms document has been published, so
+            // there is no version to name. A debug build records this literal
+            // so the value in the registration audit trail says exactly what
+            // was accepted - nothing - rather than a plausible-looking version
+            // string that would imply a document existed. The release gate
+            // below refuses to build without a real one.
+            buildConfigField("String", "TERMS_VERSION", "\"unpublished-od-015\"")
         }
         release {
             // Signing config is deliberately absent. Release signing keys are
@@ -52,6 +59,12 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             // Overridden per real environment at release time; never a real host in source.
             buildConfigField("String", "API_BASE_URL", "\"https://api.invalid\"")
+            // Deliberately EMPTY, which makes registration fail closed in a
+            // release build until a Terms document is published and its
+            // version supplied here. `RegisterViewModel` refuses to submit an
+            // empty version, so a release APK cannot record an acceptance of a
+            // document that does not exist (OD-015).
+            buildConfigField("String", "TERMS_VERSION", "\"\"")
         }
     }
 

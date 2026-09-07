@@ -151,4 +151,43 @@
     <string name="action_follow">فالو کریں</string>
     <string name="action_following">فالو کر رہے ہیں</string>
     <string name="badge_verified">تصدیق شدہ</string>
+    <!-- Post card -->
+    <string name="profile_deleted_user">حذف شدہ صارف</string>
+    <string name="post_under_review">زیرِ جائزہ۔ یہ پوسٹ صرف آپ کو نظر آ رہی ہے۔</string>
+    <string name="post_edited">تدوین شدہ</string>
+    <string name="a11y_like">پسند کریں</string>
+    <string name="a11y_unlike">پسند ہٹائیں</string>
+    <string name="a11y_comments">تبصرے</string>
+    <string name="a11y_share">شیئر کریں</string>
+
+    <!-- Home -->
+    <string name="feed_following">فالوونگ</string>
+    <string name="feed_discover">دریافت</string>
+    <string name="feed_featured">اعلانات</string>
+    <string name="feed_end">آپ آخر تک پہنچ گئے ہیں۔</string>
+    <string name="feed_page_failed">مزید پوسٹیں لوڈ نہیں ہو سکیں۔</string>
+    <string name="feed_empty_following_title">آپ کی فیڈ منتظر ہے</string>
+    <string name="feed_empty_following_body">چند پڑوسیوں کو فالو کریں اور اُن کی پوسٹیں یہاں نظر آنے لگیں گی۔ اُس وقت تک دریافت میں دیکھیں کہ قریب کیا ہو رہا ہے۔</string>
+    <string name="feed_find_people">فالو کرنے کے لیے لوگ ڈھونڈیں</string>
+    <string name="feed_see_discover">دریافت دیکھیں</string>
+    <string name="feed_empty_discover_title">ابھی یہاں کچھ نہیں</string>
+    <string name="feed_empty_discover_body">قریب کے کسی شخص نے حال ہی میں کچھ پوسٹ نہیں کیا۔ کچھ دیر بعد دوبارہ دیکھیں۔</string>
+    <!-- Shell chrome -->
+    <string name="action_search">تلاش کریں</string>
+    <string name="action_notifications">اطلاعات</string>
+    <string name="action_learn_more">مزید جانیں</string>
+    <string name="a11y_create_locked">پوسٹ لکھیں — آپ کا اکاؤنٹ محدود ھونے کی وجھ سے دستیاب نھیں</string>
+    <string name="a11y_profile_attention">پروفائل — کوئی بات آپ کی توجھ کی منتزر ھے</string>
+
+    <!-- Suspension (UX-SAFE-004) -->
+    <string name="suspension_banner_until">آپ کا اکاؤنٹ %1$s تک محدود ھ۔</string>
+    <string name="suspension_banner_indefinite">آپ کا اکاؤنٹ محدود ھ۔</string>
+    <string name="suspension_title">آپ کا اکاؤنٹ محدود ھے</string>
+    <string name="suspension_duration_until">آپ سب کچھ پڑھ سکتے ھیں، مگر %1$s تک پوسٹ ، تبصرہ یا پیغام نھیں بھیج سکتے۔</string>
+    <string name="suspension_duration_indefinite">آپ سب کچھ پڑھ سکتے ھیں، مگر فی الحال پوسٹ، تبصرہ یا پیغام نھیں بھیج سکتے۔</string>
+    <string name="suspension_what_still_works">پوسٹیں، تقاریب اور آپ کی پرانی گفتگو سب پڑھی جا سکتی ھیں۔ کوئی چیز حذف نھیں ھوئی۔</string>
+    <string name="suspension_contact_support">اس بارے میں رابطہ کریں</string>
+
+    <!-- OD-015 -->
+    <string name="register_terms_unavailable">اس بلڈ میں نئے اکاؤنٹ نھیں بن سکتے۔ شرائط و ضوابط ابھی شائع نھیں ھوئے۔</string>
 </resources>

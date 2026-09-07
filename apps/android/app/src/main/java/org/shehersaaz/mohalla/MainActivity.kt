@@ -12,9 +12,10 @@ import org.shehersaaz.mohalla.core.di.AppContainer
 import org.shehersaaz.mohalla.core.locale.AppLocale
 import org.shehersaaz.mohalla.core.ui.LoadingState
 import org.shehersaaz.mohalla.feature.auth.LanguageSelectionScreen
-import org.shehersaaz.mohalla.feature.auth.WelcomeScreen
 import org.shehersaaz.mohalla.feature.startup.StartupDestination
 import org.shehersaaz.mohalla.feature.startup.StartupViewModel
+import org.shehersaaz.mohalla.navigation.MohallaNavHost
+import org.shehersaaz.mohalla.navigation.startRoute
 
 /**
  * The only activity.
@@ -59,11 +60,18 @@ class MainActivity : ComponentActivity() {
                 val destination by startup.destination.collectAsState()
 
                 when (val current = destination) {
-                    // The splash. Nothing else is composed while the
+                    // The splash. NOTHING else is composed while the
                     // destination is unknown, so an unauthorised screen can
-                    // never flash (§9).
+                    // never flash (§9) — and the NavHost below is not created
+                    // either, because a NavHost needs its start destination at
+                    // construction and would otherwise have to be built with a
+                    // guess and then corrected.
                     StartupDestination.Resolving -> LoadingState()
 
+                    // Outside the graph on purpose. BR-040's language choice
+                    // happens before there is a back stack to put it on, and it
+                    // ends in `recreate()` — so a destination here would be
+                    // destroyed by its own completion.
                     is StartupDestination.ChooseLanguage -> LanguageSelectionScreen(
                         suggestion = current.suggestion,
                         onConfirm = { chosen ->
@@ -72,17 +80,11 @@ class MainActivity : ComponentActivity() {
                         },
                     )
 
-                    StartupDestination.Welcome -> WelcomeScreen(
-                        // UX-AUTH-005 and UX-AUTH-004 arrive with the auth
-                        // slice; the shell routes to them then.
-                        onCreateAccount = {},
-                        onLogIn = {},
+                    else -> MohallaNavHost(
+                        container = container,
+                        startRoute = current.startRoute(),
+                        onRequestLanguageChange = {},
                     )
-
-                    // Every remaining destination is a screen from a later
-                    // slice. The splash is held rather than showing a wrong
-                    // screen, which is the §9 rule.
-                    else -> LoadingState()
                 }
             }
         }

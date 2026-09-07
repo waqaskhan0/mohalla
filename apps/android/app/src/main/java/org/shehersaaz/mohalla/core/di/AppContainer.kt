@@ -15,10 +15,12 @@ import org.shehersaaz.mohalla.core.network.CorrelationInterceptor
 import org.shehersaaz.mohalla.core.network.LanguageInterceptor
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.MediaType.Companion.toMediaType
+import org.shehersaaz.mohalla.core.network.ConnectivityObserver
 import org.shehersaaz.mohalla.core.network.MohallaApi
 import org.shehersaaz.mohalla.core.network.MohallaJson
 import org.shehersaaz.mohalla.core.media.ImageUploader
 import org.shehersaaz.mohalla.feature.auth.AuthRepository
+import org.shehersaaz.mohalla.feature.home.FeedRepository
 import org.shehersaaz.mohalla.feature.setup.SetupRepository
 import org.shehersaaz.mohalla.feature.startup.SessionRepository
 import retrofit2.Retrofit
@@ -107,6 +109,39 @@ class AppContainer private constructor(
     val imageUploader: ImageUploader = ImageUploader(api, httpClient)
 
     val setupRepository: SetupRepository = SetupRepository(api)
+
+    val feedRepository: FeedRepository = FeedRepository(api)
+
+    /** §43 - a banner hint, never a gate on making a request. */
+    val connectivity: ConnectivityObserver = ConnectivityObserver(context)
+
+    /** AUTH-FR-002. Empty until OD-015 is resolved; see [BuildEnvironment]. */
+    val termsVersion: String = BuildEnvironment.termsVersion
+
+    /**
+     * Formats a server timestamp as a date in the reader's locale.
+     *
+     * A CONTAINER-LEVEL FUNCTION rather than a utility call inside each
+     * ViewModel, for one reason: Urdu dates need the Urdu locale's own numerals
+     * and month names, and a ViewModel that reached for `DateTimeFormatter`
+     * defaults would silently produce Latin digits in an Urdu sentence. Passing
+     * it in also keeps ViewModels free of platform formatting, so they stay
+     * testable on the JVM without Robolectric.
+     *
+     * Returns `null` for anything unparseable rather than echoing the raw
+     * string - "2026-09-14T00:00:00Z" in the middle of a suspension banner
+     * would be worse than the indefinite wording the banner falls back to.
+     */
+    val formatDate: (String) -> String? = { iso ->
+        runCatching {
+            val instant = java.time.Instant.parse(iso)
+            java.time.format.DateTimeFormatter
+                .ofLocalizedDate(java.time.format.FormatStyle.LONG)
+                .withLocale(java.util.Locale.forLanguageTag(localeManager.locale.value.tag))
+                .withZone(java.time.ZoneId.systemDefault())
+                .format(instant)
+        }.getOrNull()
+    }
 
     companion object {
         @Volatile

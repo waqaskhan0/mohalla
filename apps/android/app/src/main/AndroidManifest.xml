@@ -2,6 +2,29 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!--
+      TWO PERMISSIONS, AND NO MORE.
+
+      INTERNET is not optional: every API call needs it, and without it OkHttp
+      throws a SecurityException on the first request rather than failing
+      gracefully. It was absent until the shell was wired, because nothing had
+      yet run against a real backend on a device (there is no emulator in this
+      project - see 20-mobile-open-issues.md), which is exactly the class of
+      defect an unrunnable app hides.
+
+      ACCESS_NETWORK_STATE is what ConnectivityObserver needs to answer "is
+      there a validated connection" for the offline banner. Both are NORMAL
+      permissions, granted at install with no runtime prompt.
+
+      Nothing else is declared. In particular there is no READ_EXTERNAL_STORAGE
+      or READ_MEDIA_IMAGES: the photo picker returns a URI the app is granted
+      access to for that one file, so asking for the whole gallery would be
+      requesting more than the product needs (SEC-025, and PRIV-001's
+      data-minimisation rule applies to permissions as much as to columns).
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!--
       android:supportsRtl="true" is the switch that makes the entire Urdu
       layout mirror. Without it, every start/end attribute in this project
       silently behaves as left/right and the Urdu interface is wrong.

@@ -82,6 +82,18 @@ object Routes {
     const val LANGUAGE = "language"
     const val WELCOME = "welcome"
     const val LOGIN = "login"
+
+    /**
+     * The nested graph the four registration steps and the OTP screen live in.
+     *
+     * It exists to give them a shared `ViewModelStoreOwner`: the phone number
+     * entered on step one has to still be there on step four, and a ViewModel
+     * scoped to a single destination is destroyed when that destination leaves
+     * the back stack. Never navigated to as a screen — entering the graph lands
+     * on its start destination.
+     */
+    const val REGISTER_GRAPH = "register"
+
     const val REGISTER_PHONE = "register/phone"
     const val REGISTER_DOB = "register/dob"
     const val REGISTER_PASSWORD = "register/password"

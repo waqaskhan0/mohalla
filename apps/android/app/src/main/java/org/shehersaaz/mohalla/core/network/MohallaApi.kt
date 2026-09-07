@@ -91,6 +91,46 @@ interface MohallaApi {
     @DELETE("users/{id}/follow")
     suspend fun unfollow(@Path("id") userId: String): Response<Unit>
 
+    // --------------------------------------------------------------------- feed
+    //
+    // FEED-FR-001: reverse chronological, no ranking. Pagination is KEYSET, not
+    // offset - a cursor of (createdAt, id) - because a new post arriving
+    // between pages shifts every offset and makes page two repeat or skip.
+    @GET("feed/following")
+    suspend fun feedFollowing(
+        @Query("limit") limit: Int? = null,
+        @Query("cursorCreatedAt") cursorCreatedAt: String? = null,
+        @Query("cursorId") cursorId: String? = null,
+        @Query("category") category: String? = null,
+    ): Response<FeedResponse>
+
+    @GET("feed/discover")
+    suspend fun feedDiscover(
+        @Query("limit") limit: Int? = null,
+        @Query("cursorCreatedAt") cursorCreatedAt: String? = null,
+        @Query("cursorId") cursorId: String? = null,
+        @Query("category") category: String? = null,
+    ): Response<FeedResponse>
+
+    /**
+     * FEED-FR-002 - its OWN endpoint, by requirement.
+     *
+     * Featured renders independently of the feeds, so a Following feed that is
+     * empty or failing still leaves something on screen (RSK-001, REL-005).
+     * Unauthenticated-safe and locale-parameterised.
+     */
+    @GET("feed/featured")
+    suspend fun feedFeatured(@Query("locale") locale: String? = null): Response<FeaturedResponse>
+
+    @GET("posts/{id}")
+    suspend fun post(@Path("id") id: String): Response<PostResponse>
+
+    @PUT("posts/{id}/like")
+    suspend fun like(@Path("id") id: String): Response<Unit>
+
+    @DELETE("posts/{id}/like")
+    suspend fun unlike(@Path("id") id: String): Response<Unit>
+
     // -------------------------------------------------------------------- media
     //
     // ADR-013's three steps: ask for a slot, put the bytes into quarantine,
@@ -284,6 +324,88 @@ data class MediaResponse(
     val status: String? = null,
     val width: Int? = null,
     val height: Int? = null,
+)
+
+/**
+ * One post as a feed renders it.
+ *
+ * `author` is a `PublicProfileResponse` whose `displayName` may be the
+ * `profile.deletedUser` KEY rather than a name - BR-009 keeps a departed
+ * account's posts and attributes them to "Deleted User", and the server sends a
+ * localisation key so both languages say it. The card resolves that key; it
+ * does not print it.
+ */
+@Serializable
+data class FeedItemResponse(
+    val id: String,
+    val author: PublicProfileResponse,
+    val body: String,
+    val categorySlug: String? = null,
+    val mediaIds: List<String> = emptyList(),
+    val likeCount: Int = 0,
+    val commentCount: Int = 0,
+    /** So the like control renders in the right state without a second call. */
+    val viewerHasLiked: Boolean = false,
+    val editedAt: String? = null,
+    val createdAt: String,
+    /** BR-032 - the AUTHOR's own view of an auto-hidden post. */
+    val underReview: Boolean = false,
+)
+
+@Serializable
+data class PublicProfileResponse(
+    val userId: String,
+    val username: String? = null,
+    val displayName: String? = null,
+    val city: String? = null,
+    val bio: String? = null,
+    val photoMediaId: String? = null,
+    val verifiedBadge: Boolean = false,
+    val accountType: String? = null,
+    val followerCount: Int = 0,
+    val followingCount: Int = 0,
+    val postCount: Int = 0,
+)
+
+@Serializable
+data class FeedCursorResponse(
+    val createdAt: String,
+    val id: String,
+)
+
+@Serializable
+data class FeedResponse(
+    val items: List<FeedItemResponse> = emptyList(),
+    /** `null` means the end. NOT the same as an empty page. */
+    val nextCursor: FeedCursorResponse? = null,
+)
+
+@Serializable
+data class FeaturedResponse(
+    val announcements: List<FeaturedItemResponse> = emptyList(),
+)
+
+@Serializable
+data class FeaturedItemResponse(
+    val id: String,
+    val title: String,
+    val body: String,
+    val expiresAt: String? = null,
+)
+
+@Serializable
+data class PostResponse(
+    val id: String,
+    val author: PublicProfileResponse,
+    val body: String,
+    val categorySlug: String? = null,
+    val mediaIds: List<String> = emptyList(),
+    val likeCount: Int = 0,
+    val commentCount: Int = 0,
+    val viewerHasLiked: Boolean = false,
+    val editedAt: String? = null,
+    val createdAt: String,
+    val underReview: Boolean = false,
 )
 
 @Serializable

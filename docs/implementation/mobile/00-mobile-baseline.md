@@ -148,7 +148,7 @@ load also fails immediately if a sixth tab is ever added.
 |---|---|
 | **No AVD, no system image, no device** | `adb devices` empty. §45 emulator E2E and all `androidTest` Compose UI tests **cannot run** here. Needs a ~1 GB system-image download. |
 | Fonts | Noto Naskh Arabic and Nastaliq not bundled (**DEP-013**). Both currently resolve to the platform serif, which renders Urdu correctly on API 26+ but is not the approved face. |
-| Legal documents | **OD-015** — UX-SET-006/007 can only link to placeholders. |
+| Legal documents | **OD-015** — UX-SET-006/007 can only link to placeholders, and it is now a **release blocker**: `TERMS_VERSION` is empty in the release build config, `RegisterViewModel` refuses to submit a blank version, and the terms screen says registration is unavailable. Recording an acceptance of an unpublished document would put an uncorrectable compliance claim in the database, so this fails closed rather than sending a placeholder version. Resolving OD-015 means publishing the documents **and** setting the version in `app/build.gradle.kts`. |
 | Urdu strings | **DEP-011 / OD-016** — ~400 strings are Shehersaaz's. What is written is structurally correct and reads as Urdu, and is **not** a substitute for that review. |
 
 Because Compose UI tests need a device, the RTL and state assertions that *can*

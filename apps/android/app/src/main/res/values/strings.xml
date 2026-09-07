@@ -149,4 +149,43 @@
     <string name="action_follow">Follow</string>
     <string name="action_following">Following</string>
     <string name="badge_verified">Verified</string>
+    <!-- Post card -->
+    <string name="profile_deleted_user">Deleted User</string>
+    <string name="post_under_review">Under review. Only you can see this post.</string>
+    <string name="post_edited">edited</string>
+    <string name="a11y_like">Like</string>
+    <string name="a11y_unlike">Remove like</string>
+    <string name="a11y_comments">Comments</string>
+    <string name="a11y_share">Share</string>
+
+    <!-- Home -->
+    <string name="feed_following">Following</string>
+    <string name="feed_discover">Discover</string>
+    <string name="feed_featured">Announcements</string>
+    <string name="feed_end">You have reached the end.</string>
+    <string name="feed_page_failed">More posts could not be loaded.</string>
+    <string name="feed_empty_following_title">Your feed is waiting</string>
+    <string name="feed_empty_following_body">Follow a few neighbours and their posts will appear here. Until then, Discover shows what is happening nearby.</string>
+    <string name="feed_find_people">Find people to follow</string>
+    <string name="feed_see_discover">See Discover</string>
+    <string name="feed_empty_discover_title">Nothing here yet</string>
+    <string name="feed_empty_discover_body">Nobody nearby has posted recently. Check back a little later.</string>
+    <!-- Shell chrome -->
+    <string name="action_search">Search</string>
+    <string name="action_notifications">Notifications</string>
+    <string name="action_learn_more">Learn more</string>
+    <string name="a11y_create_locked">Create a post — unavailable while your account is limited</string>
+    <string name="a11y_profile_attention">Profile — something needs your attention</string>
+
+    <!-- Suspension (UX-SAFE-004) -->
+    <string name="suspension_banner_until">Your account is limited until %1$s.</string>
+    <string name="suspension_banner_indefinite">Your account is limited.</string>
+    <string name="suspension_title">Your account is limited</string>
+    <string name="suspension_duration_until">You can read everything, but you cannot post, comment or send messages until %1$s.</string>
+    <string name="suspension_duration_indefinite">You can read everything, but you cannot post, comment or send messages for now.</string>
+    <string name="suspension_what_still_works">Reading posts, events and your old conversations all keep working. Nothing has been deleted.</string>
+    <string name="suspension_contact_support">Get in touch about this</string>
+
+    <!-- OD-015 -->
+    <string name="register_terms_unavailable">New accounts cannot be created in this build. The Terms of Service have not been published yet.</string>
 </resources>

@@ -1,0 +1,457 @@
+package org.shehersaaz.mohalla.navigation
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.navigation
+import androidx.navigation.compose.rememberNavController
+import org.shehersaaz.mohalla.core.di.AppContainer
+import org.shehersaaz.mohalla.core.ui.ContentUnavailable
+import org.shehersaaz.mohalla.feature.auth.ForgotPasswordScreen
+import org.shehersaaz.mohalla.feature.auth.LoginScreen
+import org.shehersaaz.mohalla.feature.auth.LoginViewModel
+import org.shehersaaz.mohalla.feature.auth.OtpPurpose
+import org.shehersaaz.mohalla.feature.auth.OtpScreen
+import org.shehersaaz.mohalla.feature.auth.OtpViewModel
+import org.shehersaaz.mohalla.feature.auth.PasswordResetViewModel
+import org.shehersaaz.mohalla.feature.auth.RegisterDateOfBirthScreen
+import org.shehersaaz.mohalla.feature.auth.RegisterPasswordScreen
+import org.shehersaaz.mohalla.feature.auth.RegisterPhoneScreen
+import org.shehersaaz.mohalla.feature.auth.RegisterTermsScreen
+import org.shehersaaz.mohalla.feature.auth.RegisterViewModel
+import org.shehersaaz.mohalla.feature.auth.ResetPasswordScreen
+import org.shehersaaz.mohalla.feature.auth.RestoreAccountScreen
+import org.shehersaaz.mohalla.feature.auth.RestoreAccountViewModel
+import org.shehersaaz.mohalla.feature.auth.WelcomeScreen
+import org.shehersaaz.mohalla.feature.home.FeedViewModel
+import org.shehersaaz.mohalla.feature.home.HomeScreen
+import org.shehersaaz.mohalla.feature.safety.SuspensionExplainerSheet
+import org.shehersaaz.mohalla.feature.setup.ProfileSetupScreen
+import org.shehersaaz.mohalla.feature.setup.ProfileSetupViewModel
+import org.shehersaaz.mohalla.feature.setup.SuggestedAccountsScreen
+import org.shehersaaz.mohalla.feature.setup.SuggestionsViewModel
+import org.shehersaaz.mohalla.feature.setup.UsernameScreen
+import org.shehersaaz.mohalla.feature.setup.UsernameViewModel
+
+/**
+ * The navigation graph.
+ *
+ * TWO GRAPHS IN ONE, AND THE SEAM IS DELIBERATE. Everything before [Routes.SHELL]
+ * is a linear flow with a back stack; the shell replaces it entirely. Arriving at
+ * the shell pops the auth graph with `inclusive = true`, so pressing Back on Home
+ * leaves the app rather than returning to a login screen for a session that is
+ * now valid — the defect §12 calls out by name.
+ *
+ * THE START DESTINATION IS DECIDED BY [org.shehersaaz.mohalla.feature.startup]'s
+ * pure resolver, not here. This file routes; it does not judge. Duplicating even
+ * part of that decision would give the app two answers to "where does a
+ * suspended account land", and the answer that ships would be whichever ran last.
+ *
+ * WHY STRING ROUTES. §42's deep links have to match on patterns, and
+ * navigation-compose's type-safe routes would mean maintaining the pattern twice
+ * — once as a class and once as the string the intent filter matches.
+ */
+@Composable
+fun MohallaNavHost(
+    container: AppContainer,
+    startRoute: String,
+    onRequestLanguageChange: () -> Unit,
+    navController: NavHostController = rememberNavController(),
+) {
+    NavHost(navController = navController, startDestination = startRoute) {
+        authGraph(navController, container)
+        setupGraph(navController, container)
+
+        composable(Routes.SHELL) {
+            ShellRoute(
+                container = container,
+                onOpenSettings = onRequestLanguageChange,
+            )
+        }
+
+        // Deep-linkable content (§42). The screens themselves arrive with their
+        // own groups; until then each route renders the neutral unavailable
+        // state rather than a stub that would claim the content is missing —
+        // UX-STATE-001 is the one state that is honest about "not available
+        // here", and it says nothing about why.
+        composable(Routes.POST_PATTERN) { ContentUnavailable() }
+        composable(Routes.EVENT_PATTERN) { ContentUnavailable() }
+        composable(Routes.PROFILE_PATTERN) { ContentUnavailable() }
+        composable(Routes.CONVERSATION_PATTERN) { ContentUnavailable() }
+    }
+}
+
+/**
+ * The shell and the tab contents it hosts.
+ *
+ * Split out of the graph so the shell's state survives tab switches without a
+ * back-stack entry per tab: §12 requires that switching tabs is not a navigation
+ * event, because a five-item bar with a back stack means Back walks a history of
+ * tab taps the user does not remember making.
+ */
+@Composable
+private fun ShellRoute(
+    container: AppContainer,
+    onOpenSettings: () -> Unit,
+) {
+    val shell: ShellViewModel = viewModel(
+        factory = ShellViewModel.Factory(
+            sessions = container.sessionRepository,
+            connectivity = container.connectivity,
+            formatUntil = container.formatDate,
+        ),
+    )
+    val state by shell.state.collectAsState()
+
+    var explainerVisible by remember { mutableStateOf(false) }
+
+    MohallaShell(
+        state = state,
+        onSelectTab = shell::selectTab,
+        // The composer arrives with its own group. Until then the tap is
+        // acknowledged as unavailable rather than opening a screen that cannot
+        // publish — the same reason a suspended account never reaches it.
+        onCreate = {},
+        onShowSuspensionExplainer = { explainerVisible = true },
+    ) { tab ->
+        when (tab) {
+            MohallaTab.HOME -> HomeRoute(container)
+
+            // Not yet built. The shell renders and mirrors correctly with any
+            // tab selected, which is what lets §36's both-directions check run
+            // on the chrome before these screens exist.
+            MohallaTab.EVENTS,
+            MohallaTab.MESSAGES,
+            MohallaTab.PROFILE,
+            -> ContentUnavailable()
+
+            // Unreachable: the shell diverts Create before selection, and
+            // `selectTab` refuses it. Listed so adding a tab fails to compile.
+            MohallaTab.CREATE -> Unit
+        }
+    }
+
+    if (explainerVisible) {
+        SuspensionExplainerSheet(
+            untilLabel = state.suspendedUntilLabel,
+            // The server's own wording, or nothing. See the sheet's doc comment.
+            reason = null,
+            onDismiss = { explainerVisible = false },
+            onContactSupport = onOpenSettings,
+        )
+    }
+
+}
+
+@Composable
+private fun HomeRoute(container: AppContainer) {
+    val feed: FeedViewModel = viewModel(
+        factory = FeedViewModel.Factory(
+            repository = container.feedRepository,
+            locale = { container.localeStore.stored()?.tag ?: "en" },
+        ),
+    )
+    val state by feed.state.collectAsState()
+
+    HomeScreen(
+        state = state,
+        onSelectTab = feed::selectTab,
+        onRefresh = feed::refresh,
+        onLoadMore = feed::loadMore,
+        // Post detail, profiles, sharing and search arrive with their groups.
+        onOpenPost = {},
+        onOpenAuthor = {},
+        onToggleLike = feed::toggleLike,
+        onShare = {},
+        onOpenAnnouncement = {},
+        onFindPeople = {},
+    )
+}
+
+/** Welcome → phone → date of birth → password → terms → OTP. */
+private fun NavGraphBuilder.authGraph(
+    navController: NavHostController,
+    container: AppContainer,
+) {
+    composable(Routes.WELCOME) {
+        WelcomeScreen(
+            onCreateAccount = { navController.navigate(Routes.REGISTER_GRAPH) },
+            onLogIn = { navController.navigate(Routes.LOGIN) },
+        )
+    }
+
+    composable(Routes.LOGIN) {
+        val vm: LoginViewModel =
+            viewModel(factory = LoginViewModel.Factory(container.authRepository))
+        val state by vm.state.collectAsState()
+
+        LoginScreen(
+            state = state,
+            onPhoneChanged = vm::onPhoneChanged,
+            onPasswordChanged = vm::onPasswordChanged,
+            onSubmit = vm::submit,
+            onForgotPassword = { navController.navigate(Routes.FORGOT_PASSWORD) },
+            // The capability is reported but not acted on here: a suspended
+            // account signs in and lands on Home with the banner (BR-034), so
+            // there is nothing to branch on. The shell reads the capability
+            // itself, which keeps one source of truth.
+            onAuthenticated = { navController.toShell() },
+            onVerificationRequired = { navController.navigate(Routes.OTP) },
+        )
+    }
+
+    // ONE ViewModel across five screens, scoped to the register GRAPH rather
+    // than to each destination. `viewModel()` called inside a `composable`
+    // block is scoped to that destination's back-stack entry, so four calls
+    // would build four ViewModels and the phone number entered on step one
+    // would be gone by step four. `registerViewModel` resolves the graph's
+    // entry instead, which is the only owner all five steps share.
+    navigation(startDestination = Routes.REGISTER_PHONE, route = Routes.REGISTER_GRAPH) {
+        composable(Routes.REGISTER_PHONE) { entry ->
+            val vm = registerViewModel(navController, entry, container)
+        val state by vm.state.collectAsState()
+
+        RegisterPhoneScreen(
+            state = state,
+            onPhoneChanged = vm::onPhoneChanged,
+            onContinue = { if (vm.phoneStepValid) navController.navigate(Routes.REGISTER_DOB) },
+            onBack = { navController.popBackStack() },
+        )
+    }
+
+    composable(Routes.REGISTER_DOB) { entry ->
+        val vm = registerViewModel(navController, entry, container)
+        val state by vm.state.collectAsState()
+
+        RegisterDateOfBirthScreen(
+            state = state,
+            onDateChanged = vm::onDateOfBirthChanged,
+            onContinue = { navController.navigate(Routes.REGISTER_PASSWORD) },
+            onBack = { navController.popBackStack() },
+        )
+    }
+
+    composable(Routes.REGISTER_PASSWORD) { entry ->
+        val vm = registerViewModel(navController, entry, container)
+        val state by vm.state.collectAsState()
+
+        RegisterPasswordScreen(
+            state = state,
+            onPasswordChanged = vm::onPasswordChanged,
+            onContinue = { if (vm.passwordStepValid) navController.navigate(Routes.TERMS) },
+            onBack = { navController.popBackStack() },
+        )
+    }
+
+    composable(Routes.TERMS) { entry ->
+        val vm = registerViewModel(navController, entry, container)
+        val state by vm.state.collectAsState()
+
+        RegisterTermsScreen(
+            state = state,
+            onAcceptedChanged = vm::onTermsAcceptedChanged,
+            // OD-015: the documents do not exist yet. Nothing opens a browser
+            // at a URL that would 404, and nothing ships placeholder legal
+            // text — accepting terms that are not written is worse than a
+            // control that does nothing yet.
+            onOpenTerms = {},
+            onOpenGuidelines = {},
+            onSubmit = vm::submit,
+            onRegistered = { navController.navigate(Routes.OTP) },
+            onBack = { navController.popBackStack() },
+        )
+    }
+
+    composable(Routes.OTP) { entry ->
+        // The number comes from the graph-scoped register ViewModel, so this
+        // screen shows the same masked number the user typed rather than
+        // asking for it again.
+        val register = registerViewModel(navController, entry, container)
+        val vm: OtpViewModel = viewModel(
+            factory = OtpViewModel.Factory(
+                auth = container.authRepository,
+                e164Phone = register.normalisedPhone().orEmpty(),
+                purpose = OtpPurpose.REGISTRATION,
+            ),
+        )
+        val state by vm.state.collectAsState()
+
+        OtpScreen(
+            state = state,
+            onCodeChanged = vm::onCodeChanged,
+            onResend = vm::resend,
+            // Verified, so onboarding continues at the username step.
+            onVerified = { navController.navigate(Routes.USERNAME) },
+        )
+    }
+    }
+
+    composable(Routes.FORGOT_PASSWORD) {
+        val vm: PasswordResetViewModel =
+            viewModel(factory = PasswordResetViewModel.Factory(container.authRepository))
+        val state by vm.state.collectAsState()
+
+        ForgotPasswordScreen(
+            state = state,
+            onPhoneChanged = vm::onPhoneChanged,
+            onSubmit = vm::requestCode,
+            onBack = { navController.popBackStack() },
+            onCodeRequested = { navController.navigate(Routes.RESET_PASSWORD) },
+        )
+    }
+
+    composable(Routes.RESET_PASSWORD) {
+        val vm: PasswordResetViewModel =
+            viewModel(factory = PasswordResetViewModel.Factory(container.authRepository))
+        val state by vm.state.collectAsState()
+
+        ResetPasswordScreen(
+            state = state,
+            onCodeChanged = vm::onCodeChanged,
+            onNewPasswordChanged = vm::onNewPasswordChanged,
+            onSubmit = vm::submitReset,
+            onBack = { navController.popBackStack() },
+            // Straight to Login, and the whole reset flow is popped: returning
+            // Back into a reset form whose code has been spent would offer a
+            // retry that cannot succeed.
+            onComplete = {
+                navController.navigate(Routes.LOGIN) {
+                    popUpTo(Routes.FORGOT_PASSWORD) { inclusive = true }
+                }
+            },
+        )
+    }
+
+    composable(Routes.RESTORE_ACCOUNT) {
+        val vm: RestoreAccountViewModel =
+            viewModel(factory = RestoreAccountViewModel.Factory(container.authRepository))
+        val state by vm.state.collectAsState()
+
+        RestoreAccountScreen(
+            state = state,
+            onRestore = vm::restore,
+            onSignOut = {
+                vm.signOut()
+                navController.navigate(Routes.WELCOME) {
+                    popUpTo(Routes.RESTORE_ACCOUNT) { inclusive = true }
+                }
+            },
+            onRestored = { navController.toShell() },
+        )
+    }
+}
+
+/** Username → profile → suggested accounts. */
+private fun NavGraphBuilder.setupGraph(
+    navController: NavHostController,
+    container: AppContainer,
+) {
+    composable(Routes.USERNAME) {
+        val vm: UsernameViewModel =
+            viewModel(factory = UsernameViewModel.Factory(container.setupRepository))
+        val state by vm.state.collectAsState()
+
+        UsernameScreen(
+            state = state,
+            onUsernameChanged = vm::onUsernameChanged,
+            onSubmit = vm::claim,
+            onClaimed = { navController.navigate(Routes.PROFILE_SETUP) },
+        )
+    }
+
+    composable(Routes.PROFILE_SETUP) {
+        val vm: ProfileSetupViewModel = viewModel(
+            factory = ProfileSetupViewModel.Factory(
+                setup = container.setupRepository,
+                uploader = container.imageUploader,
+            ),
+        )
+        val state by vm.state.collectAsState()
+
+        ProfileSetupScreen(
+            state = state,
+            onDisplayNameChanged = vm::onDisplayNameChanged,
+            onCityChanged = vm::onCityChanged,
+            onBioChanged = vm::onBioChanged,
+            // The photo picker is an Activity-result contract and belongs to the
+            // media group; the screen already renders and submits without one,
+            // because the photo is optional by requirement (PROFILE-FR-002).
+            onPickPhoto = {},
+            onRetryPhoto = vm::retryPhotoUpload,
+            onRemovePhoto = vm::removePhoto,
+            onSubmit = vm::submit,
+            onCreated = { navController.navigate(Routes.SUGGESTED) },
+        )
+    }
+
+    composable(Routes.SUGGESTED) {
+        val vm: SuggestionsViewModel =
+            viewModel(factory = SuggestionsViewModel.Factory(container.setupRepository))
+        val state by vm.state.collectAsState()
+
+        SuggestedAccountsScreen(
+            state = state,
+            onToggleFollow = vm::toggleFollow,
+            onContinue = { navController.toShell() },
+            // SOCIAL-FR-005 — skipping is free and lands in the same place.
+            onSkip = { navController.toShell() },
+        )
+    }
+}
+
+/**
+ * The register ViewModel, owned by the register graph.
+ *
+ * `getBackStackEntry(REGISTER_GRAPH)` is the shared owner: every step inside
+ * the graph resolves the same entry, so they get the same instance and the
+ * same `SavedStateHandle` — which is what makes the phone number survive both
+ * a language change and process death.
+ */
+@Composable
+private fun registerViewModel(
+    navController: NavHostController,
+    entry: NavBackStackEntry,
+    container: AppContainer,
+): RegisterViewModel {
+    // Keyed on the DESTINATION'S OWN entry, not on the controller. The
+    // controller is stable for the whole app, so remembering against it would
+    // cache the graph entry from whichever step composed first and hand a stale
+    // ViewModelStoreOwner to the rest — a destroyed store after the graph is
+    // popped and re-entered. The destination's entry changes whenever the stack
+    // does, which is exactly when the lookup must run again. (This is what
+    // lint's UnrememberedGetBackStackEntry check is for.)
+    val owner = remember(entry) {
+        navController.getBackStackEntry(Routes.REGISTER_GRAPH)
+    }
+    return viewModel(
+        viewModelStoreOwner = owner,
+        factory = RegisterViewModel.Factory(
+            auth = container.authRepository,
+            termsVersion = container.termsVersion,
+        ),
+    )
+}
+
+/**
+ * Enter the shell and discard everything behind it.
+ *
+ * `popUpTo(0)` clears the whole stack rather than popping to a named route,
+ * because the caller can be any of five screens — login, terms, OTP, suggested
+ * accounts or restore — and naming one would leave the others behind. §12: Back
+ * on Home leaves the app.
+ */
+private fun NavHostController.toShell() {
+    navigate(Routes.SHELL) {
+        popUpTo(0) { inclusive = true }
+        launchSingleTop = true
+    }
+}

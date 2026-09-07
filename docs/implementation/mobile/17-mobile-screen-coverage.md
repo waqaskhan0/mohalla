@@ -1,6 +1,6 @@
 # 17 — Mobile Screen Coverage
 
-**Stage 7 · Android** · 61 required screens · last updated at commit `0a3bf1b`+
+**Stage 7 · Android** · 61 required screens · last updated at commit `727871b`+
 
 > **This table is the answer to "is Stage 7 feature-complete?"** It is not, and
 > the count below says by how much. A screen is `DONE` only when it is built,
@@ -17,17 +17,34 @@ on a device**, because none is available (see `00-mobile-baseline.md` §6).
 
 | | Screens |
 |---|---|
-| ✅ Complete in both directions | **14** |
+| ✅ Complete in both directions | **16** |
 | ◐ Partial | **4** (the shared state components — no Compose tests) |
-| ✗ Not started | **43** |
+| ✗ Not started | **41** |
 | **Required total** | **61** |
 
-**Coverage: 23% complete.** Stage 7 is **NOT** feature-complete.
+**Coverage: 26% complete.** Stage 7 is **NOT** feature-complete.
 
-**Groups 03 and 04 are finished** — all twelve `UX-AUTH-*` screens plus the
-three `UX-SETUP-*` onboarding screens exist in both directions. That closes the
-entire path from a cold install to a usable account, which is the sequence
+**Groups 03, 04 and the shell are finished.** All twelve `UX-AUTH-*` screens,
+the three `UX-SETUP-*` onboarding screens and both Home feeds exist in both
+directions, and the navigation graph now joins them: a cold install reaches a
+usable feed without a single unwired callback in the path. That is the sequence
 REL-001 tests and the one every remaining screen sits behind.
+
+**Two defects that only the shell could expose**, both found by wiring it:
+
+- **The manifest declared no permissions at all** — `INTERNET` included. Every
+  API call would have thrown a `SecurityException` on the first request. It was
+  invisible for four groups because nothing had run against a backend on a
+  device, which is what an unrunnable app hides (see `00-mobile-baseline.md` §6).
+- **The four registration steps would each have built their own ViewModel.**
+  `viewModel()` inside a `composable` block is scoped to that destination, so
+  the phone number entered on step one would have been gone by step four. Fixed
+  by giving the steps a nested graph to share as a `ViewModelStoreOwner`.
+
+A third was corrected before it shipped: `RegisterViewModel` and
+`ProfileSetupViewModel` were being handed a hand-constructed `SavedStateHandle`,
+which compiles, runs, and silently saves nothing. Both now take theirs from
+`CreationExtras`, so entered fields actually survive process death.
 
 ---
 
@@ -156,16 +173,84 @@ deliberately chronological.
 
 ## Group 05–06 · Navigation shell and Home
 
-| Screen | Name | Requirements | APIs | Status |
-|---|---|---|---|---|
-| — | Bottom navigation (component) | UI/UX §14 | — | ✅ |
-| UX-HOME-001 | Home — Following | FEED-FR-001/003 | `/feed/following` | ✗ |
-| UX-HOME-002 | Home — Discover | FEED-FR-004 | `/feed/discover` | ✗ |
-| UX-HOME-005 | Category filter | FEED-FR-005 | `/categories` | ✗ |
-| UX-HOME-006 | Announcement detail | NOTIF-FR-005 | `/announcements/:id` | ✗ |
+| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | Status |
+|---|---|---|---|---|---|---|---|---|---|---|
+| — | Bottom navigation (component) | UI/UX §14 | — | ✅ | ✅ | — | — | — | — | ✅ |
+| — | Top app bar · back header (components) | UI/UX §18.5 | — | ✅ | ✅ | — | — | — | — | ✅ |
+| — | Navigation graph | UI/UX §12 | — | ✅ | ✅ | ✅ | — | — | — | ✅ |
+| — | Suspension banner + explainer | UX-SAFE-004 · BR-034 | `GET /me` | ✅ | ✅ | — | — | — | — | ✅ |
+| UX-HOME-001 | Home — Following | FEED-FR-001/003 | `/feed/following` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-HOME-002 | Home — Discover | FEED-FR-004 | `/feed/discover` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-HOME-005 | Category filter | FEED-FR-005 | `/categories` | — | — | — | — | — | — | ✗ |
+| UX-HOME-006 | Announcement detail | NOTIF-FR-005 | `/announcements/:id` | — | — | — | — | — | — | ✗ |
 
-The navigation component is complete and carries §8's RTL rule; the tabs it
-routes to are not built.
+`UX-HOME-005` and `UX-HOME-006` are **not** started. The ViewModel already
+carries `selectCategory`, and the filter reaching the API rather than being
+applied to an already-trimmed page is asserted — but the picker sheet and the
+announcement screen are unbuilt, so both stay `✗`.
+
+### What the shell and Home decided, and why it is written down
+
+**Empty and failed are different states, and the order of the branches is the
+requirement.** A failed first page renders an error with a retry; an empty
+Following feed renders an invitation. Getting them the wrong way round tells a
+new user their neighbourhood is empty when the app could not reach it — and
+RSK-001 is that a cold start with nothing on it is why people do not return. So
+`isEmptyFollowing` is false whenever a failure is present *or* no page has
+arrived, and both conditions are asserted independently.
+
+**Featured is fetched separately and never gated on the feed** (FEED-FR-002). It
+renders above the list, above the empty state and above the skeleton, because a
+brand-new account legitimately follows nobody — if Featured were folded into the
+feed response, an empty feed would be an empty screen (REL-005).
+
+**Pagination is keyset, and the test asserts the CURSOR, not the result.**
+Asserting the assembled list would pass even if every page were requested from
+the start; asserting `[null, cursor₁, cursor₂]` is what proves the window cannot
+be shifted by posts arriving above it (EDGE-017).
+
+**A null cursor is the end; an empty page is not.** A page can come back empty
+with a cursor still set — every item on it was filtered out by a block
+(SEC-019) — and treating that as the end truncates the feed at the first
+fully-blocked page.
+
+**A suspended account lands exactly where an active one does.** BR-034 restricts
+writing, not reading. Routing a suspended user anywhere else would be a lockout
+the sanction does not authorise, so `Home` and `HomeReadOnly` both route to the
+shell and the banner is the only difference.
+
+**The Create tap is intercepted in the shell, not in the composer.** §6.2: a
+suspended user "reaches the composer" is the defect — the explainer opens
+*instead of* the composer, before any navigation. Checking inside the composer
+would mean it exists, opens, and then refuses. The tab stays visible and locked
+rather than removed, because removing it would renumber the row and move Create
+off centre, which is the one thing §8's RTL rule depends on.
+
+**`AccountCapability` fails OPEN on an unrecognised value**, which is the wrong
+direction for a security decision and the right one here: it gates affordances,
+never permissions, and the server refuses every write from a suspended account
+regardless. Failing closed would let a new server-side capability string lock
+working accounts out of posting.
+
+**The media placeholder holds a RATIO, not a height.** §34 asks for "a
+surface-sunken block at the correct aspect ratio so no layout shift occurs" and
+§26 lists media height as growing with "ratio held", so a fixed dp would be
+wrong twice — off the 4dp scale (§17) *and* frozen across screen sizes. The
+skeleton's bars are fractions of the available width for the same reason.
+
+**`ACCESS_NETWORK_STATE` drives a banner, never a gate.** Nothing decides
+whether to make a request from the connectivity flow: the request is attempted
+and its own `IOException` is authoritative. The signal is racy by nature, and
+using it as a gate turns an unreliable hint into a refusal the user cannot retry
+past.
+
+**A release build cannot register an account (OD-015).** `TERMS_VERSION` is a
+build-config field and is **empty** in release; `RegisterViewModel` refuses to
+submit a blank version and the terms screen says so plainly. What is being
+written at that step is a compliance record — "this user accepted this version
+of these terms" — and a plausible-looking placeholder would assert an acceptance
+of a document nobody has written. The debug build carries the literal
+`unpublished-od-015` so the value in the audit trail says exactly that.
 
 ## Group 07 · Events
 
