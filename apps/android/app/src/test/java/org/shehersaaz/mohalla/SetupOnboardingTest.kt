@@ -91,14 +91,25 @@ class SetupOnboardingTest {
         assertEquals(true, looksFree.looksFree)
 
         // And the state has no field that could promise the handle is HELD.
-        val fields = UsernameUiState::class.java.declaredFields.map { it.name }
-        listOf("available", "reserved", "confirmed", "held")
-            .forEach { forbidden ->
-                assertTrue(
-                    "UsernameUiState must not carry `$forbidden` — only the claim decides",
-                    fields.none { it.equals(forbidden, ignoreCase = true) },
-                )
-            }
+        // An exact set rather than four guessed names: `isFree`, `unclaimed` or
+        // `verified` would all promise the same thing under a name a denylist
+        // would miss.
+        assertExactFields(
+            type = UsernameUiState::class.java,
+            expected = setOf(
+                "input", "shapeProblem",
+                // `looksFree`, deliberately not `available` — EDGE-007 makes
+                // this a HINT, and only the claim decides.
+                "looksFree",
+                "checking", "claiming",
+                // Set by the claim, which is the only thing that can.
+                "claimed",
+                "takenMessage", "failure",
+            ),
+            because = "EDGE-007 means the availability check is a hint and the claim is " +
+                "the truth; a field promising the handle is reserved would be a promise " +
+                "the client cannot keep",
+        )
     }
 
     // -------------------------------------------------------- the bio count

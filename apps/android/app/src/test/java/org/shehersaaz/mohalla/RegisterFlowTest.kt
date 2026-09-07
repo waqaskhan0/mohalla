@@ -86,16 +86,26 @@ class RegisterFlowTest {
         // deliberately no companion field — a `accountFound` boolean here would
         // turn the screen into a registered-number lookup available to anyone
         // with the app.
-        val fields = PasswordResetUiState::class.java.declaredFields.map { it.name }
-
-        assertTrue(fields.contains("requestSent"))
-        listOf("accountFound", "accountExists", "numberRegistered", "smsSent", "noSuchAccount")
-            .forEach { forbidden ->
-                assertTrue(
-                    "PasswordResetUiState must not carry `$forbidden`",
-                    fields.none { it.equals(forbidden, ignoreCase = true) },
-                )
-            }
+        // An exact set. A denylist here would be testing the five names that
+        // occurred to whoever wrote it, and the leak this guards against is a
+        // registered-number lookup available to anyone with the app — worth
+        // more than a guess.
+        assertExactFields(
+            type = PasswordResetUiState::class.java,
+            expected = setOf(
+                "phoneInput", "phoneCheck",
+                // Set once the request is ACCEPTED, which happens whether or
+                // not an account exists.
+                "e164Phone", "requestSent",
+                "code", "newPassword", "passwordProblem", "submitting", "resetComplete",
+                // Safe to distinguish: holding the code proves possession of
+                // the number, so the advice genuinely differs.
+                "invalidCode", "expiredCode", "lockedOut",
+                "serverMessage", "failure",
+            ),
+            because = "SEC-006 stops this screen becoming a registered-number lookup; " +
+                "`requestSent` is set on any accepted request and has no companion",
+        )
     }
 
     @Test

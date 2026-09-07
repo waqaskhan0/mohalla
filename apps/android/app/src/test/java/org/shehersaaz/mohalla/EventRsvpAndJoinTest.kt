@@ -153,31 +153,41 @@ class EventRsvpAndJoinTest {
 
     // ------------------------------------------------------------- the gate
     @Test
-    fun `NO LIST OR DETAIL BODY CARRIES A MEETING LINK`() {
-        // The structural guarantee. `EventResponse` has no `meetingUrl` field at
-        // all, so no screen, log, cache or crash report can contain one by
-        // accident — it is not "hidden in the UI", it is absent from the type.
-        val fields = EventResponse::class.java.declaredFields.map { it.name }
-        assertFalse(
-            "EventResponse must never carry a meeting link: $fields",
-            fields.any { it.contains("meeting", ignoreCase = true) },
+    fun `AN EVENT BODY CARRIES EXACTLY THESE FIELDS AND NO OTHERS`() {
+        // TWO REQUIREMENTS AT ONCE, and both are absences:
+        //
+        //   EVENT-FR-003 — no meeting credential. The link arrives only from
+        //   `POST /events/{id}/join`, so no screen, log, cache or crash report
+        //   can contain one by accident. It is not "hidden in the UI"; it is
+        //   absent from the type.
+        //
+        //   EVENT-FR-004 — no attendee identity. The list is not shown in V1
+        //   (ARCH-CONFLICT-006 / D-17), so the prototype's avatar stack cannot
+        //   be built: there is nothing to build it from.
+        //
+        // ASSERTED AS AN EXACT SET, not as an absence of guessed names. The
+        // earlier version of this test checked that no field name CONTAINED
+        // "meeting" — and a measurement proved it worthless: fields called
+        // `roomUrl` and `participantIds` were added to this very class and all
+        // 271 tests still passed. Naming the complete allowed set means any
+        // addition fails and the message names it.
+        assertExactFields(
+            type = EventResponse::class.java,
+            expected = setOf(
+                "id", "creatorId", "title", "description", "startsAt", "eventType",
+                "locationText", "categorySlug", "status",
+                // Aggregates. EVENT-FR-006 calls the count "social proof"; the
+                // MEMBERSHIP behind it is what stays private.
+                "goingCount", "interestedCount",
+                // The server's decision about the join gate, never the link.
+                "joinLinkAvailable", "joinLinkAvailableFrom",
+                // The viewer's OWN response, which is theirs to know.
+                "myResponse",
+                "underReview", "editedAt", "createdAt",
+            ),
+            because = "EVENT-FR-003 keeps the meeting link out of every body except the " +
+                "join route, and EVENT-FR-004 keeps attendee identities out of all of them",
         )
-        assertTrue(fields.contains("joinLinkAvailable"))
-    }
-
-    @Test
-    fun `NO RESPONSE TYPE CARRIES AN ATTENDEE IDENTITY`() {
-        // EVENT-FR-004: the attendee list is not shown in V1
-        // (ARCH-CONFLICT-006 / D-17). The prototype's avatar stack cannot be
-        // built because there is nothing to build it from — asserted here so
-        // adding such a field is a deliberate act with a failing test attached.
-        val fields = EventResponse::class.java.declaredFields.map { it.name }
-        assertFalse(
-            "aggregate counts only: $fields",
-            fields.any { it.equals("attendees", true) || it.equals("goingUsers", true) },
-        )
-        assertTrue(fields.contains("goingCount"))
-        assertTrue(fields.contains("interestedCount"))
     }
 
     @Test
@@ -596,13 +606,11 @@ class EventRsvpAndJoinTest {
         )
         assertEquals("RSVP_REQUIRED", restricted.code)
 
-        // `Unavailable` has no `code` property at all — there is nothing to
-        // read, which is how the neutral refusal is enforced structurally.
-        val unavailableFields = ApiFailure.Unavailable::class.java.declaredFields.map { it.name }
-        assertFalse(
-            "the neutral 404 must carry no code: $unavailableFields",
-            unavailableFields.contains("code"),
-        )
+        // The other half — that the neutral 404 carries no discriminator at all
+        // — lives in `ApiFailureShapeTest`, as an EXHAUSTIVE `when` over the
+        // sealed hierarchy plus an exact field set. A check for the absence of a
+        // field named `code` was measured to be worthless here: adding
+        // `Unavailable.reason` left every test passing.
     }
 
     @Test

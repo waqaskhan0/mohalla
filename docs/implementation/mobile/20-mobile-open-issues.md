@@ -31,13 +31,36 @@ incomplete — and who can clear it.
 | **No AVD, no system image, no device** | `adb devices` is empty. Every Compose UI test and every §44/§45 end-to-end flow **cannot run** here. Needs roughly a 1 GB system-image download. |
 | **What was done instead** | Every rule that can be asserted without a device was written as a JVM unit test rather than deferred: the RTL invariants, the state machines, the cursor sequences, the neutral-refusal structure, locale and zone handling, the composer's
 per-attachment upload sequencing, the comment thread's one-level nesting, and
-search's failed-versus-empty rule. **271 tests, all passing.** |
+search's failed-versus-empty rule, and the exact field shape of every type
+that enforces a privacy rule structurally. **279 tests, all passing.** |
 | **What that does not prove** | That pixels mirror. The tests prove Create sits at index 2 of 5 and that the list is never pre-reversed; they cannot prove the row renders right-to-left. §36 makes RTL release-critical, so this gap is the largest single verification debt in Stage 7. |
 
 The manifest defect found in group 05–06 is the argument for closing it:
 `INTERNET` was missing for four groups of screens, and every API call would have
 thrown a `SecurityException` on the first request. Nothing caught it because
 nothing had ever run against a backend on a device.
+
+**A second argument, from group 11: a green suite is not proof.** Several of this
+product's privacy rules are enforced by the SHAPE of a type — SEC-006 gives the
+login state no field that could distinguish a wrong password from an unknown
+number, BR-025 gives the neutral 404 no discriminator, EVENT-FR-003 gives no
+response body a place to put a meeting credential. Those were tested as
+DENYLISTS of guessed field names, and the denylists were measured against a
+probe: with `EventResponse.roomUrl` (a live meeting credential on every list
+response), `EventResponse.participantIds` (attendee identities), 
+`UpdatePostBody.attachmentIds` (media on an edit) and
+`ApiFailure.Unavailable.reason` (a discriminator on the neutral refusal) all
+added, **every one of 271 tests passed**. Each of those four is exactly the
+defect its own test claimed to prevent.
+
+The fix inverts the check: each site now names the COMPLETE set of fields the
+type may declare (`assertExactFields`), so any addition fails under any name and
+the message names it — and `ApiFailure`'s neutrality is additionally gated by an
+exhaustive `when`, which makes a new failure variant a COMPILE error until
+somebody decides whether it may explain itself. Re-running the probe against the
+fixed tests fails all four, each quoting the requirement it breaks. **The lesson
+generalises: a test that asserts an absence must enumerate what is permitted,
+not guess at what is forbidden.**
 
 ---
 

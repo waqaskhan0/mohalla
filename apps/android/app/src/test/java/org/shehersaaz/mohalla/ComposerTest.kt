@@ -248,17 +248,17 @@ class ComposerTest {
         // rather than ignored, so "an author who tries to swap the image must
         // be told it cannot be done, not left believing it worked".
         //
-        // Asserted at the TYPE level: `UpdatePostBody` has no such field, so no
-        // client code can attempt it. Adding one is now a deliberate act with a
-        // failing test attached.
-        val fields = UpdatePostBody::class.java.declaredFields.map { it.name }
-
-        assertFalse(
-            "an edit body must never carry media ids: $fields",
-            fields.any { it.contains("media", ignoreCase = true) },
+        // Asserted at the TYPE level as an EXACT SET, so no client code can
+        // attempt it and no future field can slip past under another name. The
+        // earlier version checked that no field name contained "media", and a
+        // measurement proved that worthless: a field called `attachmentIds` was
+        // added to this very class and all 271 tests still passed.
+        assertExactFields(
+            type = UpdatePostBody::class.java,
+            expected = setOf("body", "categorySlug"),
+            because = "BR-014 forbids changing a post's attachments after publishing, " +
+                "which prevents bait-and-switch on content others have already endorsed",
         )
-        assertTrue(fields.contains("body"))
-        assertTrue(fields.contains("categorySlug"))
     }
 
     // ------------------------------------------------ no reason when obvious

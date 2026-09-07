@@ -68,15 +68,27 @@ class AuthUniformityTest {
         // Present, and singular.
         assertTrue(state.credentialsRejected)
 
-        val fields = LoginUiState::class.java.declaredFields.map { it.name }
-        listOf("wrongPassword", "noSuchAccount", "banned", "accountNotFound", "suspended")
-            .forEach { forbidden ->
-                assertTrue(
-                    "LoginUiState must not carry `$forbidden` — the server does not " +
-                        "distinguish it and neither may the client (SEC-006)",
-                    fields.none { it.equals(forbidden, ignoreCase = true) },
-                )
-            }
+        // AN EXACT SET, not a denylist of guessed names. A denylist tests the
+        // names somebody thought of — and a field called `refusalKind` or
+        // `authFailureType` would sail past one while carrying exactly the
+        // distinction SEC-006 exists to suppress.
+        assertExactFields(
+            type = LoginUiState::class.java,
+            expected = setOf(
+                "phoneInput", "phoneCheck", "password", "submitting",
+                // ONE rejection flag, not one per cause.
+                "credentialsRejected",
+                // The one safe disclosure: reaching it PROVED the password.
+                "verificationRequired",
+                "authenticatedCapability",
+                // The transport-level failure (offline, 5xx), which says
+                // nothing about the account.
+                "failure",
+            ),
+            because = "SEC-006 makes a wrong password, an unknown number and a banned " +
+                "account one answer; a field per cause would undo the server's uniformity " +
+                "at the last step",
+        )
     }
 
     @Test
@@ -121,10 +133,22 @@ class AuthUniformityTest {
         // §12 and PRIV-003. The screen shows which number the code went to, and
         // the masked form is the only one it has — so there is nothing for a
         // crash report or a screenshot to leak.
-        val fields = OtpUiState::class.java.declaredFields.map { it.name }
-        assertTrue(
-            "OtpUiState must carry only the masked number",
-            fields.contains("maskedPhone") && !fields.contains("phone"),
+        // An exact set, so a field called `e164`, `fullNumber` or `msisdn`
+        // cannot appear under a name this test did not anticipate.
+        assertExactFields(
+            type = OtpUiState::class.java,
+            expected = setOf(
+                // The masked form is the ONLY one the screen holds.
+                "maskedPhone",
+                "code", "submitting", "resending", "cooldownSeconds", "resendsUsed",
+                "verified",
+                // EDGE-005 — wrong and expired are told apart here, because
+                // holding the code proves possession of the number.
+                "invalidCode", "expiredCode", "lockedOut",
+                "codeResent", "serverMessage", "failure",
+            ),
+            because = "§12 and PRIV-003 keep the full number off this screen, so there is " +
+                "nothing for a crash report or a screenshot to leak",
         )
     }
 }
