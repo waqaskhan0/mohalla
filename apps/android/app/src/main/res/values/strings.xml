@@ -115,4 +115,38 @@
          linking to a placeholder that looks like a real policy. -->
     <string name="legal_unavailable">This document is not available yet.</string>
     <string name="restore_sign_out">Sign out instead</string>
+
+    <!-- ============================================ UX-SETUP-001..003 -->
+    <string name="username_title">Choose your username</string>
+    <!-- PROFILE-FR-001: permanent. Said BEFORE they choose, not after. -->
+    <string name="username_permanent_warning">This is how people will find you, and it cannot be changed later.</string>
+    <string name="username_label">Username</string>
+    <string name="username_looks_free">That username is available.</string>
+    <!-- Taken OR reserved. The server does not say which, and nor does this. -->
+    <string name="username_unavailable">That username is not available. Try another.</string>
+    <string name="username_too_short">Use at least 3 characters.</string>
+    <string name="username_too_long">Use no more than 20 characters.</string>
+    <string name="username_must_start_with_letter">Start with a letter.</string>
+    <string name="username_needs_lowercase">Use lowercase letters only.</string>
+    <string name="username_invalid_characters">Use letters, numbers and underscores only.</string>
+
+    <string name="profile_setup_title">Set up your profile</string>
+    <string name="profile_setup_body">Only your name is needed. You can add the rest now or later.</string>
+    <string name="field_display_name">Your name</string>
+    <string name="field_city_optional">City (optional)</string>
+    <string name="field_bio_optional">About you (optional)</string>
+    <string name="field_characters_left">%1$d characters left</string>
+    <string name="field_too_long">That is too long.</string>
+    <string name="photo_add_optional">Add a photo (optional)</string>
+    <string name="photo_remove">Remove photo</string>
+    <string name="photo_upload_failed">The photo did not upload. You can try again.</string>
+    <string name="photo_rejected">That image could not be used. Please choose another.</string>
+
+    <string name="suggestions_title">Follow a few neighbours</string>
+    <string name="suggestions_body">Following people fills your feed. You can change this any time.</string>
+    <string name="suggestions_skip">Skip for now</string>
+    <string name="suggestions_empty">There is nobody to suggest yet. Your feed will still show what is happening nearby.</string>
+    <string name="action_follow">Follow</string>
+    <string name="action_following">Following</string>
+    <string name="badge_verified">Verified</string>
 </resources>

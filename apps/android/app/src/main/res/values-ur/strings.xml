@@ -119,4 +119,36 @@
     <string name="legal_guidelines">کمیونٹی ہدایات پڑھیں</string>
     <string name="legal_unavailable">یہ دستاویز ابھی دستیاب نہیں ہے۔</string>
     <string name="restore_sign_out">اس کے بجائے سائن آؤٹ کریں</string>
+
+    <!-- ============================================ UX-SETUP-001..003 -->
+    <string name="username_title">اپنا یوزر نیم منتخب کریں</string>
+    <string name="username_permanent_warning">لوگ اسی سے آپ کو تلاش کریں گے، اور اسے بعد میں تبدیل نہیں کیا جا سکتا۔</string>
+    <string name="username_label">یوزر نیم</string>
+    <string name="username_looks_free">یہ یوزر نیم دستیاب ہے۔</string>
+    <string name="username_unavailable">یہ یوزر نیم دستیاب نہیں۔ کوئی دوسرا آزمائیں۔</string>
+    <string name="username_too_short">کم از کم تین حروف استعمال کریں۔</string>
+    <string name="username_too_long">بیس حروف سے زیادہ نہ ہوں۔</string>
+    <string name="username_must_start_with_letter">حرف سے شروع کریں۔</string>
+    <string name="username_needs_lowercase">صرف چھوٹے انگریزی حروف استعمال کریں۔</string>
+    <string name="username_invalid_characters">صرف حروف، اعداد اور انڈر اسکور استعمال کریں۔</string>
+
+    <string name="profile_setup_title">اپنا پروفائل بنائیں</string>
+    <string name="profile_setup_body">صرف آپ کا نام ضروری ہے۔ باقی ابھی یا بعد میں شامل کر سکتے ہیں۔</string>
+    <string name="field_display_name">آپ کا نام</string>
+    <string name="field_city_optional">شہر (اختیاری)</string>
+    <string name="field_bio_optional">اپنے بارے میں (اختیاری)</string>
+    <string name="field_characters_left">%1$d حروف باقی</string>
+    <string name="field_too_long">یہ بہت لمبا ہے۔</string>
+    <string name="photo_add_optional">تصویر شامل کریں (اختیاری)</string>
+    <string name="photo_remove">تصویر ہٹائیں</string>
+    <string name="photo_upload_failed">تصویر اپ لوڈ نہیں ہوئی۔ آپ دوبارہ کوشش کر سکتے ہیں۔</string>
+    <string name="photo_rejected">یہ تصویر استعمال نہیں ہو سکی۔ براہِ کرم کوئی دوسری منتخب کریں۔</string>
+
+    <string name="suggestions_title">چند پڑوسیوں کو فالو کریں</string>
+    <string name="suggestions_body">لوگوں کو فالو کرنے سے آپ کی فیڈ بھر جاتی ہے۔ آپ یہ کسی بھی وقت تبدیل کر سکتے ہیں۔</string>
+    <string name="suggestions_skip">ابھی رہنے دیں</string>
+    <string name="suggestions_empty">ابھی تجویز کرنے کے لیے کوئی نہیں ہے۔ آپ کی فیڈ میں پھر بھی قریب کی خبریں نظر آئیں گی۔</string>
+    <string name="action_follow">فالو کریں</string>
+    <string name="action_following">فالو کر رہے ہیں</string>
+    <string name="badge_verified">تصدیق شدہ</string>
 </resources>

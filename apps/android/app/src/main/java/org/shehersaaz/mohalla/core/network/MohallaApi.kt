@@ -4,8 +4,13 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.PUT
+import retrofit2.http.Path
+import retrofit2.http.Query
 
 /**
  * The Retrofit surface, built against the GENERATED Stage 6 contract
@@ -57,6 +62,46 @@ interface MohallaApi {
     // ------------------------------------------------------------------ profile
     @GET("me")
     suspend fun me(): Response<OwnProfileResponse>
+
+    /**
+     * ADVISORY ONLY (EDGE-007). The answer can be stale by the time the user
+     * taps Continue; `claimUsername` is what decides.
+     */
+    @GET("username/available")
+    suspend fun usernameAvailable(@Query("username") username: String): Response<AvailabilityResponse>
+
+    @POST("me/username")
+    suspend fun claimUsername(@Body body: ClaimUsernameRequest): Response<OwnProfileResponse>
+
+    @POST("me/profile")
+    suspend fun createProfile(@Body body: CreateProfileRequest): Response<OwnProfileResponse>
+
+    @PATCH("me/profile")
+    suspend fun updateProfile(@Body body: UpdateProfileRequest): Response<OwnProfileResponse>
+
+    @GET("categories")
+    suspend fun categories(): Response<CategoriesResponse>
+
+    @GET("suggestions")
+    suspend fun suggestions(@Query("limit") limit: Int): Response<SuggestionsResponse>
+
+    @PUT("users/{id}/follow")
+    suspend fun follow(@Path("id") userId: String): Response<Unit>
+
+    @DELETE("users/{id}/follow")
+    suspend fun unfollow(@Path("id") userId: String): Response<Unit>
+
+    // -------------------------------------------------------------------- media
+    //
+    // ADR-013's three steps: ask for a slot, put the bytes into quarantine,
+    // then ask the server to inspect and promote. The client cannot shortcut
+    // it - `complete` is what makes the object usable, and it is the server's
+    // inspection that decides (SEC-012).
+    @POST("media/upload-slot")
+    suspend fun requestUploadSlot(@Body body: UploadSlotRequest): Response<UploadSlotResponse>
+
+    @POST("media/{id}/complete")
+    suspend fun completeUpload(@Path("id") mediaId: String): Response<MediaResponse>
 }
 
 // ============================================================ request bodies
@@ -106,6 +151,39 @@ data class ChangePasswordRequest(
 )
 
 @Serializable
+data class ClaimUsernameRequest(
+    val username: String,
+)
+
+/**
+ * PROFILE-FR-002. `null` is meaningful for the optional fields and is NOT the
+ * same as an empty string - see `SetupRepository.createProfile`.
+ */
+@Serializable
+data class CreateProfileRequest(
+    val displayName: String,
+    val city: String? = null,
+    val bio: String? = null,
+    val photoMediaId: String? = null,
+)
+
+@Serializable
+data class UpdateProfileRequest(
+    val displayName: String? = null,
+    val city: String? = null,
+    val bio: String? = null,
+    val photoMediaId: String? = null,
+)
+
+@Serializable
+data class UploadSlotRequest(
+    val kind: String,
+    /** Advisory. The stored object is re-measured server-side (SEC-012). */
+    val declaredBytes: Long,
+    val visibility: String? = null,
+)
+
+@Serializable
 data class LoginRequest(
     val phone: String,
     val password: String,
@@ -143,6 +221,69 @@ data class LoginResponse(
     /** `FULL`, `READ_ONLY` (BR-034) or `RESTORE_ONLY` (SET-FR-005). */
     val capability: String? = null,
     val suspendedUntil: String? = null,
+)
+
+@Serializable
+data class AvailabilityResponse(
+    val available: Boolean? = null,
+)
+
+@Serializable
+data class CategoriesResponse(
+    val categories: List<CategoryResponse> = emptyList(),
+)
+
+@Serializable
+data class CategoryResponse(
+    val id: String,
+    val slug: String,
+    val nameEn: String? = null,
+    val nameUr: String? = null,
+)
+
+@Serializable
+data class SuggestionsResponse(
+    val users: List<SuggestedUser> = emptyList(),
+)
+
+/**
+ * A suggested account (SOCIAL-FR-004).
+ *
+ * Carries NO phone number, email or date of birth - PRIV-003 - and the client
+ * has no field here that could render one even if a future response added it.
+ */
+@Serializable
+data class SuggestedUser(
+    val userId: String,
+    val username: String? = null,
+    val displayName: String? = null,
+    val city: String? = null,
+    val photoMediaId: String? = null,
+    val verifiedBadge: Boolean = false,
+    val accountType: String? = null,
+    val followerCount: Int = 0,
+)
+
+@Serializable
+data class UploadSlotResponse(
+    val mediaId: String,
+    val upload: UploadTarget,
+)
+
+@Serializable
+data class UploadTarget(
+    val url: String,
+    val method: String,
+    val headers: Map<String, String> = emptyMap(),
+    val expiresAt: String? = null,
+)
+
+@Serializable
+data class MediaResponse(
+    val id: String? = null,
+    val status: String? = null,
+    val width: Int? = null,
+    val height: Int? = null,
 )
 
 @Serializable

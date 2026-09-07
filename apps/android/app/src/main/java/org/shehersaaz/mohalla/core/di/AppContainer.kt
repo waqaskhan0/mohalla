@@ -17,6 +17,9 @@ import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFact
 import okhttp3.MediaType.Companion.toMediaType
 import org.shehersaaz.mohalla.core.network.MohallaApi
 import org.shehersaaz.mohalla.core.network.MohallaJson
+import org.shehersaaz.mohalla.core.media.ImageUploader
+import org.shehersaaz.mohalla.feature.auth.AuthRepository
+import org.shehersaaz.mohalla.feature.setup.SetupRepository
 import org.shehersaaz.mohalla.feature.startup.SessionRepository
 import retrofit2.Retrofit
 import org.shehersaaz.mohalla.core.storage.AndroidSecureStorage
@@ -98,6 +101,12 @@ class AppContainer private constructor(
     val api: MohallaApi = retrofit.create(MohallaApi::class.java)
 
     val sessionRepository: SessionRepository = SessionRepository(api, secureStorage)
+
+    val authRepository: AuthRepository = AuthRepository(api, sessionRepository)
+
+    val imageUploader: ImageUploader = ImageUploader(api, httpClient)
+
+    val setupRepository: SetupRepository = SetupRepository(api)
 
     companion object {
         @Volatile

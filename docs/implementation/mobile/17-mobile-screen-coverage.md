@@ -1,6 +1,6 @@
 # 17 — Mobile Screen Coverage
 
-**Stage 7 · Android** · 61 required screens · last updated at commit `dc24edd`+
+**Stage 7 · Android** · 61 required screens · last updated at commit `0a3bf1b`+
 
 > **This table is the answer to "is Stage 7 feature-complete?"** It is not, and
 > the count below says by how much. A screen is `DONE` only when it is built,
@@ -17,16 +17,17 @@ on a device**, because none is available (see `00-mobile-baseline.md` §6).
 
 | | Screens |
 |---|---|
-| ✅ Complete in both directions | **11** |
+| ✅ Complete in both directions | **14** |
 | ◐ Partial | **4** (the shared state components — no Compose tests) |
-| ✗ Not started | **46** |
+| ✗ Not started | **43** |
 | **Required total** | **61** |
 
-**Coverage: 18% complete.** Stage 7 is **NOT** feature-complete.
+**Coverage: 23% complete.** Stage 7 is **NOT** feature-complete.
 
-**Group 03 (authentication) is now finished** — all twelve `UX-AUTH-*` screens
-exist in both directions. That was the security-critical group and the one the
-whole product is gated behind; the remaining 46 screens are product surface.
+**Groups 03 and 04 are finished** — all twelve `UX-AUTH-*` screens plus the
+three `UX-SETUP-*` onboarding screens exist in both directions. That closes the
+entire path from a cold install to a usable account, which is the sequence
+REL-001 tests and the one every remaining screen sits behind.
 
 ---
 
@@ -97,11 +98,61 @@ placeholder that looks like a real policy.
 
 ## Group 04 · Profile onboarding
 
-| Screen | Name | Requirements | APIs | Status |
-|---|---|---|---|---|
-| UX-SETUP-001 | Username selection | PROFILE-FR-001 · EDGE-007 | `/me/username` `/username/available` | ✗ |
-| UX-SETUP-002 | Profile setup | PROFILE-FR-002/003 | `POST /me/profile` | ✗ |
-| UX-SETUP-003 | Suggested accounts | SOCIAL-FR-004 | `/users/suggested` | ✗ |
+| Screen | Name | Requirements | APIs | LTR | RTL | Status |
+|---|---|---|---|---|---|---|
+| UX-SETUP-001 | Username selection | PROFILE-FR-001 · EDGE-007 | `/me/username` `/username/available` | ✅ | ✅ | ✅ |
+| UX-SETUP-002 | Profile setup | PROFILE-FR-002/003 · MEDIA-FR-001 | `POST /me/profile` · `/media/*` | ✅ | ✅ | ✅ |
+| UX-SETUP-003 | Suggested accounts | SOCIAL-FR-004 · RSK-001 | `GET /suggestions` · `/users/:id/follow` | ✅ | ✅ | ✅ |
+
+### What onboarding decided
+
+**EDGE-007 — the availability check is a hint, the claim is the truth.** Two
+people can pick `ayesha` in the same second. §13: *"Do not claim a username is
+reserved until server confirms."* So the state field is named **`looksFree`**,
+not `available` — a field called `available` invites a screen to treat it as a
+promise — and **Continue is enabled on a well-formed handle, not on a positive
+check**, because gating on a stale answer produces a locked button. Losing the
+race is a normal outcome with its own copy, and the field keeps what was typed
+so `ayesha` becomes `ayesha_lhr` without starting again.
+
+**The client does not know the reserved list.** The backend refuses `mohalla`,
+`admin` and `support` as the *same* unavailability as taken, because the SRS
+refuses a reserved handle without explaining why. Shipping the list would
+publish it. The tests assert those handles pass the client's **shape** check
+precisely so availability stays the server's answer.
+
+**Input is never silently lowercased.** A handle is chosen once and never
+changed, so turning `Ayesha` into `ayesha` would hand somebody a permanent name
+they did not type. `NEEDS_LOWERCASE` is its own message — "use lowercase" is an
+instruction where "invalid characters" is a puzzle.
+
+**The bio is counted in GRAPHEMES** (BR-012's reasoning applied to a profile
+field). Counting UTF-16 units would give an English bio 200 visible characters
+and an Urdu one far fewer.
+
+**The photo is a separate transaction from the profile.** ADR-013's upload is
+three steps and any can fail on 3G, so the photo uploads on selection and the
+profile is created on Continue — a failed upload offers a retry for the **photo
+alone** while the typed fields sit untouched (EDGE-013). A refused file and a
+dropped connection are different outcomes: the first drops the bytes because
+retrying cannot help, the second keeps them so retry does not reopen the gallery.
+
+**Compression refuses rather than exceeds.** NFR-PERF-005 is a *ceiling*:
+`ImageCompressor` returns `null` when no quality step gets under 500 KB, and the
+uploader refuses. Sending a 4 MB camera photo because the loop ran out of steps
+would break the requirement on the connection least able to afford it.
+
+**Account type is not on this screen.** §13 is explicit that choosing
+Organization does not confer a badge — that is ADMIN-FR-010, an administrator's
+decision — and the backend's `createProfileBody` has no `accountType` field, so
+there is nothing to send.
+
+**Skip is offered on UX-SETUP-003.** Forcing follows would inflate the graph
+with relationships nobody wanted and make the Following feed useless for the
+people it was meant to serve. Featured and Discover carry the empty case
+(REL-005). No follower counts are shown as social proof, because a count turns a
+neighbourhood list into a popularity ranking in a product whose feed is
+deliberately chronological.
 
 ## Group 05–06 · Navigation shell and Home
 
