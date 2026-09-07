@@ -131,6 +131,16 @@ object Routes {
     const val EVENT_EDIT_PATTERN = "event/{eventId}/edit"
 
     /**
+     * Search (UX-SEARCH-001..003).
+     *
+     * A DESTINATION REACHED FROM THE HOME TOP BAR, not a tab. §14 is explicit
+     * about why: "search is an action performed against feed content, not a
+     * place. Putting it in the top bar keeps it available from both Home tabs
+     * without consuming a slot."
+     */
+    const val SEARCH = "search"
+
+    /**
      * The image viewer (UX-HOME-004).
      *
      * The media ids travel in the route rather than through a shared object,

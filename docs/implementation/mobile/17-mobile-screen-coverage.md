@@ -17,12 +17,12 @@ on a device**, because none is available (see `00-mobile-baseline.md` §6).
 
 | | Screens |
 |---|---|
-| ✅ Complete in both directions | **27** |
+| ✅ Complete in both directions | **30** |
 | ◐ Partial | **2** (UX-EVENT-002 · UX-CREATE-003, both API-limited) |
-| ✗ Not started | **32** |
+| ✗ Not started | **29** |
 | **Required total** | **61** |
 
-**Coverage: 44% complete.** Stage 7 is **NOT** feature-complete.
+**Coverage: 49% complete.** Stage 7 is **NOT** feature-complete.
 
 The four `UX-STATE-*` components left `◐` since group 01 are now `✅`: they are
 exercised by the feed, events, composer and detail screens across every failure
@@ -593,11 +593,106 @@ reference. Worth knowing, because it is invisible on inspection.
 
 ## Group 11 · Search
 
-| Screen | Name | Requirements | APIs | Status |
-|---|---|---|---|---|
-| UX-SEARCH-001 | Search entry | SEARCH-FR-001 · PRIV-011 | — | ✗ |
-| UX-SEARCH-002 | Results — People | SEARCH-FR-003 · BR-042 | `/search/people` | ✗ |
-| UX-SEARCH-003 | Results — Posts / Events | SEARCH-FR-002/004 | `/search/posts` `/search/events` | ✗ |
+| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | Status |
+|---|---|---|---|---|---|---|---|---|---|---|
+| — | User row (component) | §18 · SEARCH-FR-001 | — | ✅ | ✅ | — | — | — | — | ✅ |
+| — | Home top app bar | §14 · §19 | — | ✅ | ✅ | — | — | — | — | ✅ |
+| UX-SEARCH-001 | Search entry · recent searches | SEARCH-FR-005 · PRIV-011 | — | ✅ | ✅ | — | ✅ | — | — | ✅ |
+| UX-SEARCH-002 | Results — People | SEARCH-FR-001 | `GET /search/people` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-SEARCH-003 | Results — Posts / Events | SEARCH-FR-002/003/004 | `/search/posts` · `/search/events` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+**Home gained its top app bar in this group**, which §19 had required since
+group 05–06 and which had been missed: `homeActions()` existed in
+`MohallaTopBar.kt` and nothing called it. §14 places Search and Notifications
+there as *actions* rather than tabs — "search is an action performed against feed
+content, not a place", and notifications are "an interrupt, not a place… users go
+there because something happened, not because they chose to" — so putting either
+in the bottom bar would spend one of five slots on a screen visited reactively.
+The bell is wired to nothing yet; UX-HOME-007 is group 12.
+
+### What search decided, and why it is written down
+
+**A failed search is never an empty-results state.** SEARCH-FR-003's acceptance
+criterion says so outright, and this is the screen people use to ask "did anyone
+raise this before?" — so a zero-results page after an outage answers *no* to a
+question nobody asked it, and can convince somebody that nobody reported a
+problem they in fact reported. `SearchTabState.isEmpty` is therefore false
+whenever a failure is present **and** false when no request has come back, and
+both conditions are asserted separately because either one alone would let the
+defect through. The API is unusually candid for the same reason: 200 with an
+empty list means "we looked and there is nothing", 503 means "we could not look",
+and 400 with the minimum means "the query was too short to run".
+
+**Three states, not two: never asked, asked and empty, failed.** A tab the reader
+has not opened must not claim to be empty either — otherwise switching to Posts
+would flash "no posts found" before the request had left.
+
+**The empty state's advice is only sound because it is unreachable after a
+failure.** §21 asks it to suggest alternative spellings, which is genuinely the
+next thing to do on a platform where the same word is written in two scripts —
+and exactly the wrong advice when the search never ran.
+
+**The client sends what was typed and never transliterates.** SEARCH-FR-003 puts
+normalisation on the server, against an index holding both the original text and
+its transliterated form. A client-side romanisation would disagree with the index
+it is querying, so "pani" would match different things depending on which side
+did the folding. Asserted with an Urdu-script query reaching the source
+unchanged.
+
+**Offset pagination, and that is correct here.** Every other list in the product
+pages by cursor, because a cursor names a position in a stable ordering. Search
+results are ranked by relevance then recency, and relevance is not a column —
+there is no `(score, id)` pair a later page could resume from, and page one's
+ranking can legitimately change between requests. An offset is honest about being
+approximate where a cursor would imply a stability the ordering does not have.
+Results are de-duplicated on append for the same reason.
+
+**Each tab is searched only when it is opened, and never twice for one query.**
+Three simultaneous requests would triple the cost of one search on the 3G
+connection NFR-PERF-001 budgets for, to fetch two sets of results the reader has
+not asked to see. Changing the query clears all three and re-runs only the one on
+screen.
+
+**Typing sends one request, not one per keystroke.** 350ms — long enough that
+"pani" is one query rather than four, short enough that somebody who has stopped
+typing does not notice. Slightly shorter than the username check's 400ms because
+a search is a read the reader is actively waiting on. A submit bypasses it.
+
+**A query below the minimum is not sent at all.** The server would refuse it with
+the minimum stated; spending a round trip to be told that is a round trip wasted.
+Backspacing to one character returns the screen to the recent searches, which is
+where a one-character query belongs.
+
+**The recent-search history is encrypted, and the screen says it never leaves the
+phone.** PRIV-011 is absolute — "never transmitted to or retained on the server"
+— so there is no endpoint, no sync, and no request field that carries one. It is
+Keystore-backed for the same reason the composer's draft is: a search history is a
+list of what somebody is worried about and who they are checking on, and on a
+civic platform a server that held it could be compelled to produce it. Entries are
+newline-separated so that "water, drains" stays one query rather than becoming
+two rows, de-duplicated case-insensitively with the newest casing winning, and
+removable one at a time — somebody who looked up a name they would rather not
+leave on the screen of a shared phone should not have to clear everything. Signing
+out takes the history with it, because a shared phone is a common arrangement in
+this market.
+
+**The history records submissions, never keystrokes.** A history of every prefix
+would fill with "p", "pa", "pan" — and would record a query somebody typed and
+then thought better of.
+
+**A search result offers no engagement controls.** Tapping a post card in results
+opens the post rather than liking it: liking from a list of hits would need the
+optimistic-and-revert machinery of a feed for an action nobody performs there.
+Event results carry no RSVP row either, because SEARCH-FR-004 ranks past events
+*down* rather than excluding them ("the upcoming list is a schedule, but search is
+a memory"), so half the rows cannot be responded to — and a control that works on
+some rows and not others is worse than one that lives on the detail screen.
+
+**One test was wrong and the code was right.** An early assertion claimed that
+re-submitting a query leaves the Posts tab unsearched; in fact `submit` searches
+the tab **in view**, which is correct — the other two are cleared and fetched when
+opened. The test was corrected to assert that behaviour rather than the code
+being changed to match a mistaken expectation.
 
 ## Group 12–13 · Profiles and graph
 

@@ -330,4 +330,30 @@
     <!-- Sharing (ENGAGE-FR-007) -->
     <string name="share_post_title">Share this post</string>
     <string name="share_post_subject">A post on Mohalla</string>
+    <!-- Search (UX-SEARCH-001..003) -->
+    <string name="search_title">Search</string>
+    <string name="search_placeholder">Search people, posts and events</string>
+    <string name="search_clear">Clear the search</string>
+    <string name="search_tab_people">People</string>
+    <string name="search_tab_posts">Posts</string>
+    <string name="search_tab_events">Events</string>
+    <string name="search_load_more">Show more results</string>
+    <string name="search_more_failed">More results could not be loaded.</string>
+
+    <string name="search_hint_title">Find anything said here</string>
+    <string name="search_hint_body">Search works in Urdu script and in Roman Urdu, so \'پانی\' and \'pani\' find the same posts.</string>
+
+    <string name="search_recent_title">Recent</string>
+    <string name="search_recent_clear">Clear all</string>
+    <string name="search_recent_remove">Remove %1$s from recent searches</string>
+    <string name="search_recent_device_only">Recent searches stay on this phone. They are never sent to Mohalla.</string>
+
+    <string name="search_empty_people">No people found</string>
+    <string name="search_empty_posts">No posts found</string>
+    <string name="search_empty_events">No events found</string>
+    <string name="search_empty_spelling_hint">Try the other spelling — Urdu script instead of Roman Urdu, or the other way round. A shorter search often finds more.</string>
+
+    <string name="search_unavailable">Search is temporarily unavailable, so nothing could be looked up. This does not mean there is nothing to find.</string>
+    <string name="search_offline">You are offline, so the search could not run. This does not mean there is nothing to find.</string>
+    <string name="search_query_too_short">Type a little more to search.</string>
 </resources>

@@ -27,6 +27,8 @@ import org.shehersaaz.mohalla.feature.create.PostRepository
 import org.shehersaaz.mohalla.feature.create.SecureDraftStore
 import org.shehersaaz.mohalla.feature.events.EventRepository
 import org.shehersaaz.mohalla.feature.post.PostDetailRepository
+import org.shehersaaz.mohalla.feature.search.RecentSearches
+import org.shehersaaz.mohalla.feature.search.SearchRepository
 import org.shehersaaz.mohalla.feature.home.FeedRepository
 import org.shehersaaz.mohalla.feature.setup.SetupRepository
 import org.shehersaaz.mohalla.feature.startup.SessionRepository
@@ -124,6 +126,18 @@ class AppContainer private constructor(
     val postRepository: PostRepository = PostRepository(api, imageUploader)
 
     val postDetailRepository: PostDetailRepository = PostDetailRepository(api)
+
+    val searchRepository: SearchRepository = SearchRepository(api)
+
+    /**
+     * The last ten queries, on THIS DEVICE ONLY (SEARCH-FR-005 - PRIV-011).
+     *
+     * Keystore-backed rather than plain preferences. A search history is a list
+     * of what somebody is worried about and who they are checking on, and
+     * PRIV-011 is absolute that it never reaches the server - so it is also
+     * kept out of a filesystem backup. Cleared with everything else on sign-out.
+     */
+    val recentSearches: RecentSearches = RecentSearches(secureStorage)
 
     /**
      * The posts the reader has actually seen (§19 - UX-HOME-003).

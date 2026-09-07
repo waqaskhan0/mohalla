@@ -241,6 +241,53 @@ interface MohallaApi {
     @DELETE("comments/{id}")
     suspend fun deleteComment(@Path("id") commentId: String): Response<Unit>
 
+    // -------------------------------------------------------------------- search
+    //
+    // OFFSET PAGINATION, NOT KEYSET, AND THAT IS CORRECT HERE. Every other list
+    // in this product pages by cursor, because a cursor names a position in a
+    // stable ordering. Search results are ranked by RELEVANCE then recency, and
+    // relevance is not a column - there is no (score, id) pair a later page can
+    // resume from, and the ranking of page one can legitimately change between
+    // requests as content is added. An offset is honest about being approximate
+    // where a cursor would imply a stability the ordering does not have.
+    //
+    // The parameter is `q` by the frozen contract.
+    //
+    // THREE SEPARATE ENDPOINTS, one per tab, rather than one federated search.
+    // The three surfaces are read at different times by different intents -
+    // finding a person to message, finding what was said about a problem last
+    // month, finding something to attend - and a combined response would make
+    // every tab wait for the slowest of the three.
+    @GET("search/people")
+    suspend fun searchPeople(
+        @Query("q") query: String,
+        @Query("limit") limit: Int? = null,
+        @Query("offset") offset: Int? = null,
+    ): Response<PeopleSearchResponse>
+
+    @GET("search/posts")
+    suspend fun searchPosts(
+        @Query("q") query: String,
+        @Query("limit") limit: Int? = null,
+        @Query("offset") offset: Int? = null,
+    ): Response<PostSearchResponse>
+
+    /**
+     * Events (SEARCH-FR-004).
+     *
+     * UPCOMING EVENTS RANK ABOVE PAST ONES, ahead of relevance - a
+     * perfectly-matching event that happened last year is less useful than a
+     * near-matching one next week, because only one of them can still be
+     * attended. Past events are ranked DOWN rather than excluded: the upcoming
+     * list is a schedule, but search is a memory.
+     */
+    @GET("search/events")
+    suspend fun searchEvents(
+        @Query("q") query: String,
+        @Query("limit") limit: Int? = null,
+        @Query("offset") offset: Int? = null,
+    ): Response<EventSearchResponse>
+
     // -------------------------------------------------------------------- events
     //
     // EVENT-FR-005: SOONEST FIRST - the only ASCENDING list in the product.
@@ -789,6 +836,33 @@ data class CommentsResponse(
 @Serializable
 data class CommentBody(
     val body: String,
+)
+
+/**
+ * A page of search results.
+ *
+ * `nextOffset` is null at the end. Three response types rather than one generic
+ * wrapper because kotlinx-serialization needs a concrete type argument at each
+ * call site anyway, and naming them makes the endpoint each belongs to obvious
+ * at a glance.
+ */
+@Serializable
+data class PeopleSearchResponse(
+    val results: List<PublicProfileResponse> = emptyList(),
+    /** `null` means the end. Not the same as an empty page. */
+    val nextOffset: Int? = null,
+)
+
+@Serializable
+data class PostSearchResponse(
+    val results: List<FeedItemResponse> = emptyList(),
+    val nextOffset: Int? = null,
+)
+
+@Serializable
+data class EventSearchResponse(
+    val results: List<EventResponse> = emptyList(),
+    val nextOffset: Int? = null,
 )
 
 @Serializable

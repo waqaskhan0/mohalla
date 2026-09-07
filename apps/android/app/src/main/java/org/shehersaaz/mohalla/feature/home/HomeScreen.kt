@@ -40,6 +40,8 @@ import org.shehersaaz.mohalla.core.network.FeaturedItemResponse
 import org.shehersaaz.mohalla.core.network.FeedItemResponse
 import org.shehersaaz.mohalla.core.ui.MohallaButton
 import org.shehersaaz.mohalla.core.ui.MohallaSecondaryButton
+import org.shehersaaz.mohalla.core.ui.MohallaTopBar
+import org.shehersaaz.mohalla.core.ui.homeActions
 import org.shehersaaz.mohalla.core.ui.OfflineState
 import org.shehersaaz.mohalla.core.ui.PostCard
 import org.shehersaaz.mohalla.core.ui.RateLimitedState
@@ -79,6 +81,10 @@ fun HomeScreen(
     onShare: (String) -> Unit,
     onOpenAnnouncement: (String) -> Unit,
     onFindPeople: () -> Unit,
+    onSearch: () -> Unit,
+    onOpenNotifications: () -> Unit,
+    /** NOTIF-FR-002 — a dot on the bell, and the count only in semantics. */
+    unreadNotifications: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -86,6 +92,24 @@ fun HomeScreen(
             .fillMaxSize()
             .background(MohallaTheme.colors.BgPrimary),
     ) {
+        // §19's first content item, and §14's placement decision: "Home carries
+        // Search and Notifications". Both are ACTIONS rather than tabs —
+        // "search is an action performed against feed content, not a place",
+        // and notifications are "an interrupt, not a place… users go there
+        // because something happened, not because they chose to". Putting
+        // either in the bottom bar would spend one of five slots on a screen
+        // visited reactively.
+        MohallaTopBar(
+            title = stringResource(R.string.app_name),
+            actions = homeActions(
+                onSearch = onSearch,
+                onNotifications = onOpenNotifications,
+                unreadNotifications = unreadNotifications,
+            ),
+        )
+
+        // Sticky under the top bar (§19), which falls out of both sitting above
+        // the LazyColumn rather than inside it.
         FeedTabRow(selected = state.tab, onSelect = onSelectTab)
 
         val page = state.current

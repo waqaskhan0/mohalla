@@ -55,6 +55,8 @@ import org.shehersaaz.mohalla.feature.home.HomeScreen
 import org.shehersaaz.mohalla.feature.post.ImageViewerScreen
 import org.shehersaaz.mohalla.feature.post.PostDetailScreen
 import org.shehersaaz.mohalla.feature.post.PostDetailViewModel
+import org.shehersaaz.mohalla.feature.search.SearchScreen
+import org.shehersaaz.mohalla.feature.search.SearchViewModel
 import org.shehersaaz.mohalla.feature.safety.SuspensionExplainerSheet
 import org.shehersaaz.mohalla.feature.setup.ProfileSetupScreen
 import org.shehersaaz.mohalla.feature.setup.ProfileSetupViewModel
@@ -179,6 +181,18 @@ fun MohallaNavHost(
                     },
                 )
             }
+        }
+
+        // UX-SEARCH-001..003. Reached from the Home top bar, and from the
+        // empty Following feed's "find people to follow" (RSK-001's screen).
+        composable(Routes.SEARCH) {
+            SearchRoute(
+                container = container,
+                onBack = { navController.popBackStack() },
+                onOpenPerson = { navController.navigate(Routes.profile(it)) },
+                onOpenPost = { navController.navigate(Routes.post(it)) },
+                onOpenEvent = { navController.navigate(Routes.event(it)) },
+            )
         }
 
         // UX-HOME-004 — the full-screen viewer.
@@ -308,9 +322,12 @@ private fun HomeRoute(
         onOpenAuthor = { navController.navigate(Routes.profile(it)) },
         onToggleLike = feed::toggleLike,
         onShare = { postId -> sharePost(context, postId) },
-        // The announcement detail is UX-HOME-006, and search is group 11.
+        // The announcement detail is UX-HOME-006 and the notification centre is
+        // UX-HOME-007; both arrive with group 12.
         onOpenAnnouncement = {},
-        onFindPeople = {},
+        onFindPeople = { navController.navigate(Routes.SEARCH) },
+        onSearch = { navController.navigate(Routes.SEARCH) },
+        onOpenNotifications = {},
     )
 }
 
@@ -416,6 +433,45 @@ private fun PostDetailRoute(
         // The report sheet is UX-SAFE-001, group 17.
         onReport = {},
         onLoadMoreComments = vm::loadMoreComments,
+        isUrdu = container.localeStore.stored()?.isRtl == true,
+    )
+}
+
+/** UX-SEARCH-001 · UX-SEARCH-002 · UX-SEARCH-003 — one screen, three surfaces. */
+@Composable
+private fun SearchRoute(
+    container: AppContainer,
+    onBack: () -> Unit,
+    onOpenPerson: (String) -> Unit,
+    onOpenPost: (String) -> Unit,
+    onOpenEvent: (String) -> Unit,
+) {
+    val vm: SearchViewModel = viewModel(
+        factory = SearchViewModel.Factory(
+            source = container.searchRepository,
+            // PRIV-011 — on the device only. There is no endpoint for this and
+            // there must not be one.
+            recents = container.recentSearches,
+        ),
+    )
+    val state by vm.state.collectAsState()
+
+    SearchScreen(
+        state = state,
+        locale = container.formattingLocale(),
+        zone = container.displayZone(),
+        onQueryChanged = vm::onQueryChanged,
+        onSubmit = { vm.submit() },
+        onSelectTab = vm::selectTab,
+        onLoadMore = vm::loadMore,
+        onRetry = vm::retry,
+        onPickRecent = { vm.submit(it) },
+        onRemoveRecent = vm::removeRecent,
+        onClearRecents = vm::clearRecents,
+        onOpenPerson = onOpenPerson,
+        onOpenPost = onOpenPost,
+        onOpenEvent = onOpenEvent,
+        onBack = onBack,
         isUrdu = container.localeStore.stored()?.isRtl == true,
     )
 }

@@ -332,4 +332,30 @@
     <!-- Sharing (ENGAGE-FR-007) -->
     <string name="share_post_title">یہ پوسٹ شیئر کریں</string>
     <string name="share_post_subject">محلہ پر ایک پوسٹ</string>
+    <!-- Search (UX-SEARCH-001..003) -->
+    <string name="search_title">تلاش</string>
+    <string name="search_placeholder">لوگ، پوسٹیں اور تقاریب تلاش کریں</string>
+    <string name="search_clear">تلاش صاف کریں</string>
+    <string name="search_tab_people">لوگ</string>
+    <string name="search_tab_posts">پوسٹیں</string>
+    <string name="search_tab_events">تقاریب</string>
+    <string name="search_load_more">مزید نتائج دیکھیں</string>
+    <string name="search_more_failed">مزید نتائج لوڈ نھیں ھو سکے۔</string>
+
+    <string name="search_hint_title">یھاں جو کھا گیا، وہ تلاش کریں</string>
+    <string name="search_hint_body">تلاش اردو رسم الخط اور رومن اردو دونوں میں کام کرتی ھے، اس لیے ٰپانیٰ اور ٰpaniٰ ایک ھی پوسٹیں دھونڈ لیتے ھیں۔</string>
+
+    <string name="search_recent_title">حال ھی میں</string>
+    <string name="search_recent_clear">سب صاف کریں</string>
+    <string name="search_recent_remove">%1$s کو حال کی تلاش سے ھٹائیں</string>
+    <string name="search_recent_device_only">حال کی تلاش اسی فون پر رھتی ھے۔ یہ کبھی محلہ کو نھیں بھیجی جاتی۔</string>
+
+    <string name="search_empty_people">کوئی شخص نھیں ملا</string>
+    <string name="search_empty_posts">کوئی پوسٹ نھیں ملی</string>
+    <string name="search_empty_events">کوئی تقریب نھیں ملی</string>
+    <string name="search_empty_spelling_hint">دوسرے انداز میں لکھ کر دیکھیں — رومن اردو کی جگہ اردو رسم الخط، یا اس کے برعکس۔ مختصر تلاش سے عام طور پر زیادہ نتائج ملتے ھیں۔</string>
+
+    <string name="search_unavailable">تلاش فی الحال دستیاب نھیں، اس لیے کچھ تلاش نھیں ھو سکا۔ اس کا مطلب یہ نھیں کہ کچھ موجود نھیں۔</string>
+    <string name="search_offline">آپ آف لائن ھیں، اس لیے تلاش نھیں چل سکی۔ اس کا مطلب یہ نھیں کہ کچھ موجود نھیں۔</string>
+    <string name="search_query_too_short">تلاش کے لیے تھوڑا مزید لکھیں۔</string>
 </resources>

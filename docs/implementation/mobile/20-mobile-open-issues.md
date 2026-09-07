@@ -30,8 +30,8 @@ incomplete — and who can clear it.
 |---|---|
 | **No AVD, no system image, no device** | `adb devices` is empty. Every Compose UI test and every §44/§45 end-to-end flow **cannot run** here. Needs roughly a 1 GB system-image download. |
 | **What was done instead** | Every rule that can be asserted without a device was written as a JVM unit test rather than deferred: the RTL invariants, the state machines, the cursor sequences, the neutral-refusal structure, locale and zone handling, the composer's
-per-attachment upload sequencing, and the comment thread's one-level nesting.
-**237 tests, all passing.** |
+per-attachment upload sequencing, the comment thread's one-level nesting, and
+search's failed-versus-empty rule. **271 tests, all passing.** |
 | **What that does not prove** | That pixels mirror. The tests prove Create sits at index 2 of 5 and that the list is never pre-reversed; they cannot prove the row renders right-to-left. §36 makes RTL release-critical, so this gap is the largest single verification debt in Stage 7. |
 
 The manifest defect found in group 05–06 is the argument for closing it:
@@ -203,6 +203,7 @@ Distinct from §3: these are things the client *can* build and has not yet.
 |---|---|---|
 | UX-EVENT-003 | The report action is present but inert — the report sheet is UX-SAFE-001, group 17. | The creator's Edit action works; a non-creator's Report does nothing yet. |
 | Home | `UX-HOME-005` category filter sheet and `UX-HOME-006` announcement detail are not built. | `selectCategory` exists in the ViewModel and the filter reaches the API; there is no picker to drive it. |
+| Home top bar | The notification bell is present but inert — `UX-HOME-007` is group 12. | Search works from the bar; the bell does nothing and shows no count. |
 | `ImagePicker.read` | Untested. It needs a real `ContentResolver` and `BitmapFactory`, so it cannot run on the JVM. | The attachment state machine around it IS tested through the real ViewModel (`AttachmentUploadTest`); the file-reading and compression path itself is only covered by an emulator run that cannot happen here. |
 
 Three items left this table in group 08 and are now built: the event composer's
