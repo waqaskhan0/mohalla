@@ -29,8 +29,9 @@ incomplete — and who can clear it.
 | | |
 |---|---|
 | **No AVD, no system image, no device** | `adb devices` is empty. Every Compose UI test and every §44/§45 end-to-end flow **cannot run** here. Needs roughly a 1 GB system-image download. |
-| **What was done instead** | Every rule that can be asserted without a device was written as a JVM unit test rather than deferred: the RTL invariants, the state machines, the cursor sequences, the neutral-refusal structure, locale and zone handling, and the composer's
-per-attachment upload sequencing. **194 tests, all passing.** |
+| **What was done instead** | Every rule that can be asserted without a device was written as a JVM unit test rather than deferred: the RTL invariants, the state machines, the cursor sequences, the neutral-refusal structure, locale and zone handling, the composer's
+per-attachment upload sequencing, and the comment thread's one-level nesting.
+**237 tests, all passing.** |
 | **What that does not prove** | That pixels mirror. The tests prove Create sits at index 2 of 5 and that the list is never pre-reversed; they cannot prove the row renders right-to-left. §36 makes RTL release-critical, so this gap is the largest single verification debt in Stage 7. |
 
 The manifest defect found in group 05–06 is the argument for closing it:
@@ -134,6 +135,49 @@ a metered connection, and the attachment sheet says so instead of offering it.
 sibling and a document row in the attachment sheet. The upload plumbing is
 already generic over `kind`.
 
+### GAP-M-006 · There is no higher-resolution media variant to serve
+
+**MEDIA-FR-002**'s rule: "awareness posters must remain legible at full zoom, so
+the viewer serves a **higher-resolution variant** than the feed thumbnail."
+
+`GET /media/{id}` takes no size parameter and the API stores exactly one object
+per media id. There is no variant to request.
+
+**What the viewer actually gains** is decode size, not a different file. The
+stored image is 1,600px on its longest edge — the client's own upload ceiling
+(NFR-PERF-005) — the feed decodes it down to a card's width, and the viewer
+decodes at screen size and allows zoom to 5× beyond that. So a poster *is*
+legible in the viewer and not in the feed, by roughly the intended amount,
+through a different mechanism than the requirement describes.
+
+**What is genuinely lost.** Above about 2.2× on a 720px screen the viewer is
+interpolating rather than showing real pixels, because 1,600px is all there is.
+A poster photographed at 12 megapixels and compressed for upload cannot be zoomed
+into further than that ceiling allows.
+
+**To close it:** server-side variants (a `?size=` parameter, or a second stored
+derivative), which is an API and storage decision rather than a client one. Note
+it interacts with NFR-PERF-005: raising the upload ceiling to serve a sharper
+viewer would send more bytes over the connection the ceiling exists to protect.
+
+### GAP-M-007 · A shared post carries no excerpt
+
+**ENGAGE-FR-007** asks for "a link to the post **plus a short excerpt**". The
+share sheet sends the link only.
+
+**Why.** The canonical public URL is defined by §42's deep-link work (group 22),
+and this group had no real host to point at — so the share base is
+`mohalla.invalid`, which fails visibly rather than being a domain somebody might
+register. Attaching an excerpt to a link that cannot resolve would put a quoted
+fragment of somebody's words into a WhatsApp message alongside a broken URL,
+neither of which the sender can edit afterwards.
+
+The requirement's other rules are already met: the link requires login to open,
+because it lands on the post route behind the startup resolver.
+
+**To close it:** the real share host, then one line adding the first ~140
+graphemes of the post body to the intent's `EXTRA_TEXT`.
+
 ### GAP-M-003 · The prototype's attendee stack contradicts the SRS
 
 Recorded as resolved rather than open, because the API settles it.
@@ -158,7 +202,6 @@ Distinct from §3: these are things the client *can* build and has not yet.
 | Screen | What is missing | Consequence today |
 |---|---|---|
 | UX-EVENT-003 | The report action is present but inert — the report sheet is UX-SAFE-001, group 17. | The creator's Edit action works; a non-creator's Report does nothing yet. |
-| Post card | Tapping an image does nothing — MEDIA-FR-002's full-screen viewer is `UX-HOME-004`, group 09. | Images render and the count shows; there is nowhere to open them. |
 | Home | `UX-HOME-005` category filter sheet and `UX-HOME-006` announcement detail are not built. | `selectCategory` exists in the ViewModel and the filter reaches the API; there is no picker to drive it. |
 | `ImagePicker.read` | Untested. It needs a real `ContentResolver` and `BitmapFactory`, so it cannot run on the JVM. | The attachment state machine around it IS tested through the real ViewModel (`AttachmentUploadTest`); the file-reading and compression path itself is only covered by an emulator run that cannot happen here. |
 

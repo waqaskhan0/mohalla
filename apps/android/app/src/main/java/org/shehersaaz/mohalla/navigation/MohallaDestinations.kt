@@ -130,6 +130,22 @@ object Routes {
     fun eventEdit(id: String) = "event/$id/edit"
     const val EVENT_EDIT_PATTERN = "event/{eventId}/edit"
 
+    /**
+     * The image viewer (UX-HOME-004).
+     *
+     * The media ids travel in the route rather than through a shared object,
+     * because the viewer is reached from the post card and from the detail
+     * screen and both already hold the list. They are joined by a character
+     * that cannot appear in a UUID, so no encoding is needed.
+     */
+    fun imageViewer(mediaIds: List<String>, index: Int) =
+        "media/${mediaIds.joinToString(MEDIA_ID_SEPARATOR)}/$index"
+
+    const val IMAGE_VIEWER_PATTERN = "media/{mediaIds}/{index}"
+
+    /** A comma cannot appear in a UUID, so the join is unambiguous. */
+    const val MEDIA_ID_SEPARATOR = ","
+
     /** Deep-linkable content (§42). */
     fun post(id: String) = "post/$id"
     fun event(id: String) = "event/$id"

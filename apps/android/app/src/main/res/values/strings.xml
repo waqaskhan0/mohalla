@@ -297,4 +297,37 @@
     <!-- Shared actions -->
     <string name="action_next">Next</string>
     <string name="action_done">Done</string>
+    <!-- Post detail (UX-HOME-003) -->
+    <string name="post_detail_title">Post</string>
+    <string name="post_delete">Delete this post</string>
+    <string name="post_delete_title">Delete this post?</string>
+    <string name="post_delete_body">The post, its comments, its likes and its images are removed for everyone. This cannot be undone, and nobody can restore it.</string>
+    <string name="post_delete_confirm">Delete</string>
+    <string name="comment_count">%1$d comments</string>
+
+    <!-- Comments (ENGAGE-FR-002…005) -->
+    <string name="comment_placeholder">Add a comment</string>
+    <string name="comment_send">Send</string>
+    <string name="comment_reply">Reply</string>
+    <string name="comment_delete">Delete</string>
+    <string name="comment_replying_to">Replying to %1$s</string>
+    <string name="comment_cancel_reply">Stop replying</string>
+    <string name="comment_load_more">Show more comments</string>
+    <string name="comment_load_failed">Comments could not be loaded.</string>
+    <string name="comment_empty_title">Start the conversation</string>
+    <string name="comment_empty_body">No comments yet. Ask a question or add what you know.</string>
+    <string name="comment_post_gone">This post is no longer available, so your comment was not added. Your text is still here if you want to copy it.</string>
+    <string name="comment_offline">You are offline, so your comment was not added. Your text is still here.</string>
+    <string name="comment_delete_title">Delete this comment?</string>
+    <string name="comment_delete_body">This cannot be undone.</string>
+    <string name="comment_delete_body_with_replies">This comment and its %1$d replies will be removed. This cannot be undone.</string>
+    <string name="comment_delete_confirm">Delete</string>
+
+    <!-- Image viewer (UX-HOME-004) -->
+    <string name="viewer_position">%1$d / %2$d</string>
+    <string name="a11y_image_of">Image %1$d of %2$d</string>
+
+    <!-- Sharing (ENGAGE-FR-007) -->
+    <string name="share_post_title">Share this post</string>
+    <string name="share_post_subject">A post on Mohalla</string>
 </resources>

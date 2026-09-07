@@ -165,11 +165,81 @@ interface MohallaApi {
     @DELETE("posts/{id}")
     suspend fun deletePost(@Path("id") id: String): Response<Unit>
 
+    /**
+     * Like and unlike (ENGAGE-FR-001).
+     *
+     * `PUT`/`DELETE` because a like is a STATE, and both directions are
+     * idempotent against the composite primary key. That is what satisfies the
+     * acceptance criterion - "six rapid taps change the count by at most one" -
+     * server-side, so the client does not have to serialise its taps to be
+     * correct. It still guards a second tap while one is in flight, because two
+     * requests racing would leave the VISIBLE state up to whichever landed last.
+     *
+     * NEITHER RETURNS A BODY. The count is not echoed back, so an optimistic
+     * increment is the only way to show the change immediately - and it is
+     * reverted on failure rather than left showing something untrue
+     * (ENGAGE-FR-001: "the interface reverts to the true server state rather
+     * than showing an optimistic value indefinitely").
+     */
     @PUT("posts/{id}/like")
     suspend fun like(@Path("id") id: String): Response<Unit>
 
     @DELETE("posts/{id}/like")
     suspend fun unlike(@Path("id") id: String): Response<Unit>
+
+    // --------------------------------------------------------------- comments
+    /**
+     * A post's comments (ENGAGE-FR-002/003).
+     *
+     * OLDEST FIRST, which is the opposite of every other list in the product
+     * and is right: a thread is a conversation, and reading it newest-first
+     * puts replies before what they reply to. Comments from blocked users are
+     * excluded in BOTH directions (ENGAGE-FR-006), so two people who have
+     * blocked each other legitimately see different totals.
+     *
+     * The list is FLAT, with `parentCommentId` on each row. The client nests it
+     * one level (BR-033); the server does not send a tree, because a tree would
+     * have to decide how to paginate and one level of nesting means the client
+     * can do it from a single page.
+     */
+    @GET("posts/{id}/comments")
+    suspend fun comments(
+        @Path("id") id: String,
+        @Query("limit") limit: Int? = null,
+        @Query("cursorCreatedAt") cursorCreatedAt: String? = null,
+        @Query("cursorId") cursorId: String? = null,
+    ): Response<CommentsResponse>
+
+    @POST("posts/{id}/comments")
+    suspend fun addComment(
+        @Path("id") id: String,
+        @Body body: CommentBody,
+    ): Response<CommentResponse>
+
+    /**
+     * Reply to a comment (ENGAGE-FR-003 · BR-033).
+     *
+     * EXACTLY ONE LEVEL OF NESTING. A reply aimed at a nested reply attaches to
+     * the same parent THREAD rather than being refused - the intent is clear,
+     * and the database refuses a third level regardless. This is the
+     * requirement the SRS says "solves WhatsApp's lack of threading".
+     */
+    @POST("comments/{id}/replies")
+    suspend fun addReply(
+        @Path("id") commentId: String,
+        @Body body: CommentBody,
+    ): Response<CommentResponse>
+
+    /**
+     * Delete a comment (ENGAGE-FR-004/005).
+     *
+     * The comment's author OR THE POST'S AUTHOR may delete it (BR-020), which
+     * "distributes moderation away from administrators". Replies are removed
+     * with it. Anyone else gets the same neutral 404 as a missing comment, so a
+     * third party cannot probe who wrote what.
+     */
+    @DELETE("comments/{id}")
+    suspend fun deleteComment(@Path("id") commentId: String): Response<Unit>
 
     // -------------------------------------------------------------------- events
     //
@@ -686,6 +756,39 @@ data class CreatePostBody(
 data class UpdatePostBody(
     val body: String? = null,
     val categorySlug: String? = null,
+)
+
+/**
+ * One comment (ENGAGE-FR-002/003).
+ *
+ * `parentCommentId` is null for a top-level comment and set for a reply. The
+ * list arrives FLAT and the client nests it exactly one level (BR-033).
+ *
+ * NO COUNTS AND NO LIKE STATE. A comment cannot be liked in V1 - ENGAGE-FR-001
+ * is about posts - so there is nothing here to render an engagement row from,
+ * and adding one would invent an interaction the product does not have.
+ */
+@Serializable
+data class CommentResponse(
+    val id: String,
+    val postId: String,
+    val author: PublicProfileResponse,
+    /** Null for a top-level comment; the thread parent for a reply. */
+    val parentCommentId: String? = null,
+    val body: String,
+    val createdAt: String,
+)
+
+@Serializable
+data class CommentsResponse(
+    val comments: List<CommentResponse> = emptyList(),
+    /** `null` means the end. Not the same as an empty page. */
+    val nextCursor: FeedCursorResponse? = null,
+)
+
+@Serializable
+data class CommentBody(
+    val body: String,
 )
 
 @Serializable

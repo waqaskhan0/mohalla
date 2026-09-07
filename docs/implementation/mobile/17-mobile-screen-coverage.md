@@ -17,12 +17,12 @@ on a device**, because none is available (see `00-mobile-baseline.md` §6).
 
 | | Screens |
 |---|---|
-| ✅ Complete in both directions | **25** |
+| ✅ Complete in both directions | **27** |
 | ◐ Partial | **2** (UX-EVENT-002 · UX-CREATE-003, both API-limited) |
-| ✗ Not started | **34** |
+| ✗ Not started | **32** |
 | **Required total** | **61** |
 
-**Coverage: 41% complete.** Stage 7 is **NOT** feature-complete.
+**Coverage: 44% complete.** Stage 7 is **NOT** feature-complete.
 
 The four `UX-STATE-*` components left `◐` since group 01 are now `✅`: they are
 exercised by the feed, events, composer and detail screens across every failure
@@ -499,10 +499,97 @@ is what closes UX-EVENT-004 and UX-EVENT-005.
 
 ## Group 09–10 · Post detail and engagement
 
-| Screen | Name | Requirements | APIs | Status |
-|---|---|---|---|---|
-| UX-HOME-003 | Post detail | POST-FR-004 · BR-009 | `/posts/:id` | ✗ |
-| UX-HOME-004 | Image viewer | MEDIA-FR-004 | — | ✗ |
+| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | Status |
+|---|---|---|---|---|---|---|---|---|---|---|
+| — | Comment item · reply item | ENGAGE-FR-002/003 · BR-033 | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-HOME-003 | Post detail | POST-FR-007/009 · ENGAGE-FR-001…006 | `/posts/:id` · `/comments` · `/like` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-HOME-004 | Image viewer | MEDIA-FR-002 | `GET /media/:id` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
+
+### What post detail and engagement decided, and why it is written down
+
+**The post renders from cache instantly; only comments load.** §19 says so in
+those words, and honouring it needed something to hold the object between two
+screens that pass only an id. `PostCache` is that — bounded at one feed page,
+insertion-ordered, in memory only, and **never a source of truth**: the detail
+screen renders the cached copy AND fetches the real one, and `postConfirmed`
+gates anything irreversible so a post is never *deleted* on the strength of a
+cached author id. A post the server reports gone is forgotten from the cache, or
+"renders instantly" would keep showing a withdrawn post for the life of the
+process.
+
+**A refused comment keeps its text.** ENGAGE-FR-002's error case is exact —
+"post deleted while composing → submission refused with a clear explanation and
+the text preserved for copying" — so the draft is cleared only on success. Its
+acceptance criterion ("the typed text is not lost") is asserted directly, for
+both the deleted-post case and offline.
+
+**Replies nest exactly one level, and the client aims at the parent.** BR-033
+allows one level and says "a reply to a reply attaches to the same parent
+thread". The server would correct a mis-aimed reply, but relying on that would
+mean the client sends something it knows to be wrong — so `replyTo` resolves a
+reply to its thread parent before the request. The threading itself is a pure
+function over the flat list the server sends, which is why it has no recursive
+case to get wrong.
+
+**An orphaned reply is promoted, not dropped.** A reply whose parent is on a
+later page or was deleted between pages would otherwise vanish, and silently
+losing somebody's words is worse than a small ordering oddity.
+
+**Deleting a comment removes its replies in one request.** ENGAGE-FR-004's
+acceptance criterion is that three replies go with their parent; the server does
+that, and the client mirrors it locally rather than re-requesting — otherwise the
+thread briefly shows orphaned replies, and three extra round trips achieve what
+one already did. A **failed** deletion removes nothing: a comment that vanished
+and came back is worse than one that took a moment to go.
+
+**Two people may delete a comment.** Its author, and the **post's** author
+(BR-020, "which distributes moderation away from administrators"). Anybody else
+gets the same neutral 404, so a third party cannot probe who wrote what — and the
+Delete control is *absent* rather than disabled for them, because a visible
+Delete on somebody else's comment suggests the product permits it.
+
+**The author may like their own post.** BR-031 says so explicitly, so there is no
+author check on the like path — and there is a test for it, because "don't let
+people like their own posts" is the kind of rule somebody adds by instinct.
+
+**Rapid taps send one request.** ENGAGE-FR-001's acceptance criterion is that six
+taps change the count by at most one. The server guarantees that through its
+composite key; the client guard is about the *visible* state, which two racing
+requests would leave up to whichever landed last.
+
+**Zoom and paging fight for the same gesture, and paging loses while zoomed.** In
+the image viewer a horizontal drag means "next image" at 1× and "pan" once
+magnified, so the pager is disabled above 1× and re-enabled on return. Without
+that, panning a zoomed-in poster sideways flicks to the next image — which makes
+zoom useless for exactly the awareness posters MEDIA-FR-002 names. The zoom
+resets on every page change, because landing on the next image already magnified
+and off-centre leaves no visible way back to the whole picture.
+
+**The viewer is on a dark ground, and that is not dark mode.** §49 defers dark
+mode; a viewer's job is to get out of the way of what is being looked at, and
+light chrome around a photograph competes with it. Every other surface stays on
+the light scheme.
+
+**A comment's counter appears only near the limit, and a post's is always
+visible.** Deliberately different: a comment is usually a sentence and a
+permanent counter on a one-line field is furniture, while the post composer is
+the one field in the product where people write to the 3,000-grapheme limit on
+purpose.
+
+**Sharing produces a link and no excerpt yet.** ENGAGE-FR-007 asks for "a link to
+the post plus a short excerpt", and the excerpt is withheld on purpose: the
+canonical share URL is group 22's deep-link work, and a placeholder host would
+put a broken link into a WhatsApp message nobody can edit. The share base is
+`mohalla.invalid`, which fails visibly rather than being a domain somebody might
+register. The requirement's login rule needs no extra work — the deep link lands
+on the post route behind the startup resolver, so an unauthenticated arrival is
+routed to Welcome by the same rule as every cold start.
+
+**One defect this group found in itself:** a KDoc containing a slash-star glob
+(`/feed/` followed by an asterisk) silently swallowed the rest of the file.
+Kotlin block comments **nest**, so the sequence opened a comment that never
+closed, and the compiler reported it 400 lines later as an unrelated unresolved
+reference. Worth knowing, because it is invisible on inspection.
 
 ## Group 11 · Search
 

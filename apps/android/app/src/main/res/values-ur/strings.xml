@@ -299,4 +299,37 @@
     <!-- Shared actions -->
     <string name="action_next">اگلا</string>
     <string name="action_done">ھو گیا</string>
+    <!-- Post detail (UX-HOME-003) -->
+    <string name="post_detail_title">پوسٹ</string>
+    <string name="post_delete">یہ پوسٹ حذف کریں</string>
+    <string name="post_delete_title">یہ پوسٹ حذف کر دیں؟</string>
+    <string name="post_delete_body">پوسٹ، اس کے تبصرے، پسند اور تصاویر سب کے لیے ھٹ جائیں گے۔ یہ واپس نھیں ھو سکتا، اور کوئی اسے بحال نھیں کر سکتا۔</string>
+    <string name="post_delete_confirm">حذف کریں</string>
+    <string name="comment_count">%1$d تبصرے</string>
+
+    <!-- Comments (ENGAGE-FR-002…005) -->
+    <string name="comment_placeholder">تبصرہ لکھیں</string>
+    <string name="comment_send">بھیجیں</string>
+    <string name="comment_reply">جواب دیں</string>
+    <string name="comment_delete">حذف</string>
+    <string name="comment_replying_to">%1$s کو جواب</string>
+    <string name="comment_cancel_reply">جواب رھنے دیں</string>
+    <string name="comment_load_more">مزید تبصرے دیکھیں</string>
+    <string name="comment_load_failed">تبصرے لوڈ نھیں ھو سکے۔</string>
+    <string name="comment_empty_title">گفتگو شروع کریں</string>
+    <string name="comment_empty_body">ابھی کوئی تبصرہ نھیں۔ سوال پوچھیں یا جو آپ جانتے ھیں وہ بتائیں۔</string>
+    <string name="comment_post_gone">یہ پوسٹ اب دستیاب نھیں، اس لیے آپ کا تبصرہ شامل نھیں ھوا۔ اگر آپ کاپی کرنا چاھیں تو متن یھیں موجود ھے۔</string>
+    <string name="comment_offline">آپ آف لائن ھیں، اس لیے تبصرہ شامل نھیں ھوا۔ آپ کا متن یھیں موجود ھے۔</string>
+    <string name="comment_delete_title">یہ تبصرہ حذف کر دیں؟</string>
+    <string name="comment_delete_body">یہ واپس نھیں ھو سکتا۔</string>
+    <string name="comment_delete_body_with_replies">یہ تبصرہ اور اس کے %1$d جوابات ھٹا دیے جائیں گے۔ یہ واپس نھیں ھو سکتا۔</string>
+    <string name="comment_delete_confirm">حذف کریں</string>
+
+    <!-- Image viewer (UX-HOME-004) -->
+    <string name="viewer_position">%1$d / %2$d</string>
+    <string name="a11y_image_of">تصویر %1$d بمقابلہ %2$d</string>
+
+    <!-- Sharing (ENGAGE-FR-007) -->
+    <string name="share_post_title">یہ پوسٹ شیئر کریں</string>
+    <string name="share_post_subject">محلہ پر ایک پوسٹ</string>
 </resources>

@@ -52,6 +52,9 @@ import org.shehersaaz.mohalla.feature.events.EventsViewModel
 import org.shehersaaz.mohalla.feature.events.JoinOutcome
 import org.shehersaaz.mohalla.feature.home.FeedViewModel
 import org.shehersaaz.mohalla.feature.home.HomeScreen
+import org.shehersaaz.mohalla.feature.post.ImageViewerScreen
+import org.shehersaaz.mohalla.feature.post.PostDetailScreen
+import org.shehersaaz.mohalla.feature.post.PostDetailViewModel
 import org.shehersaaz.mohalla.feature.safety.SuspensionExplainerSheet
 import org.shehersaaz.mohalla.feature.setup.ProfileSetupScreen
 import org.shehersaaz.mohalla.feature.setup.ProfileSetupViewModel
@@ -158,12 +161,46 @@ fun MohallaNavHost(
             }
         }
 
+        // UX-HOME-003. Deep-linkable (§42): reachable from a card, a
+        // notification, search and a profile.
+        composable(Routes.POST_PATTERN) { entry ->
+            val postId = entry.arguments?.getString("postId")
+
+            if (postId == null) {
+                ContentUnavailable()
+            } else {
+                PostDetailRoute(
+                    container = container,
+                    postId = postId,
+                    onBack = { navController.popBackStack() },
+                    onOpenAuthor = { navController.navigate(Routes.profile(it)) },
+                    onOpenMedia = { ids, index ->
+                        navController.navigate(Routes.imageViewer(ids, index))
+                    },
+                )
+            }
+        }
+
+        // UX-HOME-004 — the full-screen viewer.
+        composable(Routes.IMAGE_VIEWER_PATTERN) { entry ->
+            val ids = entry.arguments?.getString("mediaIds")
+                ?.split(Routes.MEDIA_ID_SEPARATOR)
+                ?.filter { it.isNotBlank() }
+                .orEmpty()
+            val index = entry.arguments?.getString("index")?.toIntOrNull() ?: 0
+
+            ImageViewerScreen(
+                mediaIds = ids,
+                initialIndex = index,
+                onClose = { navController.popBackStack() },
+            )
+        }
+
         // Deep-linkable content (§42). The screens themselves arrive with their
         // own groups; until then each route renders the neutral unavailable
         // state rather than a stub that would claim the content is missing —
         // UX-STATE-001 is the one state that is honest about "not available
         // here", and it says nothing about why.
-        composable(Routes.POST_PATTERN) { ContentUnavailable() }
         composable(Routes.PROFILE_PATTERN) { ContentUnavailable() }
         composable(Routes.CONVERSATION_PATTERN) { ContentUnavailable() }
     }
@@ -203,7 +240,11 @@ private fun ShellRoute(
         onShowSuspensionExplainer = { explainerVisible = true },
     ) { tab ->
         when (tab) {
-            MohallaTab.HOME -> HomeRoute(container)
+            MohallaTab.HOME -> HomeRoute(
+                container = container,
+                navController = navController,
+                onOpenPost = { navController.navigate(Routes.post(it)) },
+            )
 
             MohallaTab.EVENTS -> EventsRoute(
                 container = container,
@@ -237,7 +278,11 @@ private fun ShellRoute(
 }
 
 @Composable
-private fun HomeRoute(container: AppContainer) {
+private fun HomeRoute(
+    container: AppContainer,
+    navController: NavHostController,
+    onOpenPost: (String) -> Unit,
+) {
     val feed: FeedViewModel = viewModel(
         factory = FeedViewModel.Factory(
             repository = container.feedRepository,
@@ -246,16 +291,24 @@ private fun HomeRoute(container: AppContainer) {
     )
     val state by feed.state.collectAsState()
 
+    // §19's "renders from the feed's cached copy instantly" needs the feed to
+    // put what it rendered somewhere the detail screen can read it.
+    LaunchedEffect(state.following.items, state.discover.items) {
+        container.postCache.put(state.following.items + state.discover.items)
+    }
+
+    val context = LocalContext.current
+
     HomeScreen(
         state = state,
         onSelectTab = feed::selectTab,
         onRefresh = feed::refresh,
         onLoadMore = feed::loadMore,
-        // Post detail, profiles, sharing and search arrive with their groups.
-        onOpenPost = {},
-        onOpenAuthor = {},
+        onOpenPost = onOpenPost,
+        onOpenAuthor = { navController.navigate(Routes.profile(it)) },
         onToggleLike = feed::toggleLike,
-        onShare = {},
+        onShare = { postId -> sharePost(context, postId) },
+        // The announcement detail is UX-HOME-006, and search is group 11.
         onOpenAnnouncement = {},
         onFindPeople = {},
     )
@@ -312,6 +365,115 @@ private fun ComposerRoute(
         isUrdu = container.localeStore.stored()?.isRtl == true,
     )
 }
+
+/**
+ * UX-HOME-003 — post detail, comments and the engagement controls.
+ *
+ * THE CACHED POST IS READ ONCE, at construction, and passed to the ViewModel
+ * for its first frame only. Reading it on every recomposition would let a
+ * background feed refresh replace what is on screen mid-scroll.
+ */
+@Composable
+private fun PostDetailRoute(
+    container: AppContainer,
+    postId: String,
+    onBack: () -> Unit,
+    onOpenAuthor: (String) -> Unit,
+    onOpenMedia: (List<String>, Int) -> Unit,
+) {
+    val vm: PostDetailViewModel = viewModel(
+        factory = PostDetailViewModel.Factory(
+            source = container.postDetailRepository,
+            postId = postId,
+            cached = remember(postId) { container.postCache.get(postId) },
+            viewerId = { container.sessionRepository.cachedUserId() },
+            // Once the server says a post is gone, the cache must stop serving
+            // it — otherwise "renders instantly" keeps showing a withdrawn post
+            // for the life of the process.
+            onUnavailable = { container.postCache.forget(it) },
+        ),
+    )
+    val state by vm.state.collectAsState()
+    val context = LocalContext.current
+
+    PostDetailScreen(
+        state = state,
+        onBack = onBack,
+        onRetry = vm::refreshPost,
+        onToggleLike = vm::toggleLike,
+        onDraftChanged = vm::onDraftChanged,
+        onSubmitComment = vm::submitComment,
+        onReplyTo = vm::replyTo,
+        onDeleteComment = vm::deleteComment,
+        canDeleteComment = vm::canDelete,
+        onDeletePost = vm::deletePost,
+        // A deleted post has nowhere to be, so the screen leaves rather than
+        // rendering the neutral state over the thing the author just removed.
+        onDeleted = onBack,
+        onOpenAuthor = onOpenAuthor,
+        onOpenMedia = { index -> onOpenMedia(state.post?.mediaIds.orEmpty(), index) },
+        onShare = { sharePost(context, postId) },
+        // The report sheet is UX-SAFE-001, group 17.
+        onReport = {},
+        onLoadMoreComments = vm::loadMoreComments,
+        isUrdu = container.localeStore.stored()?.isRtl == true,
+    )
+}
+
+/**
+ * ENGAGE-FR-007 — share a post through the device share sheet.
+ *
+ * "Producing a link to the post plus a short excerpt", and the SRS calls this
+ * "the platform's primary growth channel, because WhatsApp is how Pakistan
+ * shares".
+ *
+ * THE LINK REQUIRES LOGIN TO OPEN, which is the requirement's own rule and
+ * follows from the no-guest-browsing decision: "GIVEN a shared link opened by
+ * someone not logged in, WHEN it loads, THEN they are prompted to log in or
+ * install rather than shown the content." That is a property of the receiving
+ * end — the deep link lands on the post route, which sits behind the startup
+ * resolver, so an unauthenticated arrival is routed to Welcome by the same rule
+ * that governs every other cold start. Nothing extra is needed here.
+ *
+ * NO EXCERPT IS ATTACHED YET, and that is deliberate rather than forgotten. An
+ * excerpt means quoting somebody's words into a WhatsApp message, and the
+ * canonical share URL is the one the deep-link work in group 22 defines — a
+ * placeholder host here would put a broken link into a chat somebody cannot
+ * edit. So the sheet shares the app's own post URL and nothing else until then;
+ * recorded in `20-mobile-open-issues.md`.
+ */
+private fun sharePost(context: android.content.Context, postId: String) {
+    val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(android.content.Intent.EXTRA_TEXT, "$SHARE_BASE/${Routes.post(postId)}")
+        putExtra(
+            android.content.Intent.EXTRA_SUBJECT,
+            context.getString(org.shehersaaz.mohalla.R.string.share_post_subject),
+        )
+    }
+
+    // `createChooser` rather than the bare intent: without it, Android may
+    // remember a default target and send the next share straight there, which
+    // is wrong for a control whose whole purpose is choosing where to send.
+    val chooser = android.content.Intent.createChooser(
+        intent,
+        context.getString(org.shehersaaz.mohalla.R.string.share_post_title),
+    ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+
+    // A device with nothing that handles text/plain. Caught rather than allowed
+    // to crash a share — the failure is that nothing happens, which is the
+    // truth of the situation.
+    runCatching { context.startActivity(chooser) }
+}
+
+/**
+ * The host a shared link points at.
+ *
+ * A PLACEHOLDER, and it must not become a real host by accident. §42's deep
+ * links and the canonical public URL are group 22's work; until then this is a
+ * value that will fail visibly rather than a domain somebody might register.
+ */
+private const val SHARE_BASE = "https://mohalla.invalid"
 
 /** UX-EVENT-001 · UX-EVENT-002 — the Events tab. */
 @Composable
