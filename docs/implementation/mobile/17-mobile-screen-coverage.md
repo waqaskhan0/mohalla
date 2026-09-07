@@ -1,6 +1,6 @@
 # 17 — Mobile Screen Coverage
 
-**Stage 7 · Android** · 61 required screens · last updated at commit `36beb0c`
+**Stage 7 · Android** · 61 required screens · last updated at commit `dc24edd`+
 
 > **This table is the answer to "is Stage 7 feature-complete?"** It is not, and
 > the count below says by how much. A screen is `DONE` only when it is built,
@@ -17,12 +17,16 @@ on a device**, because none is available (see `00-mobile-baseline.md` §6).
 
 | | Screens |
 |---|---|
-| ✅ Complete in both directions | **2** |
-| ◐ Partial | **4** (the shared state components) |
-| ✗ Not started | **55** |
+| ✅ Complete in both directions | **11** |
+| ◐ Partial | **4** (the shared state components — no Compose tests) |
+| ✗ Not started | **46** |
 | **Required total** | **61** |
 
-**Coverage: 3.3% complete.** Stage 7 is **NOT** feature-complete.
+**Coverage: 18% complete.** Stage 7 is **NOT** feature-complete.
+
+**Group 03 (authentication) is now finished** — all twelve `UX-AUTH-*` screens
+exist in both directions. That was the security-critical group and the one the
+whole product is gated behind; the remaining 46 screens are product surface.
 
 ---
 
@@ -30,7 +34,7 @@ on a device**, because none is available (see `00-mobile-baseline.md` §6).
 
 | Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | A11y | Tests | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| UX-AUTH-001 | Splash | NFR-PERF-003 | — | ✅ | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ |
+| UX-AUTH-001 | Splash | NFR-PERF-003 | `GET /me` | ✅ | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ |
 | UX-AUTH-002 | Language selection | LOCALE-FR-001 · BR-040 | — | ✅ | ✅ | — | — | — | — | ✅ | ✅ | ✅ |
 | UX-STATE-001 | Content unavailable | SEC-019 · BR-025 | — | ✅ | ✅ | — | — | — | — | ✅ | ✗ | ◐ |
 | UX-STATE-002 | Offline | NFR-AVAIL-002 | — | ✅ | ✅ | — | — | — | ✅ | ✅ | ✗ | ◐ |
@@ -51,19 +55,45 @@ parameter**, so no caller can make the neutral refusal distinguishable
 | Screen | Name | Requirements | APIs | LTR | RTL | Status |
 |---|---|---|---|---|---|---|
 | UX-AUTH-003 | Welcome | AUTH-FR-001 · SEC-006 | — | ✅ | ✅ | ✅ |
-| UX-AUTH-004 | Log in | AUTH-FR-005 · SEC-006/007 | `POST /login` | ✗ | ✗ | ✗ |
-| UX-AUTH-005 | Register — phone | AUTH-FR-001/002 · BR-001 | `POST /register` | ✗ | ✗ | ✗ |
-| UX-AUTH-006 | Register — date of birth | BR-002 | — | ✗ | ✗ | ✗ |
-| UX-AUTH-007 | Register — password | SRS §12 | — | ✗ | ✗ | ✗ |
-| UX-AUTH-008 | Terms & Guidelines | BR-004 · PRIV-014 | — | ✗ | ✗ | ✗ **OD-015** |
-| UX-AUTH-009 | OTP verification | AUTH-FR-003 · SEC-003 · EDGE-005 | `POST /otp/verify` `/otp/resend` | ✗ | ✗ | ✗ |
-| UX-AUTH-010 | Forgot password | AUTH-FR-006 | `POST /password/forgot` | ✗ | ✗ | ✗ |
-| UX-AUTH-011 | Reset password | AUTH-FR-006 | `POST /password/reset` | ✗ | ✗ | ✗ |
-| UX-AUTH-012 | Restore account | SET-FR-005 · EDGE-003 | `POST /me/restore` | ✗ | ✗ | ✗ |
+| UX-AUTH-004 | Log in | AUTH-FR-005 · SEC-006/007 | `POST /login` | ✅ | ✅ | ✅ |
+| UX-AUTH-005 | Register — phone | AUTH-FR-001/002 · BR-001 | `POST /register` | ✅ | ✅ | ✅ |
+| UX-AUTH-006 | Register — date of birth | BR-002 | — | ✅ | ✅ | ✅ |
+| UX-AUTH-007 | Register — password | SRS §12 | — | ✅ | ✅ | ✅ |
+| UX-AUTH-008 | Terms & Guidelines | BR-004 · PRIV-014 | `POST /register` | ✅ | ✅ | ◐ **OD-015** |
+| UX-AUTH-009 | OTP verification | AUTH-FR-003 · SEC-003 · EDGE-005 | `POST /otp/verify` `/otp/resend` | ✅ | ✅ | ✅ |
+| UX-AUTH-010 | Forgot password | AUTH-FR-006 | `POST /password/forgot` | ✅ | ✅ | ✅ |
+| UX-AUTH-011 | Reset password | AUTH-FR-006 | `POST /password/reset` | ✅ | ✅ | ✅ |
+| UX-AUTH-012 | Restore account | SET-FR-005 · EDGE-003 | `POST /me/restore` | ✅ | ✅ | ✅ |
 
-`UX-AUTH-003` is complete and carries a design decision worth noting: it is the
-destination for a BANNED or DELETED account as well as for no account, and it
-shows **nothing** to distinguish them (SEC-006).
+### What the authentication group decided, and why it is written down
+
+**`UX-AUTH-003` is where a BANNED or DELETED account lands**, and it shows
+nothing to distinguish that from a first-ever launch (SEC-006).
+
+**SEC-006 is enforced in the client's TYPES, not its copy.** `LoginOutcome` has
+three variants and `Failed` carries no payload; `LoginUiState` has one
+`credentialsRejected` flag and no field per cause; `PasswordResetUiState` has
+`requestSent` and nothing that could say whether an account exists. A screen
+cannot render a distinction its state cannot hold, and the tests assert that
+structurally — adding a `WrongPassword` variant fails to **compile**, not to
+pass.
+
+**Three disclosures are deliberate**, all on the same ground — the caller has
+already proved the account is theirs:
+
+| Disclosure | Why it is safe |
+|---|---|
+| `VERIFICATION_REQUIRED` on login | Required the correct password |
+| `PROFILE_NOT_CREATED` on `/me` | The caller's own account |
+| Wrong vs expired OTP code | Required possession of the number |
+
+They are commented at each site so the next reader neither "fixes" them into
+neutrality nor cites them as precedent for the ones that must stay neutral.
+
+**`UX-AUTH-008` is `◐`, not `✅`.** The screen, the checkbox and the BR-004
+affirmative are complete; the Terms and Community Guidelines themselves do not
+exist (**OD-015**), so the links report that plainly rather than opening a
+placeholder that looks like a real policy.
 
 ## Group 04 · Profile onboarding
 

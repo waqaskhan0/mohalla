@@ -111,4 +111,12 @@
     <string name="restore_body">آپ کا اکاؤنٹ حذف ہونے کے لیے مقرر ہے۔ اسے واپس لائیں اور آپ کا پروفائل، فالوورز اور پوسٹس سب واپس آ جائیں گے۔</string>
     <string name="restore_submit">میرا اکاؤنٹ واپس لائیں</string>
     <string name="restore_done">آپ کا اکاؤنٹ واپس آ گیا ہے۔</string>
+
+    <!-- ===================================== remaining auth flow strings -->
+    <string name="field_code">چھ ہندسوں کا کوڈ</string>
+    <string name="field_new_password">نیا پاس ورڈ</string>
+    <string name="legal_terms">شرائط پڑھیں</string>
+    <string name="legal_guidelines">کمیونٹی ہدایات پڑھیں</string>
+    <string name="legal_unavailable">یہ دستاویز ابھی دستیاب نہیں ہے۔</string>
+    <string name="restore_sign_out">اس کے بجائے سائن آؤٹ کریں</string>
 </resources>

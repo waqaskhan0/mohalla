@@ -105,4 +105,14 @@
     <string name="restore_body">Your account is scheduled for deletion. Restore it and your profile, followers and posts all come back.</string>
     <string name="restore_submit">Restore my account</string>
     <string name="restore_done">Your account has been restored.</string>
+
+    <!-- ===================================== remaining auth flow strings -->
+    <string name="field_code">6-digit code</string>
+    <string name="field_new_password">New password</string>
+    <string name="legal_terms">Read the Terms</string>
+    <string name="legal_guidelines">Read the Community Guidelines</string>
+    <!-- OD-015: the documents do not exist yet. Said plainly rather than
+         linking to a placeholder that looks like a real policy. -->
+    <string name="legal_unavailable">This document is not available yet.</string>
+    <string name="restore_sign_out">Sign out instead</string>
 </resources>
