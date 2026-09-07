@@ -388,4 +388,30 @@
     <string name="message_send_unavailable">This message could not be sent.</string>
     <string name="message_send_retryable">Your message wasn\'t sent. Tap it to try again.</string>
     <string name="message_request_limit">You can start up to %1$d new conversations a day.</string>
+    <!-- Notifications (UX-HOME-007 · UX-SET-003) -->
+    <!--
+      There is deliberately NO string here for a notification's own text. Every
+      sentence in the centre is rendered by the server in the language the
+      request named (LOCALE-FR-002), so a client-side template would be a second
+      copy of thirteen strings that would drift from the server's. What the
+      client owns is the chrome below.
+    -->
+    <string name="notification_unread">Unread</string>
+    <string name="notifications_day_today">Today</string>
+    <string name="notifications_day_yesterday">Yesterday</string>
+    <string name="notifications_day_earlier">Earlier</string>
+    <string name="notifications_just_now">Just now</string>
+    <string name="notifications_empty_title">Nothing yet</string>
+    <string name="notifications_empty_body">When people interact with your posts, you\'ll see it here.</string>
+
+    <string name="settings_notifications_title">Notifications</string>
+    <string name="settings_notifications_explainer">These control alerts on your phone. Everything still appears here in the app, whatever you turn off.</string>
+    <string name="settings_notifications_save_failed">That change wasn\'t saved. Try again.</string>
+    <string name="settings_notifications_likes">Likes</string>
+    <string name="settings_notifications_comments">Comments and replies</string>
+    <string name="settings_notifications_follows">New followers</string>
+    <string name="settings_notifications_mentions">Mentions</string>
+    <string name="settings_notifications_messages">Messages</string>
+    <string name="settings_notifications_events">Events</string>
+    <string name="settings_notifications_announcements">Announcements</string>
 </resources>

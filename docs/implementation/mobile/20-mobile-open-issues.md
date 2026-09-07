@@ -32,8 +32,9 @@ incomplete — and who can clear it.
 | **What was done instead** | Every rule that can be asserted without a device was written as a JVM unit test rather than deferred: the RTL invariants, the state machines, the cursor sequences, the neutral-refusal structure, locale and zone handling, the composer's
 per-attachment upload sequencing, the comment thread's one-level nesting, and
 search's failed-versus-empty rule, messaging's send idempotency and duplicate
-reconciliation, and the exact field shape of every type that enforces a privacy
-rule structurally. **315 tests, all passing.** |
+reconciliation, the notification centre's day boundary in the reader's own
+timezone, and the exact field shape of every type that enforces a privacy rule
+structurally. **346 tests, all passing.** |
 | **What that does not prove** | That pixels mirror. The tests prove Create sits at index 2 of 5 and that the list is never pre-reversed; they cannot prove the row renders right-to-left. §36 makes RTL release-critical, so this gap is the largest single verification debt in Stage 7. |
 
 The manifest defect found in group 05–06 is the argument for closing it:
@@ -241,6 +242,62 @@ clock, which is exactly the anchor a reconnect needs.
 connection is down. No screen or state change is required, which is the point of
 having built it this way.
 
+### GAP-M-009 · A reply notification has nowhere to go
+
+**NOTIF-FR-002** requires that "opening one navigates to the item that caused
+it". For seven of the eight categories it does. For **REPLY** it cannot.
+
+The server records a reply notification as `targetType: COMMENT` with the
+**comment's** id, and builds the push deep link as `/posts/{postId}#{commentId}`
+— so the information exists at delivery time. The centre's response body carries
+only `targetType` and `targetId`, and there is no `GET /comments/{id}` route to
+resolve the rest: the engagement module offers `GET /posts/:id/comments`,
+`POST /comments/:id/replies` and `DELETE /comments/:id`, and nothing that reads
+one comment.
+
+**What the client does instead.** The row renders — it is still information, and
+the sentence tells the reader what happened — and it is **not clickable**: no
+ripple, no button role, nothing to tap. Opening a post chosen by guesswork would
+be worse, and so would hiding the row.
+
+**To close it:** one field. Either `postId` on the notification body, or
+`targetType: 'POST'` with the comment id carried as an anchor — the second is
+what the deep link already does, so the client needs no change beyond removing
+the special case.
+
+### GAP-M-010 · Push notifications are not implemented (DEP-003)
+
+**NOTIF-FR-001** is a *Must*, and it depends on **DEP-003**, a push notification
+service that has not been provisioned. There is no Firebase project, no
+`google-services.json`, and therefore no device token to register.
+
+**What that means today.** The app registers no device, requests no
+`POST_NOTIFICATIONS` permission, and shows no push. `NOTIF-API-004`'s two device
+routes are deliberately **absent** from `MohallaApi` rather than present and
+uncallable — an endpoint that nothing can invoke is dead code that reads as
+finished work.
+
+**And a permission is not requested for a capability that does not exist.**
+PRIV-015 asks for the push permission to be requested *contextually*; asking for
+it before a single notification can be delivered is the least contextual moment
+there is, and a decline is durable — Android will not prompt again after two
+dismissals. Requesting it now would spend the one good ask on nothing.
+
+**What ships instead is the requirement's own fallback**, working: "a declined
+permission degrades to in-app notifications only", and "push service unavailable
+→ notifications still accumulate in the in-app centre, so nothing is lost." The
+centre is complete, and the seven push preferences are recorded server-side and
+take effect the day a service exists.
+
+**The consequence is stated plainly because it is severe.** The SRS calls push
+"the primary retention mechanism — without it users do not return", and DEP-003's
+own row says "retention collapses". This is not a gap the client can close.
+
+**To close it:** provision the service (technical owner), add the Firebase
+config, then a token source, the two device routes, a contextual permission
+request, and a `FirebaseMessagingService` that routes a tap through the deep
+links the server already builds.
+
 ### GAP-M-003 · The prototype's attendee stack contradicts the SRS
 
 Recorded as resolved rather than open, because the API settles it.
@@ -266,7 +323,7 @@ Distinct from §3: these are things the client *can* build and has not yet.
 |---|---|---|
 | UX-EVENT-003 | The report action is present but inert — the report sheet is UX-SAFE-001, group 17. | The creator's Edit action works; a non-creator's Report does nothing yet. |
 | Home | `UX-HOME-005` category filter sheet and `UX-HOME-006` announcement detail are not built. | `selectCategory` exists in the ViewModel and the filter reaches the API; there is no picker to drive it. |
-| Home top bar | The notification bell is present but inert — `UX-HOME-007` is group 13. | Search works from the bar; the bell does nothing and shows no count. |
+| Home | `UX-HOME-006` announcement detail is not built, so an ANNOUNCEMENT notification row is rendered and inert. | Every other notification row opens what it refers to. |
 | UX-MSG-003 | The report action in the conversation header is present but inert — the report sheet is UX-SAFE-001, group 17. | Viewing the other participant's profile works; Report does nothing yet. |
 | Profile → Message | `Routes.conversationWith(userId)` and its resolving screen exist and are wired, but no profile screen calls them yet — UX-PROFILE-002 is group 14–15. | The inbox and deep links reach a conversation; MSG-FR-001's entry *from a profile* has no button until that screen is built. |
 | `ImagePicker.read` | Untested. It needs a real `ContentResolver` and `BitmapFactory`, so it cannot run on the JVM. | The attachment state machine around it IS tested through the real ViewModel (`AttachmentUploadTest`); the file-reading and compression path itself is only covered by an emulator run that cannot happen here. |
@@ -274,7 +331,9 @@ Distinct from §3: these are things the client *can* build and has not yet.
 Three items left this table in group 08 and are now built: the event composer's
 date and time picker, profile setup's photo picker, and the post card's media and
 avatar rendering. **The bottom bar's Messages tab left it in group 12** — it now
-opens the inbox, and its badge is fed from accepted conversations only.
+opens the inbox. **Both shell badges left it in group 13**: the Messages count
+and the Home bell's count were declared fields that nothing populated, and the
+shell now reads them and re-reads them on resume.
 
 ---
 

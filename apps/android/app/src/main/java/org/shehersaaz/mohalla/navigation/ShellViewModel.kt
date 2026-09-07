@@ -8,7 +8,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.shehersaaz.mohalla.core.network.ApiResult
 import org.shehersaaz.mohalla.core.network.ConnectivityObserver
+import org.shehersaaz.mohalla.feature.messages.MessagingSource
+import org.shehersaaz.mohalla.feature.notifications.NotificationSource
 import org.shehersaaz.mohalla.feature.startup.MeResult
 import org.shehersaaz.mohalla.feature.startup.SessionRepository
 
@@ -22,12 +25,26 @@ import org.shehersaaz.mohalla.feature.startup.SessionRepository
  * THE CAPABILITY IS RE-READ, NOT CACHED FOR THE SESSION. A suspension can be
  * applied by a moderator while the app is open, and an app that only learned the
  * capability at startup would keep offering write controls for as long as the
- * process lived — then refuse them one by one. [refreshCapability] is called
- * when the shell resumes.
+ * process lived — then refuse them one by one. [onResumed] re-reads it, and is
+ * tied to the shell's own `ON_RESUME`.
+ *
+ * THE TWO BADGES ARE READ HERE FOR THE SAME REASON THE CAPABILITY IS. Both are
+ * chrome — one on the Messages tab, one on Home's bell — and both have to be
+ * right before the screen that owns the underlying list has ever been opened.
+ * Reading them inside the inbox would light the tab only after somebody visited
+ * it, which is the wrong way round for a badge.
+ *
+ * AND THEY ARE TWO SEPARATE NUMBERS, DELIBERATELY. BR-027 and §14: Message
+ * Requests "are counted separately inside the screen and never contribute to
+ * this badge — a stranger must not be able to make the user's navigation demand
+ * attention." `unreadCounts()` returns both halves and only the accepted one
+ * reaches the tab.
  */
 class ShellViewModel(
     private val sessions: SessionRepository,
     private val connectivity: ConnectivityObserver,
+    private val messaging: MessagingSource,
+    private val notifications: NotificationSource,
     /** Injected so the date can be formatted in the reader's locale and calendar. */
     private val formatUntil: (String) -> String?,
 ) : ViewModel() {
@@ -47,6 +64,47 @@ class ShellViewModel(
             }
         }
         refreshCapability()
+        refreshBadges()
+    }
+
+    /**
+     * The shell came back to the foreground.
+     *
+     * ONE ENTRY POINT FOR BOTH, because both are answers that go stale while
+     * the app is away: a suspension can be applied by a moderator, and messages
+     * and notifications arrive whether or not anybody is looking.
+     */
+    fun onResumed() {
+        refreshCapability()
+        refreshBadges()
+    }
+
+    /**
+     * The two counts.
+     *
+     * A FAILURE IS SILENT AND CHANGES NOTHING. A badge is cosmetic; showing an
+     * error on every screen in the app because a count did not load would be a
+     * far worse outcome than a number that is briefly stale. Zeroing them on
+     * failure would be worse still — it would tell the reader they have nothing
+     * waiting, which is a claim this call just failed to verify.
+     */
+    fun refreshBadges() {
+        viewModelScope.launch {
+            when (val result = messaging.unreadCounts()) {
+                is ApiResult.Ok -> _state.update {
+                    // ONLY the accepted conversations. See the class comment.
+                    it.copy(unreadConversations = result.value.conversations)
+                }
+                is ApiResult.Err -> Unit
+            }
+        }
+
+        viewModelScope.launch {
+            when (val result = notifications.unreadCount()) {
+                is ApiResult.Ok -> _state.update { it.copy(unreadNotifications = result.value) }
+                is ApiResult.Err -> Unit
+            }
+        }
     }
 
     fun selectTab(tab: MohallaTab) {
@@ -102,10 +160,12 @@ class ShellViewModel(
     class Factory(
         private val sessions: SessionRepository,
         private val connectivity: ConnectivityObserver,
+        private val messaging: MessagingSource,
+        private val notifications: NotificationSource,
         private val formatUntil: (String) -> String?,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            ShellViewModel(sessions, connectivity, formatUntil) as T
+            ShellViewModel(sessions, connectivity, messaging, notifications, formatUntil) as T
     }
 }

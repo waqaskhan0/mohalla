@@ -390,4 +390,23 @@
     <string name="message_send_unavailable">یہ پیغام نھیں بھیجا جا سکا۔</string>
     <string name="message_send_retryable">آپ کا پیغام نھیں گیا۔ دوبارہ کوشش کے لیے اس پر ٹیپ کریں۔</string>
     <string name="message_request_limit">آپ روز زیادہ سے زیادہ %1$d نئی گفتگو شروع کر سکتے ھیں۔</string>
+    <!-- Notifications (UX-HOME-007 · UX-SET-003) -->
+    <string name="notification_unread">غیر پڑھا</string>
+    <string name="notifications_day_today">آج</string>
+    <string name="notifications_day_yesterday">کل</string>
+    <string name="notifications_day_earlier">اس سے پہلے</string>
+    <string name="notifications_just_now">ابھی ابھی</string>
+    <string name="notifications_empty_title">ابھی کچھ نہیں</string>
+    <string name="notifications_empty_body">جب لوگ آپ کی پوسٹس پر ردعمل دیں گے، وہ یہاں نظر آئے گا۔</string>
+
+    <string name="settings_notifications_title">اطلاعات</string>
+    <string name="settings_notifications_explainer">یہ آپ کے فون پر آنے والے الرٹس کو کنٹرول کرتے ہیں۔ آپ جو بھی بند کریں، ہر چیز ایپ کے اندر یہاں موجود رہے گی۔</string>
+    <string name="settings_notifications_save_failed">یہ تبدیلی محفوظ نہیں ہوئی۔ دوبارہ کوشش کریں۔</string>
+    <string name="settings_notifications_likes">پسند</string>
+    <string name="settings_notifications_comments">تبصرے اور جوابات</string>
+    <string name="settings_notifications_follows">نئے فالوورز</string>
+    <string name="settings_notifications_mentions">ذکر</string>
+    <string name="settings_notifications_messages">پیغامات</string>
+    <string name="settings_notifications_events">تقریبات</string>
+    <string name="settings_notifications_announcements">اعلانات</string>
 </resources>

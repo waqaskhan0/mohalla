@@ -141,6 +141,27 @@ object Routes {
     const val SEARCH = "search"
 
     /**
+     * The notification centre (UX-HOME-007).
+     *
+     * A DESTINATION REACHED FROM THE HOME TOP BAR, for the same reason as
+     * Search and a different one besides. §14: notifications are "an interrupt,
+     * not a place - users go there because something happened, not because they
+     * chose to". A bottom-bar slot would spend one of five on a screen visited
+     * reactively, and would sit a red badge in the navigation permanently.
+     */
+    const val NOTIFICATIONS = "notifications"
+
+    /**
+     * Push preferences (UX-SET-003).
+     *
+     * Its own route rather than a section of the settings index, because
+     * SET-FR-007 gives it seven controls and a paragraph - and because the
+     * settings index itself is group 16, so this screen exists and is reachable
+     * before its parent does.
+     */
+    const val NOTIFICATION_PREFERENCES = "settings/notifications"
+
+    /**
      * The image viewer (UX-HOME-004).
      *
      * The media ids travel in the route rather than through a shared object,

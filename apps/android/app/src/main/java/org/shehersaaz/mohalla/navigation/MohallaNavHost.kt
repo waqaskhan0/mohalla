@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -13,6 +14,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -60,6 +64,11 @@ import org.shehersaaz.mohalla.feature.messages.ConversationViewModel
 import org.shehersaaz.mohalla.feature.messages.InboxScreen
 import org.shehersaaz.mohalla.feature.messages.InboxViewModel
 import org.shehersaaz.mohalla.feature.messages.RequestState
+import org.shehersaaz.mohalla.feature.notifications.NotificationDestination
+import org.shehersaaz.mohalla.feature.notifications.NotificationPreferencesScreen
+import org.shehersaaz.mohalla.feature.notifications.NotificationPreferencesViewModel
+import org.shehersaaz.mohalla.feature.notifications.NotificationsScreen
+import org.shehersaaz.mohalla.feature.notifications.NotificationsViewModel
 import org.shehersaaz.mohalla.feature.post.ImageViewerScreen
 import org.shehersaaz.mohalla.feature.post.PostDetailScreen
 import org.shehersaaz.mohalla.feature.post.PostDetailViewModel
@@ -262,6 +271,24 @@ fun MohallaNavHost(
             }
         }
 
+        // UX-HOME-007 - the notification centre.
+        composable(Routes.NOTIFICATIONS) {
+            NotificationsRoute(
+                container = container,
+                onBack = { navController.popBackStack() },
+                navController = navController,
+            )
+        }
+
+        // UX-SET-003. Reachable by route before the settings index that will
+        // link to it (group 16) exists.
+        composable(Routes.NOTIFICATION_PREFERENCES) {
+            NotificationPreferencesRoute(
+                container = container,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
         // Deep-linkable content (§42). The screen arrives with its own group;
         // until then the route renders the neutral unavailable state rather
         // than a stub that would claim the content is missing — UX-STATE-001 is
@@ -289,10 +316,26 @@ private fun ShellRoute(
         factory = ShellViewModel.Factory(
             sessions = container.sessionRepository,
             connectivity = container.connectivity,
+            messaging = container.messagingRepository,
+            notifications = container.notificationRepository,
             formatUntil = container.formatDate,
         ),
     )
     val state by shell.state.collectAsState()
+
+    // The capability and both badges go stale while the app is away: a
+    // suspension can be applied by a moderator, and messages and notifications
+    // arrive whether or not anybody is looking. `ON_RESUME` rather than
+    // `LaunchedEffect(Unit)`, because composition survives backgrounding and
+    // would re-read neither.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) shell.onResumed()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     var explainerVisible by remember { mutableStateOf(false) }
 
@@ -309,6 +352,9 @@ private fun ShellRoute(
                 container = container,
                 navController = navController,
                 onOpenPost = { navController.navigate(Routes.post(it)) },
+                // The bell's dot. Read by the shell rather than by Home, so it
+                // survives switching tabs and is one number in one place.
+                unreadNotifications = state.unreadNotifications,
             )
 
             MohallaTab.EVENTS -> EventsRoute(
@@ -353,6 +399,7 @@ private fun HomeRoute(
     container: AppContainer,
     navController: NavHostController,
     onOpenPost: (String) -> Unit,
+    unreadNotifications: Int,
 ) {
     val feed: FeedViewModel = viewModel(
         factory = FeedViewModel.Factory(
@@ -381,10 +428,12 @@ private fun HomeRoute(
         onShare = { postId -> sharePost(context, postId) },
         // The announcement detail is UX-HOME-006 and the notification centre is
         // UX-HOME-007; both arrive with group 12.
+        // UX-HOME-006, the announcement detail, is not built. The bell is.
         onOpenAnnouncement = {},
         onFindPeople = { navController.navigate(Routes.SEARCH) },
         onSearch = { navController.navigate(Routes.SEARCH) },
-        onOpenNotifications = {},
+        onOpenNotifications = { navController.navigate(Routes.NOTIFICATIONS) },
+        unreadNotifications = unreadNotifications,
     )
 }
 
@@ -491,6 +540,87 @@ private fun PostDetailRoute(
         onReport = {},
         onLoadMoreComments = vm::loadMoreComments,
         isUrdu = container.localeStore.stored()?.isRtl == true,
+    )
+}
+
+/**
+ * UX-HOME-007 — the notification centre.
+ *
+ * THE DESTINATION MAPPING LIVES HERE and nowhere else. The feature returns a
+ * [NotificationDestination] rather than a route string, so this `when` is
+ * exhaustive: a destination added to that sealed type is a compile error in the
+ * one file that knows what routes exist, instead of a string that silently
+ * matches nothing.
+ *
+ * LEAVING MARKS WHAT WAS SEEN. `DisposableEffect` rather than a back callback,
+ * because there are three ways off this screen — the header, the system back
+ * gesture, and tapping a row — and only disposal catches all three.
+ */
+@Composable
+private fun NotificationsRoute(
+    container: AppContainer,
+    navController: NavHostController,
+    onBack: () -> Unit,
+) {
+    val vm: NotificationsViewModel = viewModel(
+        factory = NotificationsViewModel.Factory(
+            notifications = container.notificationRepository,
+            locale = { container.localeStore.stored()?.tag ?: "en" },
+            profiles = container.publicProfile,
+        ),
+    )
+    val state by vm.state.collectAsState()
+
+    DisposableEffect(Unit) {
+        onDispose { vm.onLeave() }
+    }
+
+    NotificationsScreen(
+        state = state,
+        sections = vm.sections(),
+        onBack = onBack,
+        onOpen = { notification ->
+            when (val destination = vm.open(notification)) {
+                is NotificationDestination.Post ->
+                    navController.navigate(Routes.post(destination.postId))
+
+                is NotificationDestination.Event ->
+                    navController.navigate(Routes.event(destination.eventId))
+
+                is NotificationDestination.Conversation ->
+                    navController.navigate(Routes.conversation(destination.conversationId))
+
+                is NotificationDestination.Profile ->
+                    navController.navigate(Routes.profile(destination.userId))
+
+                // The row is not clickable in this case, so this is
+                // unreachable — listed so that adding a destination fails to
+                // compile here rather than falling through to nothing.
+                NotificationDestination.None -> Unit
+            }
+        },
+        onRetry = vm::refresh,
+        onLoadMore = vm::loadMore,
+        onFindPeople = { navController.navigate(Routes.SEARCH) },
+    )
+}
+
+/** UX-SET-003 — push preferences. */
+@Composable
+private fun NotificationPreferencesRoute(
+    container: AppContainer,
+    onBack: () -> Unit,
+) {
+    val vm: NotificationPreferencesViewModel = viewModel(
+        factory = NotificationPreferencesViewModel.Factory(container.notificationRepository),
+    )
+    val state by vm.state.collectAsState()
+
+    NotificationPreferencesScreen(
+        state = state,
+        onBack = onBack,
+        onToggle = vm::toggle,
+        onRetry = vm::load,
     )
 }
 

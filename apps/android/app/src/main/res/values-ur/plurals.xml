@@ -19,4 +19,18 @@
         <item quantity="one">%1$d مزید شامل ھو سکتی ھے</item>
         <item quantity="other">%1$d مزید شامل ھو سکتی ھیں</item>
     </plurals>
+    <plurals name="notifications_minutes_ago">
+        <item quantity="one">%1$d منٹ پہلے</item>
+        <item quantity="other">%1$d منٹ پہلے</item>
+    </plurals>
+
+    <plurals name="notifications_hours_ago">
+        <item quantity="one">%1$d گھنٹہ پہلے</item>
+        <item quantity="other">%1$d گھنٹے پہلے</item>
+    </plurals>
+
+    <plurals name="notifications_days_ago">
+        <item quantity="one">%1$d دن پہلے</item>
+        <item quantity="other">%1$d دن پہلے</item>
+    </plurals>
 </resources>

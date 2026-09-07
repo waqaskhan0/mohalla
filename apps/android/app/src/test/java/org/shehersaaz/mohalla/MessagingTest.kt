@@ -20,7 +20,7 @@ import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.network.ApiResult
 import org.shehersaaz.mohalla.core.network.ConversationPreview
 import org.shehersaaz.mohalla.core.network.ConversationResponse
-import org.shehersaaz.mohalla.core.network.MessageCursorResponse
+import org.shehersaaz.mohalla.core.network.CursorCreatedAtResponse
 import org.shehersaaz.mohalla.core.network.MessageResponse
 import org.shehersaaz.mohalla.core.network.PublicProfileResponse
 import org.shehersaaz.mohalla.core.network.UnreadCountsResponse
@@ -947,17 +947,17 @@ class MessagingTest {
     }
 
     @Test
-    fun `THE MESSAGE CURSOR IS ITS OWN TYPE, BECAUSE THE WIRE NAMES DIFFER`() {
-        // Three keyset routes, three spellings: the feed and the comment thread
-        // return `{createdAt, id}`, the events list `{cursorStartsAt,
-        // cursorId}`, and this one `{cursorCreatedAt, cursorId}`. Borrowing a
-        // neighbouring type looks harmless and is not — the field simply never
-        // deserialises, and the first read PAST the newest thirty messages
-        // fails, on long threads only.
+    fun `THE HISTORY CURSOR IS NAMED FOR ITS SPELLING, BECAUSE THE ROUTES DIFFER`() {
+        // Keyset routes spell one idea three ways: the feed and the comment
+        // thread return `{createdAt, id}`, the events list `{cursorStartsAt,
+        // cursorId}`, and message history `{cursorCreatedAt, cursorId}`.
+        // Borrowing a neighbouring type looks harmless and is not — the field
+        // simply never deserialises, and the first read PAST the newest thirty
+        // messages fails, on long threads only.
         assertExactFields(
-            MessageCursorResponse::class.java,
+            CursorCreatedAtResponse::class.java,
             setOf("cursorCreatedAt", "cursorId"),
-            "the message-history keyset cursor, spelled as the server spells it",
+            "the keyset cursor as the server spells it on this route",
         )
     }
 }

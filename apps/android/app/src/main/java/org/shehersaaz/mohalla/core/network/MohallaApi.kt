@@ -502,6 +502,87 @@ interface MohallaApi {
 
     @POST("media/{id}/complete")
     suspend fun completeUpload(@Path("id") mediaId: String): Response<MediaResponse>
+
+    // ------------------------------------------------------------- notifications
+    //
+    // THE CENTRE ALWAYS HAS EVERYTHING, and that is the point of the module
+    // rather than a detail of it. NOTIF-FR-001's acceptance criterion is that a
+    // user who DENIED the push permission still finds the notification here;
+    // NOTIF-FR-007's is that disabling a category stops the push and leaves the
+    // entry. So nothing on this route filters by preference or by whether a
+    // push was actually delivered - a declined permission or a disabled switch
+    // costs the buzz, never the record.
+    //
+    // TEXT IS RENDERED BY THE SERVER AT READ TIME, in the language this request
+    // names. LOCALE-FR-002 requires switching language to update "the entire
+    // interface without reinstall", and a centre of pre-rendered Urdu would
+    // still be Urdu after somebody switched to English. That is why `locale`
+    // rides every request instead of being read from the stored preference: the
+    // client knows what it is displaying RIGHT NOW, and the server's copy of the
+    // preference may be one sync behind.
+    //
+    // Which means the client never assembles a notification sentence, and there
+    // are no notification strings in `strings.xml`. Every row's text arrives
+    // ready to display.
+
+    /**
+     * The notification centre (NOTIF-FR-002).
+     *
+     * Newest first, keyset-paginated. Notifications whose target was deleted are
+     * already ABSENT - the requirement's acceptance criterion is exactly that,
+     * and the server removes them "rather than left to navigate nowhere", so the
+     * client needs no dead-link handling and must not invent any.
+     */
+    @GET("notifications")
+    suspend fun notifications(
+        @Query("limit") limit: Int? = null,
+        @Query("cursorCreatedAt") cursorCreatedAt: String? = null,
+        @Query("cursorId") cursorId: String? = null,
+        @Query("locale") locale: String? = null,
+    ): Response<NotificationListResponse>
+
+    /** One number, read on nearly every screen (NOTIF-FR-002). */
+    @GET("notifications/unread-count")
+    suspend fun notificationUnreadCount(): Response<UnreadNotificationsResponse>
+
+    /**
+     * Mark some read.
+     *
+     * Scoped to the caller's own notifications in the server's WHERE clause, so
+     * passing somebody else's id changes nothing rather than marking their mail
+     * read. At most 200 ids.
+     */
+    @POST("notifications/read")
+    suspend fun markNotificationsRead(
+        @Body body: MarkNotificationsReadBody,
+    ): Response<MarkedResponse>
+
+    @POST("notifications/read-all")
+    suspend fun markAllNotificationsRead(): Response<MarkedResponse>
+
+    /**
+     * The seven switches (NOTIF-FR-007 - SET-FR-007).
+     *
+     * ALL SEVEN ARE ALWAYS RETURNED, with ENABLED as the default for any the
+     * user has never touched - so the settings screen shows the truth rather
+     * than an empty map that would read as everything being off.
+     */
+    @GET("notifications/preferences")
+    suspend fun notificationPreferences(): Response<NotificationPreferencesResponse>
+
+    /**
+     * Enable or disable one push category (NOTIF-FR-007).
+     *
+     * GATES PUSH ONLY. "The in-app centre always records everything, so
+     * disabling push never loses information" - which is the acceptance
+     * criterion verbatim, and the reason this screen's copy says so out loud
+     * rather than leaving the reader to wonder what a switch turns off.
+     */
+    @PUT("notifications/preferences/{key}")
+    suspend fun setNotificationPreference(
+        @Path("key") key: String,
+        @Body body: PushPreferenceBody,
+    ): Response<Unit>
 }
 
 // ============================================================ request bodies
@@ -1063,20 +1144,23 @@ data class MessageResponse(
 )
 
 /**
- * A message-history cursor.
+ * A `{cursorCreatedAt, cursorId}` keyset cursor.
  *
- * ITS OWN TYPE, AND NOT [EventCursorResponse] OR [FeedCursorResponse], because
- * THE THREE ROUTES SPELL THE SAME IDEA THREE DIFFERENT WAYS ON THE WIRE. The
- * feed and the comment thread return `{createdAt, id}`; the events list returns
- * `{cursorStartsAt, cursorId}`; this route returns `{cursorCreatedAt,
- * cursorId}`. Reusing a neighbouring type here looks harmless and is not: the
- * field simply never deserialises, and a keyset half that is absent rather than
- * wrong means the FIRST attempt to read a conversation past its newest thirty
- * messages fails - on long threads only, which is exactly where the reader
- * needs it.
+ * NAMED FOR HOW THE SERVER SPELLS IT, NOT FOR THE ROUTE THAT RETURNS IT, because
+ * THE KEYSET ROUTES SPELL ONE IDEA THREE DIFFERENT WAYS ON THE WIRE. The feed
+ * and the comment thread return `{createdAt, id}` ([FeedCursorResponse]); the
+ * events list returns `{cursorStartsAt, cursorId}` ([EventCursorResponse]); and
+ * message history and the notification centre both return this. Naming the type
+ * after one of its two routes would invite the next route to borrow whichever
+ * name looked closest rather than the one that matches.
+ *
+ * Borrowing the wrong one is not a compile error and not a visible one either:
+ * the field simply never deserialises, so the FIRST read past the first page
+ * fails — on long threads and busy accounts only, which is exactly where paging
+ * matters.
  */
 @Serializable
-data class MessageCursorResponse(
+data class CursorCreatedAtResponse(
     val cursorCreatedAt: String,
     val cursorId: String,
 )
@@ -1085,7 +1169,7 @@ data class MessageCursorResponse(
 data class MessagesResponse(
     val messages: List<MessageResponse> = emptyList(),
     /** `null` means the end of the thread. NOT the same as an empty page. */
-    val nextCursor: MessageCursorResponse? = null,
+    val nextCursor: CursorCreatedAtResponse? = null,
 )
 
 @Serializable
@@ -1106,6 +1190,73 @@ data class SendMessageBody(
     val body: String? = null,
     val mediaId: String? = null,
 )
+
+// ------------------------------------------------------------- notifications
+
+/**
+ * One notification, as the centre renders it.
+ *
+ * `text` IS ALREADY A SENTENCE, rendered by the server in the language the
+ * request named - "Sana Bashir commented on your post". The client does not
+ * assemble it, does not resolve the actor's NAME for it, and has no template of
+ * its own; a client-side template would be a second copy of thirteen strings
+ * that would drift from the server's the first time one was reworded.
+ *
+ * WHAT IS NOT HERE IS AS DELIBERATE. There is no `pushed` flag and no
+ * `deliveredAt`: NOTIF-FR-001 and NOTIF-FR-007 both turn on the centre being
+ * identical whether or not a buzz happened, and a field saying which would
+ * invite a client to draw a distinction the requirements exist to erase.
+ */
+@Serializable
+data class NotificationResponse(
+    val id: String,
+    /** One of eight (NOTIF-FR-003). Unknown values are tolerated - see the model. */
+    val category: String,
+    /** Null for an event change and for an announcement: nobody acted on the reader. */
+    val actorId: String? = null,
+    val targetType: String,
+    val targetId: String? = null,
+    /** Rendered server-side, in the requested language. */
+    val text: String,
+    /** NOTIF-FR-003 - how many likes one summary row stands for. 1 when not batched. */
+    val batchCount: Int = 1,
+    val readAt: String? = null,
+    val createdAt: String,
+)
+
+@Serializable
+data class NotificationListResponse(
+    val notifications: List<NotificationResponse> = emptyList(),
+    /** `null` means the end. NOT the same as an empty page. */
+    val nextCursor: CursorCreatedAtResponse? = null,
+)
+
+@Serializable
+data class UnreadNotificationsResponse(val unread: Int = 0)
+
+@Serializable
+data class MarkNotificationsReadBody(val ids: List<String>)
+
+@Serializable
+data class MarkedResponse(val marked: Int = 0)
+
+/**
+ * The seven switches, keyed by category.
+ *
+ * A MAP RATHER THAN SEVEN FIELDS. The server's own type is
+ * `Record<PreferenceKey, boolean>` and the client enumerates the keys it knows
+ * about, so a switch added server-side arrives without a client change and one
+ * removed does not leave a dangling field. The screen renders the seven it has
+ * copy for and ignores the rest, because a toggle with no label is worse than a
+ * toggle that is not shown.
+ */
+@Serializable
+data class NotificationPreferencesResponse(
+    val preferences: Map<String, Boolean> = emptyMap(),
+)
+
+@Serializable
+data class PushPreferenceBody(val pushEnabled: Boolean)
 
 @Serializable
 data class RestoreResponse(

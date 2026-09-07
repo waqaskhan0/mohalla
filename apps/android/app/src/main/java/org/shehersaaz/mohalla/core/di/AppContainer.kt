@@ -33,6 +33,7 @@ import org.shehersaaz.mohalla.feature.search.RecentSearches
 import org.shehersaaz.mohalla.feature.search.SearchRepository
 import org.shehersaaz.mohalla.feature.home.FeedRepository
 import org.shehersaaz.mohalla.feature.messages.MessagingRepository
+import org.shehersaaz.mohalla.feature.notifications.NotificationRepository
 import org.shehersaaz.mohalla.feature.setup.SetupRepository
 import org.shehersaaz.mohalla.feature.startup.SessionRepository
 import retrofit2.Retrofit
@@ -133,6 +134,8 @@ class AppContainer private constructor(
     val searchRepository: SearchRepository = SearchRepository(api)
 
     val messagingRepository: MessagingRepository = MessagingRepository(api)
+
+    val notificationRepository: NotificationRepository = NotificationRepository(api)
 
     /**
      * One person's public profile, as a function.
