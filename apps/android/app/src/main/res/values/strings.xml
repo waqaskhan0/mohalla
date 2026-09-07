@@ -356,4 +356,36 @@
     <string name="search_unavailable">Search is temporarily unavailable, so nothing could be looked up. This does not mean there is nothing to find.</string>
     <string name="search_offline">You are offline, so the search could not run. This does not mean there is nothing to find.</string>
     <string name="search_query_too_short">Type a little more to search.</string>
+    <!-- Messaging (UX-MSG-001..003) -->
+    <string name="inbox_tab_messages">Messages</string>
+    <string name="inbox_tab_requests">Requests</string>
+    <string name="inbox_load_more">Show more conversations</string>
+    <string name="inbox_preview_photo">Sent a photo</string>
+    <string name="inbox_preview_empty">No messages yet</string>
+    <string name="inbox_preview_own">You: %1$s</string>
+    <string name="inbox_empty_title">No messages yet</string>
+    <string name="inbox_empty_body">You can message anyone here without sharing your phone number.</string>
+    <string name="requests_empty_title">No message requests</string>
+    <string name="requests_empty_body">When someone you don\'t follow messages you, it will wait here.</string>
+
+    <string name="request_accept">Accept</string>
+    <string name="request_decline">Decline</string>
+    <string name="request_explainer">This person doesn\'t follow you. Accept to reply, or decline — they won\'t be told either way.</string>
+
+    <string name="conversation_placeholder">Write a message</string>
+    <string name="conversation_load_older">Show earlier messages</string>
+    <string name="conversation_read_only">This conversation can no longer receive messages. You can still read it.</string>
+    <string name="conversation_read_only_tag">Read only</string>
+    <string name="conversation_empty_title">Say hello</string>
+    <string name="conversation_empty_body">Your phone number is never shared here.</string>
+    <string name="conversation_view_profile">View profile</string>
+
+    <string name="message_sending">Sending</string>
+    <string name="message_sent">Sent</string>
+    <string name="message_read">Read</string>
+    <string name="message_retry">Not sent. Tap to try again</string>
+    <string name="message_image">Image in this conversation</string>
+    <string name="message_send_unavailable">This message could not be sent.</string>
+    <string name="message_send_retryable">Your message wasn\'t sent. Tap it to try again.</string>
+    <string name="message_request_limit">You can start up to %1$d new conversations a day.</string>
 </resources>

@@ -15,7 +15,9 @@ import org.shehersaaz.mohalla.core.network.CorrelationInterceptor
 import org.shehersaaz.mohalla.core.network.LanguageInterceptor
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.MediaType.Companion.toMediaType
+import org.shehersaaz.mohalla.core.network.ApiResult
 import org.shehersaaz.mohalla.core.network.ConnectivityObserver
+import org.shehersaaz.mohalla.core.network.PublicProfileResponse
 import org.shehersaaz.mohalla.core.network.MohallaApi
 import org.shehersaaz.mohalla.core.network.PostCache
 import org.shehersaaz.mohalla.core.network.MohallaJson
@@ -30,6 +32,7 @@ import org.shehersaaz.mohalla.feature.post.PostDetailRepository
 import org.shehersaaz.mohalla.feature.search.RecentSearches
 import org.shehersaaz.mohalla.feature.search.SearchRepository
 import org.shehersaaz.mohalla.feature.home.FeedRepository
+import org.shehersaaz.mohalla.feature.messages.MessagingRepository
 import org.shehersaaz.mohalla.feature.setup.SetupRepository
 import org.shehersaaz.mohalla.feature.startup.SessionRepository
 import retrofit2.Retrofit
@@ -128,6 +131,20 @@ class AppContainer private constructor(
     val postDetailRepository: PostDetailRepository = PostDetailRepository(api)
 
     val searchRepository: SearchRepository = SearchRepository(api)
+
+    val messagingRepository: MessagingRepository = MessagingRepository(api)
+
+    /**
+     * One person's public profile, as a function.
+     *
+     * Passed to view models rather than a whole repository because that is all
+     * they need: the inbox resolves the other participant of each row, the
+     * conversation resolves its header, and the event detail screen resolves a
+     * creator. A shared function keeps one call site for the neutral 404 that
+     * covers a deleted, banned or blocking account (BR-025).
+     */
+    val publicProfile: suspend (String) -> ApiResult<PublicProfileResponse> =
+        { userId -> eventRepository.creator(userId) }
 
     /**
      * The last ten queries, on THIS DEVICE ONLY (SEARCH-FR-005 - PRIV-011).

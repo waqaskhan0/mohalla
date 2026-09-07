@@ -23,7 +23,10 @@ import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import org.shehersaaz.mohalla.core.di.AppContainer
 import org.shehersaaz.mohalla.core.media.rememberImagePickerLauncher
+import org.shehersaaz.mohalla.core.network.ApiFailure
+import org.shehersaaz.mohalla.core.network.ApiResult
 import org.shehersaaz.mohalla.core.ui.ContentUnavailable
+import org.shehersaaz.mohalla.core.ui.LoadingState
 import org.shehersaaz.mohalla.core.ui.MohallaDateTimePicker
 import org.shehersaaz.mohalla.feature.auth.ForgotPasswordScreen
 import org.shehersaaz.mohalla.feature.auth.LoginScreen
@@ -52,6 +55,11 @@ import org.shehersaaz.mohalla.feature.events.EventsViewModel
 import org.shehersaaz.mohalla.feature.events.JoinOutcome
 import org.shehersaaz.mohalla.feature.home.FeedViewModel
 import org.shehersaaz.mohalla.feature.home.HomeScreen
+import org.shehersaaz.mohalla.feature.messages.ConversationScreen
+import org.shehersaaz.mohalla.feature.messages.ConversationViewModel
+import org.shehersaaz.mohalla.feature.messages.InboxScreen
+import org.shehersaaz.mohalla.feature.messages.InboxViewModel
+import org.shehersaaz.mohalla.feature.messages.RequestState
 import org.shehersaaz.mohalla.feature.post.ImageViewerScreen
 import org.shehersaaz.mohalla.feature.post.PostDetailScreen
 import org.shehersaaz.mohalla.feature.post.PostDetailViewModel
@@ -210,13 +218,56 @@ fun MohallaNavHost(
             )
         }
 
-        // Deep-linkable content (§42). The screens themselves arrive with their
-        // own groups; until then each route renders the neutral unavailable
-        // state rather than a stub that would claim the content is missing —
-        // UX-STATE-001 is the one state that is honest about "not available
-        // here", and it says nothing about why.
+        // UX-MSG-003. Deep-linkable (§42): reachable from the inbox and from a
+        // notification.
+        composable(Routes.CONVERSATION_PATTERN) { entry ->
+            val conversationId = entry.arguments?.getString("conversationId")
+
+            if (conversationId == null) {
+                ContentUnavailable()
+            } else {
+                ConversationRoute(
+                    container = container,
+                    conversationId = conversationId,
+                    onBack = { navController.popBackStack() },
+                    onOpenProfile = { navController.navigate(Routes.profile(it)) },
+                )
+            }
+        }
+
+        // MSG-FR-001 — opening a conversation from a PROFILE, where the caller
+        // has a user id and no conversation id. BR-024 resolves the one thread
+        // that exists for the pair, so this asks the server rather than
+        // inventing an id.
+        composable(Routes.CONVERSATION_WITH_PATTERN) { entry ->
+            val userId = entry.arguments?.getString("userId")
+
+            if (userId == null) {
+                ContentUnavailable()
+            } else {
+                OpenConversationRoute(
+                    container = container,
+                    userId = userId,
+                    onOpened = { conversationId ->
+                        navController.navigate(Routes.conversation(conversationId)) {
+                            // The resolving screen is not somewhere to come back
+                            // to: pressing Back from the conversation should
+                            // return to the profile, not to a spinner that would
+                            // immediately resolve forward again.
+                            popUpTo(Routes.CONVERSATION_WITH_PATTERN) { inclusive = true }
+                        }
+                    },
+                    onFailed = { navController.popBackStack() },
+                )
+            }
+        }
+
+        // Deep-linkable content (§42). The screen arrives with its own group;
+        // until then the route renders the neutral unavailable state rather
+        // than a stub that would claim the content is missing — UX-STATE-001 is
+        // the one state that is honest about "not available here", and it says
+        // nothing about why.
         composable(Routes.PROFILE_PATTERN) { ContentUnavailable() }
-        composable(Routes.CONVERSATION_PATTERN) { ContentUnavailable() }
     }
 }
 
@@ -266,12 +317,18 @@ private fun ShellRoute(
                 onCreateEvent = { navController.navigate(Routes.EVENT_CREATE) },
             )
 
+            MohallaTab.MESSAGES -> InboxRoute(
+                container = container,
+                onOpenConversation = { conversationId ->
+                    navController.navigate(Routes.conversation(conversationId))
+                },
+                onFindPeople = { navController.navigate(Routes.SEARCH) },
+            )
+
             // Not yet built. The shell renders and mirrors correctly with any
             // tab selected, which is what lets §36's both-directions check run
-            // on the chrome before these screens exist.
-            MohallaTab.MESSAGES,
-            MohallaTab.PROFILE,
-            -> ContentUnavailable()
+            // on the chrome before this screen exists.
+            MohallaTab.PROFILE -> ContentUnavailable()
 
             // Unreachable: the shell diverts Create before selection, and
             // `selectTab` refuses it. Listed so adding a tab fails to compile.
@@ -435,6 +492,122 @@ private fun PostDetailRoute(
         onLoadMoreComments = vm::loadMoreComments,
         isUrdu = container.localeStore.stored()?.isRtl == true,
     )
+}
+
+/**
+ * UX-MSG-001 · UX-MSG-002 — the inbox and the request list.
+ *
+ * The shell's Messages badge is fed from ACCEPTED conversations only. BR-027 and
+ * §14: requests "are counted separately inside the screen and never contribute
+ * to this badge — a stranger must not be able to make the user's navigation
+ * demand attention."
+ */
+@Composable
+private fun InboxRoute(
+    container: AppContainer,
+    onOpenConversation: (String) -> Unit,
+    onFindPeople: () -> Unit,
+) {
+    val vm: InboxViewModel = viewModel(
+        factory = InboxViewModel.Factory(
+            messaging = container.messagingRepository,
+            profiles = container.publicProfile,
+        ),
+    )
+    val state by vm.state.collectAsState()
+
+    InboxScreen(
+        state = state,
+        onSelectTab = vm::selectTab,
+        onOpenConversation = { onOpenConversation(it.conversationId) },
+        onAccept = vm::accept,
+        onDecline = vm::decline,
+        onRefresh = vm::refresh,
+        onLoadMore = vm::loadMore,
+        onFindPeople = onFindPeople,
+    )
+}
+
+/** UX-MSG-003 — one conversation. */
+@Composable
+private fun ConversationRoute(
+    container: AppContainer,
+    conversationId: String,
+    onBack: () -> Unit,
+    onOpenProfile: (String) -> Unit,
+) {
+    val vm: ConversationViewModel = viewModel(
+        factory = ConversationViewModel.Factory(
+            messaging = container.messagingRepository,
+            conversationId = conversationId,
+            viewerId = { container.sessionRepository.cachedUserId() },
+            profiles = container.publicProfile,
+            // Arriving by deep link, none of these is known yet. The history
+            // call is what fills them in, and until then the header carries no
+            // name and the thread renders as an ordinary conversation — which
+            // is the permissive direction, and the safe one: treating an
+            // unknown thread as a request would hide a conversation the reader
+            // is actually having.
+            otherUserId = null,
+            requestState = RequestState.NONE,
+            readOnly = false,
+        ),
+    )
+    val state by vm.state.collectAsState()
+
+    ConversationScreen(
+        state = state,
+        onBack = onBack,
+        onRetryLoad = vm::loadHistory,
+        onDraftChanged = vm::onDraftChanged,
+        onSend = vm::send,
+        onRetryMessage = vm::retry,
+        onLoadOlder = vm::loadOlder,
+        onAccept = vm::accept,
+        onDecline = { vm.decline(onDeclined = onBack) },
+        onOpenProfile = onOpenProfile,
+        // The report sheet is UX-SAFE-001, group 17.
+        onReport = {},
+        onStartPolling = vm::startPolling,
+        onStopPolling = vm::stopPolling,
+        isUrdu = container.localeStore.stored()?.isRtl == true,
+    )
+}
+
+/**
+ * MSG-FR-001 — resolve the conversation for a pair, then go to it.
+ *
+ * BR-024 says one conversation exists per pair FOREVER, so `POST /conversations`
+ * RESOLVES rather than creates and calling it twice returns the same thread.
+ * This screen exists only for the moment that call is in flight; it is popped
+ * from the back stack as soon as it succeeds, so Back from the conversation
+ * returns to the profile rather than to a spinner that resolves forward again.
+ */
+@Composable
+private fun OpenConversationRoute(
+    container: AppContainer,
+    userId: String,
+    onOpened: (String) -> Unit,
+    onFailed: () -> Unit,
+) {
+    var failure by remember { mutableStateOf<ApiFailure?>(null) }
+
+    LaunchedEffect(userId) {
+        when (val result = container.messagingRepository.open(userId)) {
+            is ApiResult.Ok -> onOpened(result.value.conversationId)
+            // Blocked either way, self, banned, deleted, or no such person —
+            // one neutral answer (BR-025), and the screen goes back rather than
+            // explaining which.
+            is ApiResult.Err -> failure = result.failure
+        }
+    }
+
+    if (failure == null) {
+        LoadingState()
+    } else {
+        ContentUnavailable()
+        LaunchedEffect(failure) { onFailed() }
+    }
 }
 
 /** UX-SEARCH-001 · UX-SEARCH-002 · UX-SEARCH-003 — one screen, three surfaces. */

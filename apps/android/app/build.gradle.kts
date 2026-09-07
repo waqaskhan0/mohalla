@@ -130,6 +130,12 @@ dependencies {
     // (04-mobile-architecture.md §2, §4). Nothing here is a preference.
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    // `LocalLifecycleOwner`, which the conversation screen ties its poll to.
+    // DECLARED EXPLICITLY even though navigation-compose happens to bring it in
+    // transitively: an implicit compile dependency is one version bump away
+    // from disappearing, and the compose-ui copy of that composition local is
+    // deprecated in favour of this one.
+    implementation(libs.androidx.lifecycle.runtime.compose)
     // SEC-004: session tokens in EncryptedSharedPreferences backed by Keystore.
     implementation(libs.androidx.security.crypto)
     implementation(libs.kotlinx.serialization.json)

@@ -166,4 +166,16 @@ object Routes {
     const val EVENT_PATTERN = "event/{eventId}"
     const val PROFILE_PATTERN = "user/{handle}"
     const val CONVERSATION_PATTERN = "conversation/{conversationId}"
+
+    /**
+     * A conversation opened from a PROFILE rather than from the inbox.
+     *
+     * BR-024 resolves one thread per pair forever, so this route asks the
+     * server which conversation that is before navigating - the caller has a
+     * user id and no conversation id, and inventing one on the device would
+     * mean two threads for one pair the first time both people wrote at once.
+     */
+    fun conversationWith(userId: String) = "conversation/with/$userId"
+
+    const val CONVERSATION_WITH_PATTERN = "conversation/with/{userId}"
 }

@@ -241,6 +241,123 @@ interface MohallaApi {
     @DELETE("comments/{id}")
     suspend fun deleteComment(@Path("id") commentId: String): Response<Unit>
 
+    // ----------------------------------------------------------------- messaging
+    //
+    // REST IS THE SOURCE OF TRUTH AND REALTIME IS AN ACCELERATOR, which the
+    // API states plainly: every route here works with the socket switched off,
+    // so a missed event costs latency and never data.
+    //
+    // THREE DIFFERENT PAGINATION SHAPES APPEAR IN THIS ONE MODULE. The inbox
+    // pages by a `before` TIMESTAMP; history pages by a keyset pair, NEWEST
+    // first, because a conversation is read from the bottom; `since` takes a
+    // timestamp and returns OLDEST first, because the client is appending to
+    // what it already holds. Using the wrong one pages away from the data
+    // rather than through it.
+
+    /**
+     * Open the conversation with somebody (MSG-FR-001).
+     *
+     * 200 RATHER THAN 201, and that is BR-024: one conversation exists per pair
+     * FOREVER, so this RESOLVES a thread rather than creating one. Calling it
+     * twice returns the same conversation, which is the acceptance criterion.
+     * Opening notifies nobody and raises no request - an empty thread appears
+     * in neither inbox until something is actually sent.
+     */
+    @POST("conversations")
+    suspend fun openConversation(@Body body: OpenConversationBody): Response<ConversationResponse>
+
+    /**
+     * The inbox, or the request list (MSG-FR-003 - BR-027).
+     *
+     * `section=REQUESTS` returns Message Requests, which are "a separate
+     * section with its own count" and are NEVER mixed into the main list.
+     * Conversations hidden by a block are absent while it stands and return
+     * intact on unblock (MSG-FR-006).
+     */
+    @GET("conversations")
+    suspend fun inbox(
+        @Query("section") section: String? = null,
+        @Query("limit") limit: Int? = null,
+        @Query("before") before: String? = null,
+    ): Response<InboxResponse>
+
+    /**
+     * Two numbers, because the inbox has two sections.
+     *
+     * Counts CONVERSATIONS with something unread rather than unread messages -
+     * "2" on that screen means two threads, not two hundred messages across
+     * two threads.
+     */
+    @GET("conversations/unread")
+    suspend fun unreadCounts(): Response<UnreadCountsResponse>
+
+    /** NEWEST first, keyset-paginated: a conversation is read from the bottom. */
+    @GET("conversations/{id}/messages")
+    suspend fun messages(
+        @Path("id") conversationId: String,
+        @Query("limit") limit: Int? = null,
+        @Query("cursorCreatedAt") cursorCreatedAt: String? = null,
+        @Query("cursorId") cursorId: String? = null,
+    ): Response<MessagesResponse>
+
+    /**
+     * Everything after a server timestamp, OLDEST first (MSG-FR-004 E1).
+     *
+     * BOTH THE RECONNECT PATH AND THE POLLING FALLBACK. The API names it as
+     * such: it returns the same messages carrying the same client ids, so a
+     * client that switches transports cannot duplicate anything.
+     */
+    @GET("conversations/{id}/messages/since")
+    suspend fun messagesSince(
+        @Path("id") conversationId: String,
+        @Query("since") since: String,
+        @Query("limit") limit: Int? = null,
+    ): Response<MessagesSinceResponse>
+
+    /**
+     * Send (MSG-FR-002/004).
+     *
+     * `clientMessageId` IS THE WHOLE IDEMPOTENCY MECHANISM. A repeat of the
+     * same id returns the ORIGINAL message with 200 instead of creating a
+     * second with 201 - so a retry after a timeout, a duplicate delivery, and a
+     * switch from socket to polling all resolve to exactly one message
+     * (EDGE-020, EDGE-021). MSG-FR-002's acceptance criterion is precisely
+     * that: "a message that fails and is retried twice... exactly one message
+     * is delivered."
+     */
+    @POST("conversations/{id}/messages")
+    suspend fun sendMessage(
+        @Path("id") conversationId: String,
+        @Body body: SendMessageBody,
+    ): Response<MessageResponse>
+
+    /**
+     * Mark read (MSG-FR-009).
+     *
+     * SAFE TO CALL ON A MESSAGE REQUEST. The read marker moves, and no receipt
+     * is derived from it while the thread is a request - "reading a request
+     * does not signal anything to a stranger".
+     */
+    @POST("conversations/{id}/read")
+    suspend fun markRead(@Path("id") conversationId: String): Response<Unit>
+
+    /** MSG-FR-005 - the thread moves to the main inbox. Idempotent. */
+    @POST("conversations/{id}/accept")
+    suspend fun acceptRequest(@Path("id") conversationId: String): Response<Unit>
+
+    /**
+     * Decline (MSG-FR-005 A1 - BR-028).
+     *
+     * THE SENDER IS TOLD NOTHING. No event, no notification, no observable
+     * change: "a declined message request produces no signal to the sender,
+     * because informing them invites retaliation." Later messages from that
+     * sender go into the same suppressed thread rather than raising a new
+     * request, so they stay available if the recipient reports or later
+     * accepts.
+     */
+    @POST("conversations/{id}/decline")
+    suspend fun declineRequest(@Path("id") conversationId: String): Response<Unit>
+
     // -------------------------------------------------------------------- search
     //
     // OFFSET PAGINATION, NOT KEYSET, AND THAT IS CORRECT HERE. Every other list
@@ -863,6 +980,131 @@ data class PostSearchResponse(
 data class EventSearchResponse(
     val results: List<EventResponse> = emptyList(),
     val nextOffset: Int? = null,
+)
+
+@Serializable
+data class OpenConversationBody(
+    val userId: String,
+)
+
+/**
+ * One conversation, as the inbox lists it (MSG-FR-003).
+ *
+ * `requestState` is `NONE`, `PENDING`, `ACCEPTED` or `DECLINED`. The inbox and
+ * the request list are separate QUERIES rather than one list filtered on the
+ * device - BR-027 makes them separate sections with separate counts, and a
+ * client-side filter would mean a request briefly appearing in the main inbox
+ * while a page loaded.
+ *
+ * `readOnly` is EDGE-022: the other account is banned or deleted, so the thread
+ * is readable and MARKED rather than gone. History is retained either way.
+ */
+@Serializable
+data class ConversationResponse(
+    val conversationId: String,
+    val otherUserId: String,
+    val requestState: String? = null,
+    val unreadCount: Int = 0,
+    val lastMessageAt: String? = null,
+    val preview: ConversationPreview? = null,
+    val readOnly: Boolean = false,
+    val createdAt: String? = null,
+)
+
+/**
+ * The last message, as a row shows it.
+ *
+ * `body` is null and `hasMedia` true for an image-only message, so the row can
+ * say "sent a photo" without the image itself - which it could not fetch here
+ * anyway, because message media is served only through the conversation route.
+ */
+@Serializable
+data class ConversationPreview(
+    val body: String? = null,
+    val hasMedia: Boolean = false,
+    val senderId: String? = null,
+)
+
+@Serializable
+data class InboxResponse(
+    val conversations: List<ConversationResponse> = emptyList(),
+    /** A TIMESTAMP, not a cursor pair. `null` means the end. */
+    val nextBefore: String? = null,
+)
+
+@Serializable
+data class UnreadCountsResponse(
+    val conversations: Int = 0,
+    /** BR-027 - counted separately, and never contributing to the tab badge. */
+    val requests: Int = 0,
+)
+
+/**
+ * One message (MSG-FR-002/009).
+ *
+ * `clientMessageId` COMES BACK, which is what lets an optimistic bubble be
+ * reconciled with the server's copy rather than rendered twice.
+ *
+ * `readAt` is present only on the viewer's OWN messages, and never at all in a
+ * Message Request - the server withholds it, so there is nothing here for a
+ * client to accidentally turn into a receipt a stranger could read.
+ */
+@Serializable
+data class MessageResponse(
+    val id: String,
+    val clientMessageId: String? = null,
+    val conversationId: String,
+    val senderId: String,
+    val body: String? = null,
+    /** Fetched from `conversations/media/{id}`, NEVER from `media/{id}`. */
+    val mediaId: String? = null,
+    val createdAt: String,
+    val readAt: String? = null,
+)
+
+/**
+ * A message-history cursor.
+ *
+ * ITS OWN TYPE, AND NOT [EventCursorResponse] OR [FeedCursorResponse], because
+ * THE THREE ROUTES SPELL THE SAME IDEA THREE DIFFERENT WAYS ON THE WIRE. The
+ * feed and the comment thread return `{createdAt, id}`; the events list returns
+ * `{cursorStartsAt, cursorId}`; this route returns `{cursorCreatedAt,
+ * cursorId}`. Reusing a neighbouring type here looks harmless and is not: the
+ * field simply never deserialises, and a keyset half that is absent rather than
+ * wrong means the FIRST attempt to read a conversation past its newest thirty
+ * messages fails - on long threads only, which is exactly where the reader
+ * needs it.
+ */
+@Serializable
+data class MessageCursorResponse(
+    val cursorCreatedAt: String,
+    val cursorId: String,
+)
+
+@Serializable
+data class MessagesResponse(
+    val messages: List<MessageResponse> = emptyList(),
+    /** `null` means the end of the thread. NOT the same as an empty page. */
+    val nextCursor: MessageCursorResponse? = null,
+)
+
+@Serializable
+data class MessagesSinceResponse(
+    val messages: List<MessageResponse> = emptyList(),
+)
+
+@Serializable
+data class SendMessageBody(
+    /**
+     * Generated ON THE DEVICE before sending (ADR-009).
+     *
+     * Required rather than optional-with-a-server-fallback: a server-generated
+     * id would be different on every retry, which is exactly the duplicate this
+     * field prevents.
+     */
+    val clientMessageId: String,
+    val body: String? = null,
+    val mediaId: String? = null,
 )
 
 @Serializable

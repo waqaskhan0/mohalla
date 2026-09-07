@@ -358,4 +358,36 @@
     <string name="search_unavailable">تلاش فی الحال دستیاب نھیں، اس لیے کچھ تلاش نھیں ھو سکا۔ اس کا مطلب یہ نھیں کہ کچھ موجود نھیں۔</string>
     <string name="search_offline">آپ آف لائن ھیں، اس لیے تلاش نھیں چل سکی۔ اس کا مطلب یہ نھیں کہ کچھ موجود نھیں۔</string>
     <string name="search_query_too_short">تلاش کے لیے تھوڑا مزید لکھیں۔</string>
+    <!-- Messaging (UX-MSG-001..003) -->
+    <string name="inbox_tab_messages">پیغامات</string>
+    <string name="inbox_tab_requests">درخواستیں</string>
+    <string name="inbox_load_more">مزید گفتگو دیکھیں</string>
+    <string name="inbox_preview_photo">تصویر بھیجی</string>
+    <string name="inbox_preview_empty">ابھی کوئی پیغام نھیں</string>
+    <string name="inbox_preview_own">آپ: %1$s</string>
+    <string name="inbox_empty_title">ابھی کوئی پیغام نھیں</string>
+    <string name="inbox_empty_body">آپ یھاں کسی کو بھی پیغام بھیج سکتے ھیں — اپنا فون نمبر دیئے بغیر۔</string>
+    <string name="requests_empty_title">کوئی درخواست نھیں</string>
+    <string name="requests_empty_body">جسے آپ فالو نھیں کرتے، اس کا پیغام یھاں منتزر رھے گا۔</string>
+
+    <string name="request_accept">قبول کریں</string>
+    <string name="request_decline">انکار کریں</string>
+    <string name="request_explainer">یہ شخص آپ کو فالو نھیں کرتا۔ جواب دینے کے لیے قبول کریں، یا انکار کر دیں — انھیں دونوں صورتوں میں کچھ معلوم نھیں ھو گا۔</string>
+
+    <string name="conversation_placeholder">پیغام لکھیں</string>
+    <string name="conversation_load_older">پھلے کے پیغام دیکھیں</string>
+    <string name="conversation_read_only">اس گفتگو میں اب پیغام نھیں بھیجے جا سکتے۔ آپ اسے پڑھ سکتے ھیں۔</string>
+    <string name="conversation_read_only_tag">صرف پڑھنے کے لیے</string>
+    <string name="conversation_empty_title">سلام کیجیے</string>
+    <string name="conversation_empty_body">آپ کا فون نمبر یھاں کبھی شیئر نھیں ھوتا۔</string>
+    <string name="conversation_view_profile">پروفائل دیکھیں</string>
+
+    <string name="message_sending">بھیجا جا رھا ھے</string>
+    <string name="message_sent">بھیج دیا</string>
+    <string name="message_read">پڑھ لیا</string>
+    <string name="message_retry">نھیں بھیجا جا سکا۔ دوبارہ کوشش کے لیے ٹیپ کریں</string>
+    <string name="message_image">اس گفتگو میں تصویر</string>
+    <string name="message_send_unavailable">یہ پیغام نھیں بھیجا جا سکا۔</string>
+    <string name="message_send_retryable">آپ کا پیغام نھیں گیا۔ دوبارہ کوشش کے لیے اس پر ٹیپ کریں۔</string>
+    <string name="message_request_limit">آپ روز زیادہ سے زیادہ %1$d نئی گفتگو شروع کر سکتے ھیں۔</string>
 </resources>

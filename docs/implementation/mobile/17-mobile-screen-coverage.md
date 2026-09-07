@@ -1,6 +1,6 @@
 # 17 — Mobile Screen Coverage
 
-**Stage 7 · Android** · 61 required screens · last updated at commit `727871b`+
+**Stage 7 · Android** · 61 required screens · last updated after group 12 (Messaging)
 
 > **This table is the answer to "is Stage 7 feature-complete?"** It is not, and
 > the count below says by how much. A screen is `DONE` only when it is built,
@@ -17,12 +17,12 @@ on a device**, because none is available (see `00-mobile-baseline.md` §6).
 
 | | Screens |
 |---|---|
-| ✅ Complete in both directions | **30** |
+| ✅ Complete in both directions | **34** |
 | ◐ Partial | **2** (UX-EVENT-002 · UX-CREATE-003, both API-limited) |
-| ✗ Not started | **29** |
+| ✗ Not started | **25** |
 | **Required total** | **61** |
 
-**Coverage: 49% complete.** Stage 7 is **NOT** feature-complete.
+**Coverage: 56% complete.** Stage 7 is **NOT** feature-complete.
 
 The four `UX-STATE-*` components left `◐` since group 01 are now `✅`: they are
 exercised by the feed, events, composer and detail screens across every failure
@@ -694,7 +694,132 @@ the tab **in view**, which is correct — the other two are cleared and fetched 
 opened. The test was corrected to assert that behaviour rather than the code
 being changed to match a mistaken expectation.
 
-## Group 12–13 · Profiles and graph
+## Group 12 · Messaging
+
+| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | Status |
+|---|---|---|---|---|---|---|---|---|---|---|
+| — | Message bubble (component) | §18 · MSG-FR-002/008 | — | ✅ | ✅ | ✅ | — | ✅ | — | ✅ |
+| UX-MSG-001 | Inbox | MSG-FR-003 · BR-024 | `GET /conversations` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-MSG-002 | Requests | MSG-FR-005 · BR-027 | `/conversations?section=REQUESTS` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-MSG-003 | Conversation | MSG-FR-002/004/006/008/009 · EDGE-020/021/022 | `/conversations/:id/messages` · `/messages/since` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-MSG-004 | Request review | MSG-FR-005 · BR-028 | `/conversations/:id/accept` · `/decline` | ✅ | ✅ | — | — | ✅ | ✅ | ✅ |
+
+UX-MSG-004 is a decision offered inside the conversation and the request row
+rather than a screen of its own: replying **is** accepting, so a reader who must
+first visit a separate screen to accept has already been asked to read the
+message before deciding whether to receive it.
+
+### What messaging decided, and why it is written down
+
+**Delivery is by polling, not by a socket, and that is a recorded choice.**
+MSG-FR-004 asks for delivery "within 3 seconds without manual refresh". The API
+is explicit that "REST is the source of truth; realtime is an accelerator… every
+route has to work with the socket switched off", and names
+`GET /conversations/:id/messages/since` as the polling fallback ADR-009
+sanctions; the SRS's own risk note says "polling is an acceptable fallback at
+this scale". So the conversation polls that route every **two** seconds — inside
+the requirement, with headroom for the request itself on 3G. A socket would add
+a dependency, an auth handshake, a reconnection and backoff policy and a
+lifecycle to get wrong, for a latency improvement below the threshold the
+requirement sets. It is listed as **GAP-M-008** rather than presented as
+finished.
+
+**The poll is bounded to the open, foregrounded conversation.** Tied to
+`ON_RESUME`/`ON_PAUSE` through a `DisposableEffect`, because composition survives
+the app going to the background and a poll that kept running there would spend
+data on a screen nobody is looking at. NFR-PERF-001 budgets for Pakistani mobile
+data; one small request every two seconds is not free, and a phone in a pocket
+now makes none.
+
+**The client message id is the identity of a message, and the server id is a
+field that arrives later.** A message the reader has just sent exists on the
+device before the server knows about it and needs a stable identity from that
+instant — for a list key, for a retry to find it, and for the server's eventual
+copy to be recognised as the *same* message. That inversion is what makes
+MSG-FR-002's criterion hold: minted once at compose time and reused on every
+attempt, so "a message that fails and is retried twice… exactly one message is
+delivered". The test asserts the ids **sent**, not the list rendered — asserting
+the list would pass on a client that sent three distinct messages and displayed
+only the last.
+
+**A failed message is marked, never removed.** Somebody who typed three
+sentences on a bus must not lose them to a tunnel, and the retry carries the body
+so they do not retype it.
+
+**Ownership is decided by the sender, and that was a defect first.** `isMine`
+was derived from the presence of a client id, which answers "did *this install*
+compose it" — a different question. The server echoes a client id to **both**
+participants, and a message the reader sent from another device carries none at
+all, so the derived answer was wrong in both directions: the reader's own message
+rendered on the wrong side of the screen, and a received message carrying a
+`readAt` rendered as theirs with a read receipt against it. It is now one
+comparison of sender to viewer, stored on the message, and a `readAt` arriving on
+a message the reader *received* is dropped rather than displayed — this device
+has no business reporting on the reader to the reader.
+
+**Requests are a separate query, never one list filtered.** BR-027 and
+MSG-FR-003 make them a separate section with its own count; filtering locally
+would show a request in the main inbox for as long as a page took to load, which
+on a slow connection is exactly long enough for the thing the requirement exists
+to prevent. The SRS calls this "the platform's principal defence against
+unsolicited contact" and notes it "matters most for women users".
+
+**The request count never reaches the bottom bar.** §14: requests "are counted
+separately inside the screen and never contribute to this badge — a stranger must
+not be able to make the user's navigation demand attention." Two counts, two
+fields, and the shell reads only the first.
+
+**Declining tells the sender nothing, and there is nothing in the decline path
+that could.** BR-028: "informing them invites retaliation." One 204 and no
+confirmation dialog — a dialog would imply a consequence that does not exist. The
+thread is suppressed rather than deleted, so later messages from that sender land
+in it instead of raising a new request, and stay available if the reader reports
+or changes their mind.
+
+**A block is refused with the same neutral 404 as everything else, and the client
+does not try to tell them apart.** MSG-FR-006 requires a send after a block to be
+"refused without disclosing the block"; the only reliable way not to disclose it
+is for the refusal to be indistinguishable. EDGE-022's read-only conversation is
+the one refusal that *does* explain itself, because it is about the conversation
+rather than the other person's account — the compose box closes and the thread is
+marked, where a neutral refusal would make a thread the reader can still scroll
+look like one that vanished.
+
+**Message images are fetched from `conversations/media/{id}` and never
+`media/{id}`.** MSG-FR-008: the general media route refuses `RESTRICTED` objects
+outright, so a message image would 404 on the person it was sent to.
+
+**Three pagination shapes appear in this one module** — the inbox pages by a
+`before` **timestamp**, the history by a `(createdAt, id)` **keyset**, and the
+reconcile takes a **timestamp** and returns oldest-first. Using the wrong one
+pages away from the data rather than through it.
+
+**A wire-shape defect the compiler could not see.** `MessagesResponse.nextCursor`
+was typed as the events list's cursor. Three keyset routes spell the same idea
+three different ways: the feed and comment thread return `{createdAt, id}`, the
+events list `{cursorStartsAt, cursorId}`, and message history
+`{cursorCreatedAt, cursorId}`. The borrowed type has no default for its field, so
+the first read *past* the newest thirty messages of a thread would have thrown
+`MissingFieldException` — on long conversations only, which is precisely where
+the reader needs it. It now has its own type, and a shape test says why.
+
+**PRIV-003 is enforced by the shape of the types, not by a screen.** "Mobile
+numbers, email addresses and dates of birth are never visible to another user, in
+any surface, at any time. This is the platform's single most important privacy
+improvement over the WhatsApp-group status quo it replaces." Two neighbours
+organise about a blocked drain without either handing over a number — so
+`ConversationResponse`, `ConversationPreview`, `MessageResponse` and
+`UnreadCountsResponse` are asserted against their **complete** allowed field
+sets, and a field added under any name fails with the requirement quoted.
+
+## Group 13 · Notifications
+
+| Screen | Name | Requirements | APIs | Status |
+|---|---|---|---|---|
+| UX-HOME-007 | Notification centre | NOTIF-FR-002 | `/notifications` | ✗ |
+| UX-SET-003 | Notification preferences | NOTIF-FR-007 | `/me/notification-preferences` | ✗ |
+
+## Group 14–15 · Profiles and graph
 
 | Screen | Name | Requirements | APIs | Status |
 |---|---|---|---|---|
@@ -704,22 +829,6 @@ being changed to match a mistaken expectation.
 | UX-PROFILE-004 | Followers | SOCIAL-FR-003 | `/users/:id/followers` | ✗ |
 | UX-PROFILE-005 | Following | SOCIAL-FR-003 | `/users/:id/following` | ✗ |
 | UX-PROFILE-006 | Saved posts | FEED-FR-007 | `/me/saved` | ✗ |
-
-## Group 14 · Messaging
-
-| Screen | Name | Requirements | APIs | Status |
-|---|---|---|---|---|
-| UX-MSG-001 | Inbox | MSG-FR-001 · BR-027 | `/conversations` | ✗ |
-| UX-MSG-002 | Requests | MSG-FR-005 · BR-024 | `/conversations?section=REQUESTS` | ✗ |
-| UX-MSG-003 | Conversation | MSG-FR-002/004 · EDGE-020/021 | `/conversations/:id/messages` + Socket.IO | ✗ |
-| UX-MSG-004 | Request review | MSG-FR-005 | `/conversations/:id/accept` | ✗ |
-
-## Group 15 · Notifications
-
-| Screen | Name | Requirements | APIs | Status |
-|---|---|---|---|---|
-| UX-HOME-007 | Notification centre | NOTIF-FR-002 | `/notifications` | ✗ |
-| UX-SET-003 | Notification preferences | NOTIF-FR-007 | `/me/notification-preferences` | ✗ |
 
 ## Group 16 · Settings
 

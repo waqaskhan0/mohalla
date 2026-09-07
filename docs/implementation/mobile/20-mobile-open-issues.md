@@ -31,8 +31,9 @@ incomplete — and who can clear it.
 | **No AVD, no system image, no device** | `adb devices` is empty. Every Compose UI test and every §44/§45 end-to-end flow **cannot run** here. Needs roughly a 1 GB system-image download. |
 | **What was done instead** | Every rule that can be asserted without a device was written as a JVM unit test rather than deferred: the RTL invariants, the state machines, the cursor sequences, the neutral-refusal structure, locale and zone handling, the composer's
 per-attachment upload sequencing, the comment thread's one-level nesting, and
-search's failed-versus-empty rule, and the exact field shape of every type
-that enforces a privacy rule structurally. **279 tests, all passing.** |
+search's failed-versus-empty rule, messaging's send idempotency and duplicate
+reconciliation, and the exact field shape of every type that enforces a privacy
+rule structurally. **315 tests, all passing.** |
 | **What that does not prove** | That pixels mirror. The tests prove Create sits at index 2 of 5 and that the list is never pre-reversed; they cannot prove the row renders right-to-left. §36 makes RTL release-critical, so this gap is the largest single verification debt in Stage 7. |
 
 The manifest defect found in group 05–06 is the argument for closing it:
@@ -201,6 +202,45 @@ because it lands on the post route behind the startup resolver.
 **To close it:** the real share host, then one line adding the first ~140
 graphemes of the post body to the intent's `EXTRA_TEXT`.
 
+### GAP-M-008 · Realtime delivery is polled, not socketed
+
+**MSG-FR-004** asks for a message to appear "within 3 seconds without manual
+refresh", and ADR-009 describes a Socket.IO channel. **The conversation polls
+`GET /conversations/:id/messages/since` every two seconds instead.**
+
+**Why this is a defensible reading rather than a shortcut.** The API states the
+rule itself: "REST is the source of truth; realtime is an accelerator… every
+route here has to work with the socket switched off", and it names that route as
+"the POLLING FALLBACK ADR-009 names". The SRS's own risk note agrees: "Polling is
+an acceptable fallback at this scale." The requirement sets a threshold of three
+seconds, not instantaneity, and two seconds meets it with headroom for the
+request itself on the 3G connection NFR-PERF-001 budgets for.
+
+**What a socket would have cost to add here.** A dependency, an auth handshake
+against the same session the interceptor already manages, a reconnection and
+backoff policy, a duplicate-suppression path for the switch between transports,
+and a lifecycle to get wrong — for a latency improvement below the threshold. On
+an implementation nobody can run on a device (§2 above), that is a class of
+failure that would be written blind.
+
+**What it costs today, stated rather than hidden.** One small request every two
+seconds while a conversation is open and foregrounded. The poll is bounded by
+`ON_RESUME`/`ON_PAUSE`, so a phone in a pocket makes none and a backgrounded app
+makes none; a conversation left open on screen for ten minutes makes 300. That is
+not free on Pakistani mobile data, and it is the honest cost of the choice.
+
+**What is already in place for the socket.** Every message carries its client id
+from both routes, so a client that switches transports "cannot duplicate
+anything" — `mergedWith` reconciles by client id then server id, and
+`MessagingTest` asserts that a message delivered twice renders once. The
+reconcile is anchored on the newest **server** timestamp rather than the device
+clock, which is exactly the anchor a reconnect needs.
+
+**To close it:** the socket becomes a second producer feeding the same
+`mergedWith`, and `POLL_INTERVAL_MS` becomes the fallback interval used when the
+connection is down. No screen or state change is required, which is the point of
+having built it this way.
+
 ### GAP-M-003 · The prototype's attendee stack contradicts the SRS
 
 Recorded as resolved rather than open, because the API settles it.
@@ -226,12 +266,15 @@ Distinct from §3: these are things the client *can* build and has not yet.
 |---|---|---|
 | UX-EVENT-003 | The report action is present but inert — the report sheet is UX-SAFE-001, group 17. | The creator's Edit action works; a non-creator's Report does nothing yet. |
 | Home | `UX-HOME-005` category filter sheet and `UX-HOME-006` announcement detail are not built. | `selectCategory` exists in the ViewModel and the filter reaches the API; there is no picker to drive it. |
-| Home top bar | The notification bell is present but inert — `UX-HOME-007` is group 12. | Search works from the bar; the bell does nothing and shows no count. |
+| Home top bar | The notification bell is present but inert — `UX-HOME-007` is group 13. | Search works from the bar; the bell does nothing and shows no count. |
+| UX-MSG-003 | The report action in the conversation header is present but inert — the report sheet is UX-SAFE-001, group 17. | Viewing the other participant's profile works; Report does nothing yet. |
+| Profile → Message | `Routes.conversationWith(userId)` and its resolving screen exist and are wired, but no profile screen calls them yet — UX-PROFILE-002 is group 14–15. | The inbox and deep links reach a conversation; MSG-FR-001's entry *from a profile* has no button until that screen is built. |
 | `ImagePicker.read` | Untested. It needs a real `ContentResolver` and `BitmapFactory`, so it cannot run on the JVM. | The attachment state machine around it IS tested through the real ViewModel (`AttachmentUploadTest`); the file-reading and compression path itself is only covered by an emulator run that cannot happen here. |
 
 Three items left this table in group 08 and are now built: the event composer's
 date and time picker, profile setup's photo picker, and the post card's media and
-avatar rendering.
+avatar rendering. **The bottom bar's Messages tab left it in group 12** — it now
+opens the inbox, and its badge is fed from accepted conversations only.
 
 ---
 
