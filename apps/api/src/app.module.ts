@@ -22,6 +22,7 @@ import { EventsModule } from './modules/product/events/events.module.js';
 import { MessagingModule } from './modules/product/messaging/messaging.module.js';
 import { SearchModule } from './modules/product/search/search.module.js';
 import { SettingsModule } from './modules/product/settings/settings.module.js';
+import { ObservabilityModule } from './modules/platform/observability/observability.module.js';
 import { ModerationModule } from './modules/admin/moderation/moderation.module.js';
 import { AdminOpsModule } from './modules/admin/admin-ops/admin-ops.module.js';
 
@@ -62,6 +63,7 @@ import { ActorNamesAdapter } from './modules/product/profile/adapters/actor-name
     MediaModule,
     AuditModule,
     NotificationsModule,
+    ObservabilityModule,
 
     // ---- Product tier ----
     ProfileModule,

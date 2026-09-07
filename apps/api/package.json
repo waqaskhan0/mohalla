@@ -27,7 +27,8 @@
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.1",
     "socket.io": "4.8.3",
-    "zod": "4.5.4"
+    "zod": "4.5.4",
+    "@mohalla/observability": "*"
   },
   "devDependencies": {
     "@nestjs/testing": "12.0.1",

@@ -51,6 +51,28 @@ const schema = z.object({
   APP_VERSION: z.string().default('0.0.0'),
   GIT_COMMIT: z.string().default('unknown'),
 
+  // ---- observability / EPIC-15 -------------------------------------------
+  /**
+   * The bearer token an external monitor presents to read `/health/metrics`
+   * (NFR-OBS-003).
+   *
+   * NOT AN ADMIN SESSION, deliberately. §15.5 names the technical owner as the
+   * responder, and OD-020 means there is no administrator to be one - so a
+   * metrics surface gated behind an admin login would be a metrics surface
+   * nobody can reach, in the exact situation it exists for. An uptime checker
+   * also cannot log in, hold a session or refresh one.
+   *
+   * UNSET MEANS THE ROUTE IS OFF, not open. An operational surface that
+   * defaults to public when somebody forgets a variable is a slow disclosure of
+   * queue depths, user counts and database size to anyone who guesses the path.
+   * Refusing until it is configured is the failure that gets noticed and fixed.
+   *
+   * 32 characters minimum, because this is a shared secret compared in one
+   * step - there is no rate limit or lockout behind it, so its only defence is
+   * being too long to guess.
+   */
+  METRICS_TOKEN: z.string().min(32).optional(),
+
   // ---- identity / EPIC-02 ------------------------------------------------
   //
   // Argon2id (SEC-001). Defaults are BENCHMARKED on the development host to

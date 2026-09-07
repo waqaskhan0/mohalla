@@ -1,4 +1,5 @@
 import type { LoggerService, LogLevel } from '@nestjs/common';
+import { redact, redactText } from '@mohalla/observability';
 import { currentCorrelationId } from '../correlation/correlation.context.js';
 
 const ORDER: Record<string, number> = { debug: 10, log: 20, info: 20, warn: 30, error: 40 };
@@ -15,6 +16,20 @@ const ORDER: Record<string, number> = { debug: 10, log: 20, info: 20, warn: 30, 
  * It writes to stdout and never to a file. The platform collects stdout; a
  * process writing its own log files on a PaaS instance produces logs that
  * vanish with the container.
+ *
+ * REDACTION HAPPENS HERE, IN `emit`, AND NOWHERE ELSE (NFR-OBS-001, §15.4:
+ * "Redaction runs BEFORE WRITE, not as a filter afterwards").
+ *
+ * Putting it at the single point of write is the whole guarantee. A caller
+ * cannot forget to redact, because no caller does it; a future logging site
+ * inherits the rule by existing; and there is exactly one line in the codebase
+ * where a sensitive value could reach stdout, which is a line a reviewer can
+ * check. The alternative - each call site sanitising its own fields - fails the
+ * first time somebody logs an error object they did not construct.
+ *
+ * The rule itself lives in `@mohalla/observability`, shared with the worker,
+ * because two redaction rules that drift are one redaction rule that does not
+ * work.
  */
 export class StructuredLogger implements LoggerService {
   constructor(
@@ -25,17 +40,28 @@ export class StructuredLogger implements LoggerService {
   private emit(level: string, message: unknown, context?: unknown, stack?: unknown): void {
     if ((ORDER[level] ?? 20) < (ORDER[this.minLevel] ?? 20)) return;
 
+    // The message is redacted whether it arrived as a string or as an object.
+    // Most callers here pass `JSON.stringify({...})`, so the string path is the
+    // one that matters: by the time it reaches this method the structure is
+    // gone and only the SHAPE rules can still find a phone number in it.
+    const redactedMessage =
+      typeof message === 'string' ? redactText(message) : JSON.stringify(redact(message));
+
     const line: Record<string, unknown> = {
+      // `time` is set AFTER redaction and never passes through it, so a
+      // timestamp can never be mistaken for a date of birth.
       time: new Date().toISOString(),
       level: level === 'log' ? 'info' : level,
       service: this.service,
-      message: typeof message === 'string' ? message : JSON.stringify(message),
+      message: redactedMessage,
     };
 
     const correlationId = currentCorrelationId();
     if (correlationId) line.correlationId = correlationId;
     if (typeof context === 'string' && context) line.context = context;
-    if (stack) line.stack = String(stack);
+    // A stack trace is where an unanticipated value most often ends up: a
+    // number or a token embedded in a thrown message and carried up the frames.
+    if (stack) line.stack = redactText(String(stack));
 
     process.stdout.write(`${JSON.stringify(line)}\n`);
   }

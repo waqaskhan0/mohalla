@@ -15,7 +15,8 @@
     "backup": "node scripts/backup.mjs",
     "restore": "node scripts/restore.mjs",
     "reset": "node scripts/reset.mjs",
-    "provision-admin": "node scripts/provision-admin.mjs"
+    "provision-admin": "node scripts/provision-admin.mjs",
+    "restore:rehearsal": "node scripts/restore-rehearsal.mjs"
   },
   "dependencies": {
     "node-pg-migrate": "9.0.0",

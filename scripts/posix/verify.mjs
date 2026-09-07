@@ -71,7 +71,25 @@ function gradleRun(androidDir, args) {
 
 const results = [];
 
-function run(name, cmd, args, { cwd = repoRoot, env = process.env, allowSkip = false } = {}) {
+/**
+ * `blockedExitCode` — a lane that could not RUN, as distinct from one that ran
+ * and failed.
+ *
+ * The restore rehearsal needs the PostgreSQL client tools, which plenty of
+ * developer machines do not have. Reporting that as a FAILURE would be wrong
+ * twice over: it says the backup is broken when nothing was tested, and it
+ * trains people to ignore a red lane that is red for an unrelated reason.
+ * Reporting it as a PASS would be far worse - a release gate that goes green
+ * when its tooling is missing is exactly the "untested backup" SEC-026 is
+ * about. BLOCKED is the third answer, and the summary already refuses to call
+ * a run complete while any lane holds it.
+ */
+function run(
+  name,
+  cmd,
+  args,
+  { cwd = repoRoot, env = process.env, allowSkip = false, blockedExitCode = null } = {},
+) {
   process.stdout.write(`\n▶ ${name}\n`);
   const r = spawnSync(cmd, args, { cwd, env, stdio: 'inherit', shell: false });
 
@@ -83,6 +101,12 @@ function run(name, cmd, args, { cwd = repoRoot, env = process.env, allowSkip = f
     results.push({ name, status: 'FAIL', detail: r.error.message });
     return;
   }
+
+  if (blockedExitCode !== null && r.status === blockedExitCode) {
+    results.push({ name, status: 'BLOCKED', detail: `exit ${r.status} — could not run` });
+    return;
+  }
+
   results.push({ name, status: r.status === 0 ? 'PASS' : 'FAIL', detail: `exit ${r.status}` });
 }
 
@@ -131,10 +155,44 @@ if (process.env.DATABASE_URL) {
   // will read - none of which a unit test can fail on. Uses the deterministic
   // fake SMS provider, so nothing is delivered to a real recipient.
   run('api smoke test (real HTTP)', ...npmRun('run', 'smoke:api'), { allowSkip: true });
+
+  // ---- REL-007: the restore rehearsal -----------------------------------
+  //
+  // SEC-026: "AN UNTESTED BACKUP IS NOT A BACKUP." This lane is what tests it,
+  // and it is BLOCKED rather than skipped when it cannot run, because a
+  // release gate that quietly passes when its tooling is missing is worse than
+  // no gate: it reports the thing was proven when nothing was checked.
+  //
+  // It needs a SEPARATE, DISPOSABLE target database - the script refuses to
+  // restore over anything that matches a live URL - and the PostgreSQL client
+  // tools, which are absent on plenty of developer machines. Neither is a
+  // reason to fail a local verify, and both are a reason not to call REL-007
+  // satisfied.
+  if (process.env.RESTORE_TARGET_URL) {
+    run('backup for the rehearsal (SEC-026)', ...npmRun('run', 'db:backup'), {
+      allowSkip: true,
+      blockedExitCode: 3,
+    });
+    run('restore rehearsal (REL-007)', ...npmRun('run', 'db:restore:rehearsal'), {
+      allowSkip: true,
+      blockedExitCode: 3,
+    });
+  } else {
+    blocked(
+      'backup for the rehearsal (SEC-026)',
+      'RESTORE_TARGET_URL not set — needs a disposable database and pg_dump/pg_restore',
+    );
+    blocked(
+      'restore rehearsal (REL-007)',
+      'RESTORE_TARGET_URL not set — needs a disposable database and pg_dump/pg_restore',
+    );
+  }
 } else {
   blocked('migration status', 'DATABASE_URL not set — no database reachable');
   blocked('audit append-only test', 'DATABASE_URL not set — no database reachable');
   blocked('api smoke test (real HTTP)', 'DATABASE_URL not set — no database reachable');
+  blocked('backup for the rehearsal (SEC-026)', 'DATABASE_URL not set — no database reachable');
+  blocked('restore rehearsal (REL-007)', 'DATABASE_URL not set — no database reachable');
 }
 
 // ---------------------------------------------------------------- android

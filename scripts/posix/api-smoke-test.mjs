@@ -2625,7 +2625,13 @@ async function main() {
       const rb = await roman.json();
       check(
         'A ROMAN QUERY FINDS AN URDU EVENT (SEARCH-FR-004 + BR-042)',
-        roman.status === 200 && (rb?.results ?? []).some((e) => e.id === urduEvent.id),
+        // MATCHED BY TITLE, NOT BY ID, and deliberately. The property under
+        // test is that a Roman query reaches Urdu content - not that one
+        // particular row ranks. Asserting the id made this fail the day the
+        // dev database accumulated more identically-titled events than the
+        // page holds, which says nothing about search and everything about
+        // how many times the suite has been run.
+        roman.status === 200 && (rb?.results ?? []).some((e) => e.title === urduEvent.title),
         `status ${roman.status} ${rb?.results?.length} results`,
       );
 
@@ -3438,16 +3444,41 @@ async function main() {
       );
     }
 
+    /**
+     * Find a case by its target, PAGING RATHER THAN ASSUMING PAGE ONE.
+     *
+     * The queue is ordered by severity, then report count, then OLDEST FIRST -
+     * correct for moderation, and it means a case created seconds ago sorts
+     * behind every unresolved peer. Reading only the first page passed until
+     * the dev database accumulated more than a page of them, which says
+     * nothing about the queue and everything about how many times this suite
+     * has been run. Paging also exercises the offset a real admin client needs.
+     */
+    const findCase = async (targetId) => {
+      let scanned = 0;
+      for (let offset = 0; offset <= 5000; offset += 50) {
+        const page = await (
+          await get(`/admin/moderation/queue?limit=50&offset=${offset}`, adminA.token)
+        ).json();
+        const cases = page?.cases ?? [];
+        scanned += cases.length;
+        const hit = cases.find((c) => c.targetId === targetId);
+        if (hit !== undefined) return { found: hit, scanned };
+        if (cases.length < 50) break;
+      }
+      return { found: undefined, scanned };
+    };
+
     let caseId;
     let caseVersion;
     {
-      const r = await get('/admin/moderation/queue?limit=50', adminA.token);
-      const body = await r.json();
-      const found = (body?.cases ?? []).find((c) => c.targetId === hiddenPost.id);
+      const firstPage = await (await get('/admin/moderation/queue?limit=50', adminA.token)).json();
+      const { found, scanned } = await findCase(hiddenPost.id);
+
       check(
         'THE AUTO-HIDDEN POST IS IN THE QUEUE (ADMIN-FR-002)',
         found !== undefined,
-        `${body?.cases?.length} cases`,
+        `${scanned} cases scanned`,
       );
       caseId = found?.id;
       caseVersion = found?.version;
@@ -3458,7 +3489,10 @@ async function main() {
         `version ${caseVersion}`,
       );
 
-      const severities = (body?.cases ?? []).map((c) => c.maxSeverity);
+      // Ordering is asserted on the FIRST page, where it matters: that is what
+      // an administrator opening the queue actually sees, and it is the page
+      // the severity rule exists to put the worst things on.
+      const severities = (firstPage?.cases ?? []).map((c) => c.maxSeverity);
       const rank = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
       const ordered = severities.every((sv, i) => i === 0 || rank[severities[i - 1]] >= rank[sv]);
       check(
@@ -3551,12 +3585,12 @@ async function main() {
 
     // ---- BR-038: a reason is mandatory -----------------------------------
     {
-      const queue = await (await get('/admin/moderation/queue?limit=50', adminA.token)).json();
-      const reopened = (queue?.cases ?? []).find((c) => c.targetId === hiddenPost.id);
+      const { found: reopened } = await findCase(hiddenPost.id);
+      check('the case is back in the queue after the restore', reopened !== undefined);
 
       const noReason = await post(
-        `/admin/moderation/cases/${reopened.id}/delete`,
-        { reason: 'no', version: reopened.version },
+        `/admin/moderation/cases/${reopened?.id}/delete`,
+        { reason: 'no', version: reopened?.version },
         adminA.token,
       );
       check(
@@ -4120,11 +4154,20 @@ async function main() {
       // erasure to be scheduled AFTER the request, so back-dating one alone is
       // rejected by the database - correctly, since a request that was never
       // in the future was never a grace period.
+      //
+      // AND THIS ONE IS MADE THE OLDEST DUE REQUEST, deliberately. The sweep
+      // takes a BOUNDED batch in schedule order, and every previous run of this
+      // suite leaves another dry-run account due forever (a dry run completes
+      // nothing, by design). Without this the assertion below starts failing
+      // once the eleventh run accumulates - a fact about the dev database, not
+      // about the sweep.
       await db.query(
-        `UPDATE deletion_requests
-            SET requested_at = now() - interval '31 days',
-                scheduled_erasure_at = now() - interval '1 day'
-          WHERE user_id = $1`,
+        `UPDATE deletion_requests AS d
+            SET scheduled_erasure_at = oldest.at - interval '1 day',
+                requested_at = oldest.at - interval '31 days'
+           FROM (SELECT coalesce(min(scheduled_erasure_at), now()) AS at
+                   FROM deletion_requests) AS oldest
+          WHERE d.user_id = $1`,
         [erasable.userId],
       );
 
@@ -4159,6 +4202,141 @@ async function main() {
     }
 
     await db.end();
+  }
+
+  console.log('\n--- observability: metrics, alerts and redaction (EPIC-15) ---');
+  {
+    const metricsToken = env.METRICS_TOKEN;
+
+    // ---- the gate ---------------------------------------------------------
+    {
+      const anonymous = await get('/health/metrics');
+      if (metricsToken === undefined) {
+        // UNSET MEANS OFF, NOT OPEN. The failure worth proving is the one that
+        // would leak queue depths and user counts to anyone who guessed the
+        // path because somebody forgot an environment variable.
+        check(
+          'GET /health/metrics is OFF when no token is configured',
+          anonymous.status === 404,
+          `status ${anonymous.status}`,
+        );
+      } else {
+        check(
+          'GET /health/metrics REFUSES AN ANONYMOUS REQUEST',
+          anonymous.status === 401,
+          `status ${anonymous.status}`,
+        );
+
+        const wrong = await get('/health/metrics', `${metricsToken}-wrong`);
+        check('and refuses a wrong token', wrong.status === 401, `status ${wrong.status}`);
+      }
+    }
+
+    // ---- the snapshot -----------------------------------------------------
+    if (metricsToken !== undefined) {
+      const r = await get('/health/metrics', metricsToken);
+      const body = await r.json();
+
+      check(
+        'GET /health/metrics returns a snapshot (NFR-OBS-003)',
+        r.status === 200,
+        `status ${r.status}`,
+      );
+      check(
+        'THE MODERATION QUEUE IS MEASURED - the reason this exists (§15.4, A3)',
+        typeof body?.operational?.moderationOpenCases === 'number',
+        JSON.stringify(body?.operational).slice(0, 160),
+      );
+      check(
+        'every declared alert is evaluated, so nothing is silently unmonitored',
+        Array.isArray(body?.alerts) && body.alerts.length >= 10,
+        `${body?.alerts?.length} alerts`,
+      );
+      check(
+        'AND WHAT NOTHING FEEDS IS NAMED RATHER THAN GREEN',
+        Array.isArray(body?.unmeasured) && body.unmeasured.includes('api.error_rate'),
+        JSON.stringify(body?.unmeasured),
+      );
+
+      // NFR-OBS-004: "measurable WITHOUT PROFILING INDIVIDUALS". The strongest
+      // form of that assertion is that no identifier appears anywhere in the
+      // response - this section has created hundreds of users by now, so if a
+      // per-person field existed, one of them would be in here.
+      const text = JSON.stringify(body);
+      const someone = await onboard(Date.now() + 25002);
+      check(
+        'THE SNAPSHOT CONTAINS NO USER ID, HANDLE OR NUMBER (NFR-OBS-004)',
+        !text.includes(someone.userId) &&
+          !text.includes(someone.handle) &&
+          !/\+92\d{10}/.test(text),
+        text.slice(0, 160),
+      );
+      check(
+        'and every product value is a number or null, never a row',
+        Object.values(body?.product ?? {}).every((v) => v === null || typeof v === 'number'),
+        JSON.stringify(body?.product),
+      );
+      check(
+        'registered users and posts are counted (NFR-OBS-004)',
+        body?.product?.registeredUsers > 0 && body?.product?.postsTotal > 0,
+        `${body?.product?.registeredUsers} users, ${body?.product?.postsTotal} posts`,
+      );
+      check(
+        'URDU ADOPTION IS MEASURED AGAINST ACCOUNTS THAT CHOSE (BR-040)',
+        body?.product?.urduAdoptionRatio === null ||
+          (body.product.urduAdoptionRatio >= 0 && body.product.urduAdoptionRatio <= 1),
+        `${body?.product?.urduAdoptionRatio}`,
+      );
+      check(
+        'the backup ledger is readable, and an unproven backup reads as unknown (SEC-026)',
+        body?.operational?.backupHoursSinceSuccess === null ||
+          typeof body.operational.backupHoursSinceSuccess === 'number',
+        `${body?.operational?.backupHoursSinceSuccess}`,
+      );
+    }
+
+    // ---- redaction before write (NFR-OBS-001) -----------------------------
+    {
+      // The assertion that matters is about STDOUT, so this captures it. A
+      // logger that redacts in a unit test and not in the running process is
+      // the exact failure NFR-OBS-001 is about, and only the real app can show
+      // the difference.
+      const captured = [];
+      const originalWrite = process.stdout.write.bind(process.stdout);
+      process.stdout.write = (chunk, ...rest) => {
+        captured.push(String(chunk));
+        return originalWrite(chunk, ...rest);
+      };
+
+      const probePhone = syntheticPhone(Date.now() + 25001);
+      try {
+        // A failed login logs internally, and the number is the one field a
+        // careless log line would carry.
+        await post('/login', { phone: probePhone, password: 'synthetic-Wrong-Passw0rd' });
+        await post('/otp/verify', { phone: probePhone, code: '000000', purpose: 'REGISTRATION' });
+      } finally {
+        process.stdout.write = originalWrite;
+      }
+
+      const logged = captured.join('');
+      check(
+        'NO PHONE NUMBER REACHES STDOUT (NFR-OBS-001, PRIV-010)',
+        !logged.includes(probePhone) && !logged.includes(probePhone.slice(3)),
+        `${captured.length} lines captured`,
+      );
+      check(
+        'and the log lines are still parseable JSON with their timestamps intact',
+        captured
+          .filter((l) => l.trim().startsWith('{'))
+          .every((l) => {
+            try {
+              return typeof JSON.parse(l).time === 'string';
+            } catch {
+              return false;
+            }
+          }),
+      );
+    }
   }
 
   console.log('\n--- no secret leaves the server ---');
