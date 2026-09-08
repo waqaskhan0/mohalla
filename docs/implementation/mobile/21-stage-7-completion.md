@@ -19,7 +19,7 @@ and none of the three is an external dependency:
 | Accessibility implementation/audit is performed | **Source-level only.** Ten invariants hold across the tree; no device audit, no TalkBack, no font-scale run |
 | No known code defect prevents a Must flow | **One open defect.** RUNTIME-006. RUNTIME-005 is fixed |
 | All 61 screens represented | ✅ one canonical schema, 61 rows, 0 duplicates |
-| Required screens implemented | **59 of 61.** `UX-HOME-005` and `UX-HOME-006` not started |
+| Required screens implemented | **61 of 61.** `UX-HOME-005` and `UX-HOME-006` built and device-verified in the final pass |
 | Local API integration gaps fixed | ✅ **two** found, two fixed (MOBILE-BACKEND-FIX-001, -002) |
 | Runtime RTL executed | ✅ Flow G, measured |
 | Build · lint · tests pass | ✅ |
@@ -57,7 +57,7 @@ One canonical fourteen-column schema (§3), 61 rows, 0 duplicates, 0 missing.
 |---|---|
 | ✅ Complete both directions | 55 |
 | ◐ Partial | 4 — `UX-AUTH-008` `UX-CREATE-003` `UX-EVENT-002` `UX-SET-005` |
-| ✗ Not started | 2 — `UX-HOME-005` `UX-HOME-006` |
+| ✗ Not started | 0 |
 
 | Runtime status | |
 |---|---|

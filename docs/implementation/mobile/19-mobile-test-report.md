@@ -4,13 +4,18 @@
 
 > **All eleven §44 flows have been EXECUTED on an emulator against the real
 > Stage 6 stack.** They found **twelve defects**, all fixed and re-verified.
+> The final pass then built the last two screens and ran the §25 device
+> accessibility audit, which found **five more** — RUNTIME-013 through
+> RUNTIME-017 — plus RUNTIME-012, found by building UX-HOME-005.
+> **Seventeen defects have now been found by running the app**, every one
+> of them invisible to a JVM suite that was green at the time.
 > Two were Stage 6 backend defects.
 >
 > Two steps inside those flows remain unexecuted and say so: **Flow C's image
 > path** (a system Activity result, with no unit coverage either) and **Flow E's
 > decline and block variants**, which each need their own fresh request.
 >
-> 492 Android · 904 backend · 95 database tests · **0 failures** · Lint clean ·
+> 514 Android · 904 backend · 95 database tests · **0 failures** · Lint clean ·
 > `npm run verify` **12 passed, 0 failed, 3 blocked**.
 
 ---
@@ -643,7 +648,27 @@ on a phone. No NFR is claimed from them, in either direction.
 
 | Suite | Classes / files | Tests | Failures |
 |---|---|---|---|
-| Android unit | 33 | **492** | 0 |
+| Android unit | 38 | **514** | 0 |
+
+**The five test classes the final pass added**, and what each one exists to
+catch — every one of them written because the defect it covers was invisible to
+everything already in the suite:
+
+| Class | Tests | What could not see the defect before it |
+|---|---|---|
+| `WireRequiredFieldTest` | 4 | `ApiContractTest` proves a route exists and never that a field does — the generated contract has `components.schemas` empty |
+| `TopBarActionTest` | 3 | the §18.5 cap is a runtime `require`, and no test touched the top bar at all |
+| `LocaleRecreateTest` | 5 | `applyLanguage` needs a real Activity, a LocaleManager and an SDK level, so the comparison it got wrong was untestable until it was extracted |
+| `AccessibilityLabelTest` | 3 | `LocalizationParityTest` compares resource files, and a hardcoded Kotlin label is in neither |
+| `KeyboardInsetTest` | 3 | the defect was a platform **default**, so there was no line to review and nothing to call |
+
+**Each was proven by controlled mutation**, not by passing once. Restoring
+`CategoryResponse.id` fails all four wire tests with the field named; a third
+top-bar action fails with its file and line; the `contains` form of the locale
+comparison fails on the `en,ur` case written for it; removing one field's label
+fails with the file and line, and turning one label back into an English
+literal fails with the line quoted; and removing `adjustNothing` fails with the
+reason.
 | Backend (api) | 46 | **904** | 0 |
 | Database | 7 | **95** (3 skipped) | 0 |
 | **Total** | 86 | **1491** | **0** |

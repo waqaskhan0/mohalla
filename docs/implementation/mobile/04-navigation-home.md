@@ -29,8 +29,8 @@
 | FEED-FR-006 | Filter by category | Should | — | — | — | `PARTIAL` |
 | FEED-FR-007 | Saved posts | Could | `GET /me/saved` · `PUT /posts/{id}/save` | SavedPostsViewModel | ProfileTest | `IMPLEMENTED` |
 
-- **FEED-FR-002** — The Featured strip renders. UX-HOME-006, the announcement detail screen it should open, is not started.
-- **FEED-FR-006** — Category filter: UX-HOME-005 is not started.
+- **FEED-FR-002** — The Featured strip renders and its cards open UX-HOME-006, the announcement detail. That callback was `{}` in the navigation graph until the final pass, so every card and every ANNOUNCEMENT notification was tappable and inert.
+- **FEED-FR-006** — Category filter: UX-HOME-005 is built, on the tab row rather than the top bar (§18.5 caps that bar at two actions and a third crashed the app — RUNTIME-013). Building it exposed RUNTIME-012, which had silently disabled POST-FR-006's composer picker for the whole of Stage 7.
 
 ## What this module decided, and why
 

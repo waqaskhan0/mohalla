@@ -1,6 +1,6 @@
 # 17 — Mobile Screen Coverage
 
-**Stage 7 · Android** · 61 required screens · last updated after group 23 (Integration validation)
+**Stage 7 · Android** · 61 required screens · last updated after the final completion pass (§25 device accessibility audit)
 
 > **This table is the answer to "is Stage 7 feature-complete?"** It is not, and
 > the count below says by how much. A screen is `DONE` only when it is built,
@@ -8,8 +8,11 @@
 > tests. Anything short of that is `PARTIAL` or `TODO` — never quietly counted.
 
 **Legend** — ✅ done · ◐ partial · ✗ not started · — not applicable
-**RTL** is asserted at the rule level on the JVM; **no screen has been verified
-on a device**, because none is available (see `00-mobile-baseline.md` §6).
+**RTL** is asserted at the rule level on the JVM. The `Runtime` column records
+what has additionally been SEEN on an emulator — that column was entirely
+dashes when this file was first written, and the note here said no device was
+available. One is now running, and it has changed the answer on this page more
+than any code review did: see the defect list below.
 
 ---
 
@@ -17,27 +20,43 @@ on a device**, because none is available (see `00-mobile-baseline.md` §6).
 
 | | Screens |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| ✅ Complete in both directions | **55** |
+| ✅ Complete in both directions | **57** |
 | ◐ Partial | **4** (UX-AUTH-008 · UX-CREATE-003 · UX-EVENT-002 · UX-SET-005) |
-| ✗ Not started | **2** (UX-HOME-005 · UX-HOME-006) |
+| ✗ Not started | **0** |
 | **Required total** | **61** |
 
 ### Runtime
 
 | | Screens |
 |---|---|
-| ✅ Exercised on an emulator, inside an executed §44 flow | **34** |
-| — **NOT EXECUTED** | **27** |
+| ✅ Exercised on an emulator, inside an executed §44 flow or the §25 audit | **36** |
+| — **NOT EXECUTED** | **25** |
 
-**All eleven §44 flows have now been executed.** They found **twelve** defects,
-all fixed and re-verified, two of them in the Stage 6 backend. What remains
-unexecuted at the screen level is mostly the surfaces those flows do not pass
-through, plus two screens that are not built at all (`UX-HOME-005`,
-`UX-HOME-006`) and Flow C's image path, which is a system Activity result.
+**All eleven §44 flows have been executed**, and the §25 accessibility audit has
+since walked Home, both feed tabs, the category filter, the announcement detail,
+the composer, search, post detail, events, messages, profile, settings and the
+language screen with the accessibility tree read the way an assistive
+technology reads it.
 
-See `19-mobile-test-report.md` for every step and every defect.
+**Seventeen defects have now been found by running the app**, every one of them
+invisible to the JVM suite that was green at the time. The last six:
 
-**Coverage: 90% complete.** Stage 7 is **NOT** feature-complete.
+| | What it did |
+|---|---|
+| RUNTIME-012 | `CategoryResponse.id` was required and `GET /categories` has never sent one, so every category fetch threw and **POST-FR-006's composer picker had never worked** |
+| RUNTIME-013 | a third top-bar action crashed the app against §18.5's two-action `require`, one second after Home opened |
+| RUNTIME-014 | choosing a language did nothing when the system already held that locale |
+| RUNTIME-015 | four text fields had no accessible label — TalkBack said "edit box" on the screens whose whole purpose is typing |
+| RUNTIME-016 | the two accessibility labels the app had were English literals, so an Urdu reader heard English |
+| RUNTIME-017 | **post detail rendered as a comment box in an empty screen** whenever the keyboard was up, which on a post with no comments happened by itself |
+
+What remains unexecuted at the screen level is the surfaces no flow and no audit
+pass passes through, plus Flow C's image path, which is a system Activity
+result. See `19-mobile-test-report.md` for every step and `20-mobile-open-issues.md`
+for what is still open.
+
+**Coverage: 93% complete.** All 61 screens are now built; Stage 7 is not
+declared complete on that basis alone — see `21-stage-7-completion.md`.
 
 The four `UX-STATE-*` components left `◐` since group 01 are now `✅`: they are
 exercised by the feed, events, composer and detail screens across every failure
@@ -239,13 +258,49 @@ deliberately chronological.
 | — | Suspension banner + explainer | UX-SAFE-004 · BR-034 | `GET /me` | ✅ | ✅ | — | — | — | — | ✅ |
 | UX-HOME-001 | Home — Following | FEED-FR-001/002 · FEED-FR-004/005 | `/feed/following` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | UX-HOME-002 | Home — Discover | FEED-FR-003 · FEED-FR-004 | `/feed/discover` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
-| UX-HOME-005 | Category filter | FEED-FR-006 | `/categories` | — | — | — | — | — | — | — | — | — | ✗ |
-| UX-HOME-006 | Announcement detail | NOTIF-FR-005 | `/announcements/:id` | — | — | — | — | — | — | — | — | — | ✗ |
+| UX-HOME-005 | Category filter | FEED-FR-006 · POST-FR-006 | `/categories` | ✅ | ✅ | — | — | — | — | ✅ | ✅ | ✅ | ✅ |
+| UX-HOME-006 | Announcement detail | NOTIF-FR-005 · FEED-FR-002 | `/feed/featured` | ✅ | ✅ | — | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ |
 
-`UX-HOME-005` and `UX-HOME-006` are **not** started. The ViewModel already
-carries `selectCategory`, and the filter reaching the API rather than being
-applied to an already-trimmed page is asserted — but the picker sheet and the
-announcement screen are unbuilt, so both stay `✗`.
+**`UX-HOME-005` and `UX-HOME-006` are the last two of the 61, and building
+them found the defect that had been hiding behind one of them.**
+
+Both entry points already existed and neither worked. `onOpenAnnouncement` was
+`{}` in the navigation graph, so every Featured card and every ANNOUNCEMENT
+notification was tappable and inert. `selectCategory` reached the API with
+nothing to drive it.
+
+Wiring the filter then showed no control at all, because `CategoryResponse`
+declared a **required** `val id: String` and `GET /categories` sends
+`{slug, nameEn, nameUr, sortOrder}`. Every fetch threw `MissingFieldException`,
+the caller swallowed it into an empty list, and **POST-FR-006's composer
+category picker had therefore never worked either** — it opened onto nothing,
+silently, for the whole of Stage 7. Nothing in the app ever read `id`
+(RUNTIME-012). `WireRequiredFieldTest` now decodes a real captured response
+body, because `ApiContractTest` states in its own comment that
+`components.schemas` is empty and it can prove a route exists but never that a
+field does.
+
+**The filter control is on the tab row, not the top bar** (RUNTIME-013). §18.5
+draws Home's bar as `Shehersaaz · search · bell` and `MohallaTopBar` enforces
+that cap with a `require`; a third action crashed the app on the recomposition
+that follows the category fetch — one second after Home opened, on a state no
+unit test constructed. The UI/UX spec offers a second entry ("filter control, or
+a category chip on a card"), and the control sits beside the tabs it narrows.
+
+**While a filter is on, a named row says which category and clears it in one
+tap.** A filtered feed and an empty feed look identical, and only one of the two
+is the reader's own doing.
+
+`UX-HOME-006` reads from the feed's own featured payload rather than fetching:
+Stage 6 serves single-announcement routes only under `/admin/`, which §49
+excludes, and the payload already carries every field the screen shows.
+
+Verified on the device in both languages: the sheet lists eleven categories
+(BR-017) in the server's `sortOrder` rather than re-sorted; filtering by
+`health` returns only posts whose own card reads `health`; filtering by
+`water-sanitation` correctly returns nothing, which was checked against the
+database — of 2,952 visible posts, 2,850 carry no category, 102 are `health`
+and none are `water-sanitation`.
 
 ### What the shell and Home decided, and why it is written down
 
@@ -932,7 +987,7 @@ things and leaves has read three things, not ninety.
 
 **A row with nowhere to go is not clickable.** `onClick` is nullable, and a null
 one leaves the row with no ripple and no button role. Three cases reach it today
-— a reply (GAP-M-009), an announcement (UX-HOME-006 is not built) and an
+— a reply (GAP-M-009), an announcement (UX-HOME-006, since built) and an
 unrecognised target — and in each the row is still information worth rendering.
 Inviting a tap that does nothing is worse than a row that plainly does not offer
 one.
@@ -1532,7 +1587,8 @@ conversation.
 resolves rather than failing.
 
 **An announcement link resolves to nothing, on purpose.** NOTIF-FR-005's
-broadcast points at one and UX-HOME-006 is not built. Returning nothing lands the
+broadcast points at one; UX-HOME-006 has since been built, and it reads
+the announcement out of the feed's featured payload. Returning nothing lands the
 reader on their normal start destination rather than on a screen claiming the
 announcement was unavailable — which would be a lie about the announcement rather
 than about the app.

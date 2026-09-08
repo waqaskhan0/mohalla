@@ -27,7 +27,7 @@ after Flow A and Flow G were executed and six defects were fixed.
 | ~~RUNTIME-006~~ | **FIXED and verified at Urdu × 130%.** `EmptyFeed` had no `verticalScroll`, so at 130% both action buttons fell off the bottom and a swipe bounced back. Found by §26’s large-font run |
 | ~~RUNTIME-006 (original note)~~ — Home's Urdu empty-state button compressed to ≈28dp with a clipped label | **IMPLEMENTABLE NOW** |
 | **GAP-M-016** · **GAP-M-017** · **GAP-M-018** — interests, post editing, mark-all-read | **IMPLEMENTABLE NOW**, and deliberately not built: each is a Could with no designed screen, and §49 forbids adding one |
-| `UX-HOME-005` category filter · `UX-HOME-006` announcement detail | **IMPLEMENTABLE NOW** — the only two unbuilt screens of 61 |
+| `UX-HOME-005` category filter · `UX-HOME-006` announcement detail | **CLOSED** — both built and verified on a device in the final pass. All 61 screens now exist |
 | Compose UI tests (none exist) | **IMPLEMENTABLE NOW** — the emulator exists |
 | ~~§44 flows~~ | **ALL ELEVEN EXECUTED.** What remains inside them is Flow C’s image path (a system Activity result) and Flow E’s decline and block variants, each needing its own fresh request |
 | ~~`UX-SETUP-003` re-render~~ | **VERIFIED.** The suggestions screen renders after the crash fix, reached by completing onboarding |
@@ -108,7 +108,7 @@ null, the ordering of the deletion consequences PRIV-006 requires a user to read
 which of the eight API failures each of §21's four states answers for, every
 link shape §42 accepts and the many more it refuses, eight accessibility and RTL
 invariants asserted over the whole source tree, and the exact field shape of
-every type that enforces a privacy rule structurally. **492 Android, 904 backend and 95 database tests, all passing.** |
+every type that enforces a privacy rule structurally. **514 Android, 904 backend and 95 database tests, all passing.** |
 | **What group 22 added** | Eight source-level invariants: no absolute alignment, no left/right padding or text alignment, every directional icon mirrored, the tab list never reversed, `text-tertiary` never colouring informational text, no bare 40dp `TextButton`, no hardcoded user-visible string, every lazy item keyed. Each an allowlist, so a new permitted use has to be argued for in the test. The RTL rules were all already satisfied; the contrast ones were violated on 55 sites. |
 | **What group 23 added** | Two integration tests over the seams a unit test cannot see. `ApiContractTest`: all 75 client routes exist in Stage 6's generated contract, 0 missing, and each of the 29 uncalled server routes carries a stated reason so a new one fails the build. `IntegrationWiringTest`: every function on every `*Source` interface reaches a caller, with the orphan set pinned at exactly three. Between them they found a **Must** requirement that had never been implemented and three declarations nothing called. |
 | **What that does not prove** | That pixels mirror. The tests prove Create sits at index 2 of 5 and that the list is never pre-reversed; they cannot prove the row renders right-to-left. §36 makes RTL release-critical, so this gap is the largest single verification debt in Stage 7. |
@@ -542,6 +542,182 @@ it can never resolve.
 the fingerprint, and `android:autoVerify="true"`. One line in the manifest, and
 three things that are not this repository's to supply.
 
+### RUNTIME-012 · A required field the server has never sent
+
+**Fixed. Found by building UX-HOME-005, and it had disabled a different
+feature entirely.**
+
+`GET /categories` returns `{slug, nameEn, nameUr, sortOrder}`.
+`CategoryResponse` declared a **required** `val id: String`. Every category
+fetch therefore threw `MissingFieldException`, the caller swallowed it into an
+empty list, and **POST-FR-006's composer category picker had never worked** —
+it opened onto nothing, silently, for the whole of Stage 7. Nothing in the app
+ever read `id`.
+
+**This is the third defect of one shape**, and the reason it kept happening is
+that nothing could see it. `MessagesResponse.nextCursor` was typed as the
+events cursor (group 12). PATCH bodies could not express a JSON null (group
+14). `ApiContractTest` catches none of them and says so in its own comment: the
+generated OpenAPI contract has `components.schemas` empty, so it can prove a
+route exists and never that a field does.
+
+**Closed by `WireRequiredFieldTest`**, which decodes a real captured response
+body checked in beside the contract it came from. Its required-field rule is an
+**allowlist, not a ban** — a required field is a risk, not automatically a
+defect, and defaulting `PostResponse.id` to `""` would hide a real server fault
+behind a blank. Each of the 43 entries is a claim somebody made that the server
+always sends that field; a new one fails until it is added, which is the moment
+to go and read a response body. That is the check nobody did here.
+
+### RUNTIME-013 · A third top-bar action crashed the app
+
+**Fixed. Introduced and caught within the same pass.**
+
+`MohallaTopBar` enforces UI/UX §18.5 with a `require`, and §18.5 draws Home's
+bar as `Shehersaaz · search · bell` — both slots already spent. UX-HOME-005's
+filter was added as a third action and the app died with
+`IllegalArgumentException: The top app bar takes at most 2 actions`.
+
+**Nothing could catch it.** Not the compiler — the cap is a runtime `require`
+over a list size. Not the 500 unit tests — no test touched the top bar at all.
+Not launch-and-look either: the bar is correct until `/categories` returns, so
+the crash arrives a second in, on a state no unit test constructed.
+
+`TopBarActionTest` is source-level because it has to be: `homeActions` is
+`@Composable` and cannot be called from a JVM unit test, which is exactly why
+the direct test that would have caught this could not be written. It rejects
+`listOfNotNull` in an actions position outright — a `listOf` of three is a
+mistake any reader sees, and a length that varies with state is a mistake
+nobody sees in any state but the failing one.
+
+### RUNTIME-014 · Choosing a language did nothing when the system already held it
+
+**Fixed. Reproduced deterministically on the device, both ways.**
+
+`applyLanguage` stored the choice and relied on a side effect: assigning
+`applicationLocales` makes the platform recreate the activity. It does — but
+only when the value changes. Assigning the value it already holds is a no-op,
+so nothing recreated, `attachBaseContext` never re-read the store, and every
+string stayed in the previous language for the life of the process.
+
+**Reachable without a debugger.** Android's own per-app language screen writes
+`applicationLocales` and never touches the app's store, so a reader who sets
+English there and then chooses English in the app gets a tick next to English
+and an app that is still entirely Urdu — header, layout direction, mirrored
+back arrow and body text.
+
+Verified by installing the pre-fix binary, reaching that state through the
+app's own screens, and watching it stay Urdu; then installing the fix and
+repeating the identical taps, which switch immediately.
+
+### RUNTIME-015 · Four text fields had no accessible label
+
+**Fixed. Found by the §25 audit.**
+
+The post composer, the message composer, the comment field and search each had
+a visible placeholder drawn as a **sibling** `Text` behind the field — which is
+a drawing, not a label. The composer's node on the device read
+`text="" content-desc="" hint=""`, and the placeholder string appeared nowhere
+in the accessibility tree. TalkBack announced "edit box" and nothing about what
+belongs in it, on the screens whose entire purpose is typing that one thing.
+
+Each field now reads the same string it draws, so the label and the placeholder
+cannot drift. Verified on the device, including that the typed text is still
+exposed alongside the label rather than replaced by it.
+
+### RUNTIME-016 · The two labels the app did have were English literals
+
+**Fixed. Found by the §25 audit.**
+
+`OtpScreen` and `LoadingState` set `contentDescription` to hardcoded English
+strings, so an Urdu screen-reader user heard English. One of them was the OTP
+field's only label, on the screen where somebody is copying digits out of an
+SMS.
+
+**`LocalizationParityTest` cannot see this**, and that is the point worth
+keeping: it compares `values/` against `values-ur/`, and a Kotlin literal is in
+neither, so parity was green through both. Android Lint's `ContentDescription`
+check looks at XML layouts, and there are none here. A Compose UI test would
+have caught the missing labels above but not these — a hardcoded English label
+passes a semantics assertion perfectly.
+
+### RUNTIME-017 · Post detail rendered as a comment box in an empty screen
+
+**Fixed. The most severe defect of the pass, and it made a top-level screen
+unusable.**
+
+Opening any post with no comments showed a comment box floating in blank
+space: no header, no author, no body, no engagement row, no "Start the
+conversation". Nobody had to touch anything — the comment field auto-focuses on
+an empty thread, so the keyboard opened by itself.
+
+Ten screens apply `imePadding()`, which is the Compose way and what
+`ComposerScreen` documents in its own comment: it lifts the toolbar above the
+keyboard rather than shrinking the text area. **That comment assumes the window
+keeps its height, and it did not.** `windowSoftInputMode` was never declared, so
+the platform default `adjustResize` applied and the window shrank as well —
+measured on the device, a 2280px window became 1520px with the keyboard up, and
+`imePadding()` subtracted the same 760px again. Post detail was left with 700px
+for a header, a scrolling thread and a composer.
+
+**Two hypotheses were wrong first, and both are worth recording.** That
+`imePadding()` was itself the problem: removing it moved the composer back to
+the bottom of the window — a real improvement and the first hard evidence of
+the double count — but the screen stayed blank. And that the content was merely
+scrolled out of view: swiping did nothing, and the accessibility tree reported
+every node at `[0,0][0,0]`, which is unplaced rather than scrolled.
+
+Declaring `adjustNothing` keeps the window at full height and makes
+`imePadding()` the single account of the keyboard.
+
+**Why it survived every earlier pass:** the screen is only broken while
+somebody is trying to type on it, and dismissing the keyboard restores it
+completely. The defect was a platform **default**, not a line anybody wrote —
+nothing for a reviewer to read, nothing for a unit test to call. 500 green
+tests and a clean lint sat on top of a screen that did not work.
+
+`KeyboardInsetTest` asserts both halves, because either alone is broken:
+without `adjustNothing` the inset is counted twice, and without `imePadding()`
+the keyboard covers the field.
+
+### §25 · What the device accessibility audit found, and what it did not
+
+**The audit walked** Home (both tabs), the category filter sheet, the
+announcement detail, the composer, search, post detail, events, messages,
+profile, settings and the language screen, reading the accessibility tree the
+way an assistive technology reads it — labels, merged subtrees, touch-target
+sizes and announcement order.
+
+**Clean, and worth naming because it was checked rather than assumed:**
+
+- **Every tappable control carries a label** on every screen audited, once the
+  four fields above were fixed.
+- **The selected tab and the selected navigation item expose `selected=true`
+  with `clickable=false`** — you cannot activate what is already active, and
+  TalkBack announces "Following, selected" rather than offering a pointless
+  action.
+- **Touch targets meet 48dp.** The new filter control measures exactly 48×48dp.
+- **Announcement order matches visual order** on every screen audited.
+- **The filter control sits at the logical end of the tab row** — leftmost in
+  Urdu, rightmost in English — so the mirroring is real and not drawn twice.
+
+**Two false findings the audit produced before its own tooling was fixed**, both
+recorded because either could have become a phantom defect in this file:
+
+1. A flat reading of the XML reported all fifteen of Home's controls as
+   unlabelled. Compose puts `clickable` on a parent and the text on a child,
+   and TalkBack announces the merged subtree — a control is unlabelled only
+   when nothing in its subtree carries a label.
+2. A dump taken while a screen was still measuring returned every node at
+   `[0,0][0,0]`, and one taken mid-transition returned a half-composed tree.
+   Both look exactly like findings. The auditor now refuses an unsettled tree
+   instead of reporting from it.
+
+**What the audit cannot do:** judge whether a label is a *good* label, hear the
+actual speech, or test gesture navigation and focus traversal with TalkBack
+itself enabled. It reads the tree TalkBack reads, which makes a violation real
+but a clean result narrower than "accessible".
+
 ### RUNTIME-005 · Most failures render nothing at all
 
 **Open. Found by Flow A, and it wasted an hour of this pass.**
@@ -677,8 +853,8 @@ Distinct from §3: these are things the client *can* build and has not yet.
 
 | Screen | What is missing | Consequence today |
 |---|---|---|
-| Home | `UX-HOME-005` category filter sheet and `UX-HOME-006` announcement detail are not built. | `selectCategory` exists in the ViewModel and the filter reaches the API; there is no picker to drive it. |
-| Home | `UX-HOME-006` announcement detail is not built, so an ANNOUNCEMENT notification row is rendered and inert. | Every other notification row opens what it refers to. |
+| Home | ~~`UX-HOME-005` and `UX-HOME-006` are not built.~~ **CLOSED.** Both built in the final pass; the filter sits on the tab row because §18.5 caps the top bar at two actions. | Building the filter exposed RUNTIME-012: `CategoryResponse.id` was required and never sent, which had silently disabled POST-FR-006's composer picker as well. |
+| Home | ~~An ANNOUNCEMENT notification row is rendered and inert.~~ **CLOSED.** `onOpenAnnouncement` was an empty lambda in the graph; it now navigates. | Every notification row opens what it refers to. |
 | `ImagePicker.read` | Untested. It needs a real `ContentResolver` and `BitmapFactory`, so it cannot run on the JVM. | The attachment state machine around it IS tested through the real ViewModel (`AttachmentUploadTest`); the file-reading and compression path itself is only covered by an emulator run that cannot happen here. |
 
 **A Must requirement was found unimplemented in group 23 and is now built.**

@@ -6,11 +6,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -121,7 +124,24 @@ fun MohallaBackHeader(
         "A back header takes at most $MAX_ACTIONS actions (UI/UX §18.5)"
     }
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            // THE STATUS BAR IS NOT FREE SPACE. `enableEdgeToEdge` puts this
+            // header behind it, and every screen reached OUTSIDE the shell -
+            // settings, search, notifications, post detail, a conversation -
+            // has no ancestor that insets for it, because `MohallaShell`
+            // applies that padding to its own tabs only. At 100% the title
+            // merely crowded the clock; at the accessibility font maximum it
+            // collided with it outright, which NFR-ACC-001 (a Must) forbids
+            // as a layout that breaks at larger sizes (RUNTIME-018).
+            //
+            // SAFE INSIDE THE SHELL TOO: `windowInsetsPadding` CONSUMES the
+            // inset for its descendants, so a header under a shell that has
+            // already applied it sees nothing left to apply and does not pad
+            // twice.
+            .windowInsetsPadding(WindowInsets.statusBars),
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

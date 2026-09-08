@@ -180,11 +180,11 @@ That distinction is the whole point of this table. A reader who wants to know wh
 | FEED-FR-003 | Discover feed | Must | UX-HOME-002 | `GET /feed/discover` | FeedViewModel | FeedPagingTest | `IMPLEMENTED` |
 | FEED-FR-004 | Pagination | Must | UX-HOME-001 · UX-HOME-002 | — | FeedViewModel | FeedPagingTest · FeedStateTest | `IMPLEMENTED` |
 | FEED-FR-005 | Pull to refresh | Must | UX-HOME-001 | `GET /feed/following` | FeedViewModel | FeedStateTest | `IMPLEMENTED` |
-| FEED-FR-006 | Filter by category | Should | UX-HOME-005 | — | — | — | `PARTIAL` |
+| FEED-FR-006 | Filter by category | Should | UX-HOME-005 | `FeedViewModel.selectCategory` · `CategoryFilterSheet` | `FeedPagingTest` · `WireRequiredFieldTest` | emulator, both languages | `IMPLEMENTED` |
 | FEED-FR-007 | Saved posts | Could | UX-PROFILE-006 | `GET /me/saved` · `PUT /posts/{id}/save` | SavedPostsViewModel | ProfileTest | `IMPLEMENTED` |
 
-- **FEED-FR-002** — The Featured strip renders. UX-HOME-006, the announcement detail screen it should open, is not started.
-- **FEED-FR-006** — Category filter: UX-HOME-005 is not started.
+- **FEED-FR-002** — The Featured strip renders and its cards now open UX-HOME-006, the announcement detail.
+- **FEED-FR-006** — Category filter: UX-HOME-005 is built and verified on a device — eleven categories in server `sortOrder`, and filtering by `health` returns only `health` posts.
 
 ### Engagement
 
@@ -261,7 +261,7 @@ That distinction is the whole point of this table. A reader who wants to know wh
 - **NOTIF-FR-001** — Push. DEP-003 has never been provisioned, so there is no token to register and `/notifications/devices` goes uncalled (GAP-M-010).
 - **NOTIF-FR-002** — The centre is complete for in-app notifications; a reply notification still has no destination to open (GAP-M-009).
 - **NOTIF-FR-003** — Engagement notifications render and navigate, except a reply, which the API gives no target for (GAP-M-009).
-- **NOTIF-FR-005** — Admin broadcasts arrive in the centre and render. The detail screen, UX-HOME-006, is not started.
+- **NOTIF-FR-005** — Admin broadcasts arrive in the centre and render, and the row now opens UX-HOME-006.
 - **NOTIF-FR-006** — Event reminders are push. Same block as NOTIF-FR-001.
 - **NOTIF-FR-007** — The seven switches are built and persist. What they gate — push — does not exist yet (DEP-003).
 

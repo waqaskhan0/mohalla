@@ -107,6 +107,37 @@ class TopBarActionTest {
     }
 
     @Test
+    fun `THE BACK HEADER INSETS ITSELF FOR THE STATUS BAR`() {
+        // RUNTIME-018. `enableEdgeToEdge` draws this header behind the status
+        // bar, and every screen reached OUTSIDE the shell - settings, search,
+        // notifications, post detail, a conversation - has no ancestor that
+        // insets for it: `MohallaShell` applies that padding to its own tabs
+        // only. At 100% the title merely crowded the clock, which is why it
+        // survived every earlier look; at the accessibility font maximum it
+        // collided with it outright, and NFR-ACC-001 is a MUST that forbids a
+        // layout which breaks at larger sizes.
+        //
+        // The fix belongs in the component rather than at each call site,
+        // because there are eleven of those and the twelfth would forget.
+        // `windowInsetsPadding` CONSUMES the inset for its descendants, so a
+        // header under a shell that has already applied it does not pad twice
+        // - measured on the device, where Home's title did not move.
+        val bar = File(main, "core/ui/MohallaTopBar.kt").readText()
+        val at = bar.indexOf("fun MohallaBackHeader")
+        assertTrue("MohallaBackHeader must exist", at > 0)
+
+        val header = bar.substring(at, minOf(at + 2000, bar.length))
+
+        assertTrue(
+            "MohallaBackHeader must apply " +
+                "windowInsetsPadding(WindowInsets.statusBars), or every screen " +
+                "outside the shell draws its title under the clock " +
+                "(RUNTIME-018)",
+            header.contains("windowInsetsPadding(WindowInsets.statusBars)"),
+        )
+    }
+
+    @Test
     fun `THE CAP IS ACTUALLY ENFORCED, IN BOTH BAR VARIANTS`() {
         // A cap nothing checks is a comment. Both the top bar and the back
         // header take an `actions` list, so both must reject an over-long one —
