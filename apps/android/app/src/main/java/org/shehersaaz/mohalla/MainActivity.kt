@@ -224,12 +224,44 @@ class MainActivity : ComponentActivity() {
         container.localeStore.store(locale)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // The system recreates the activity itself for this change.
-            getSystemService(android.app.LocaleManager::class.java)
-                ?.applicationLocales = LocaleList.forLanguageTags(locale.tag)
-            return
+            val manager = getSystemService(android.app.LocaleManager::class.java)
+            val target = LocaleList.forLanguageTags(locale.tag)
+
+            // THE SYSTEM RECREATES THE ACTIVITY ONLY FOR A REAL CHANGE. If
+            // `applicationLocales` already holds the target the assignment is a
+            // no-op: no configuration change arrives, nothing recreates,
+            // `attachBaseContext` never re-reads the store, and every string on
+            // screen stays in the previous language for the life of the process
+            // (RUNTIME-014). The store is correct and the screen is not, which
+            // reads as the setting being ignored.
+            val systemWillRecreate = manager != null &&
+                !localeAlreadySet(manager.applicationLocales.toLanguageTags(), locale.tag)
+
+            // Written either way, so Android's own per-app language screen shows
+            // the same answer the app is using.
+            manager?.applicationLocales = target
+
+            if (systemWillRecreate) return
         }
 
         recreate()
     }
 }
+
+/**
+ * Does the system already hold exactly `tag` and nothing else?
+ *
+ * SEPARATE, INTERNAL, AND OVER A STRING rather than a `LocaleList`. It has to
+ * be separate because `applyLanguage` needs a real `Activity`, a
+ * `LocaleManager` and an SDK level to run, and the defect it hid is one
+ * comparison; and it takes the comma-joined tags (`LocaleList.toLanguageTags`)
+ * rather than the list itself so that a plain JVM test can call it, with no
+ * Robolectric dependency added to the module for a five-line function.
+ *
+ * COMPARED WHOLE, NOT WITH `contains`. A system list of `en,ur` contains
+ * `en` and is a different answer: it is a preference order, and which of the
+ * two renders is Android's to resolve. Treating it as a match would decline the
+ * recreate and leave the reader on the language they just chose against.
+ */
+internal fun localeAlreadySet(currentTags: String, targetTag: String): Boolean =
+    currentTags == targetTag
