@@ -310,4 +310,43 @@ class SourceInvariantTest {
             },
         )
     }
+
+    @Test
+    fun `NO LAZY LIST INSIDE THE AUTH SCAFFOLD, WHICH ALREADY SCROLLS`() {
+        // THE CRASH THIS PREVENTS was a hard one, on the mandatory Flow A
+        // path, and no unit test could have seen it.
+        //
+        // `AuthScaffold` puts its content slot inside
+        // `Column(Modifier.verticalScroll(...))`, so children are measured
+        // with an infinite maximum height. A `LazyColumn` there throws
+        // `IllegalStateException: Vertically scrollable component was measured
+        // with an infinity maximum height constraints` the moment it composes.
+        // `SuggestedAccountsScreen` did exactly that: profile setup succeeded,
+        // the server wrote the profile, and the app died on the way to the
+        // next screen. Found in the first run of Flow A on an emulator.
+        //
+        // A Compose MEASUREMENT error is invisible to the JVM tests - there is
+        // no composition to measure - so the enforceable form of the rule is
+        // this one: a file that calls AuthScaffold must not also declare a
+        // lazy list.
+        val offenders = sources
+            .filter { it.text.contains("AuthScaffold(") }
+            .filter { src ->
+                // Only real code — this rule's own explanation names both.
+                src.codeLines().any { (_, line) ->
+                    line.contains("LazyColumn(") || line.contains("LazyRow(")
+                }
+            }
+            .map { it.path }
+            .sorted()
+
+        assertEquals(
+            "These screens use AuthScaffold, which already scrolls, and also " +
+                "declare a lazy list. Use a Column \u2014 the scaffold owns the " +
+                "scroll, so the lazy list gets infinite height and crashes:\n" +
+                offenders.joinToString("\n") { "    $it" } + "\n",
+            emptyList<String>(),
+            offenders,
+        )
+    }
 }
