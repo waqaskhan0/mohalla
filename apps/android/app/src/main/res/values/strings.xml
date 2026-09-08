@@ -310,7 +310,6 @@
     <string name="post_delete_title">Delete this post?</string>
     <string name="post_delete_body">The post, its comments, its likes and its images are removed for everyone. This cannot be undone, and nobody can restore it.</string>
     <string name="post_delete_confirm">Delete</string>
-    <string name="comment_count">%1$d comments</string>
 
     <!-- Comments (ENGAGE-FR-002…005) -->
     <string name="comment_placeholder">Add a comment</string>

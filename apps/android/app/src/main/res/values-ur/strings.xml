@@ -312,7 +312,6 @@
     <string name="post_delete_title">یہ پوسٹ حذف کر دیں؟</string>
     <string name="post_delete_body">پوسٹ، اس کے تبصرے، پسند اور تصاویر سب کے لیے ھٹ جائیں گے۔ یہ واپس نھیں ھو سکتا، اور کوئی اسے بحال نھیں کر سکتا۔</string>
     <string name="post_delete_confirm">حذف کریں</string>
-    <string name="comment_count">%1$d تبصرے</string>
 
     <!-- Comments (ENGAGE-FR-002…005) -->
     <string name="comment_placeholder">تبصرہ لکھیں</string>

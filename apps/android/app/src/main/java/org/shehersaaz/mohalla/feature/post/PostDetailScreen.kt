@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -449,7 +450,11 @@ private fun ExpandedPost(
             )
 
             Text(
-                text = stringResource(R.string.comment_count, post.commentCount),
+                text = pluralStringResource(
+                    R.plurals.comment_count,
+                    post.commentCount,
+                    post.commentCount,
+                ),
                 style = MohallaTheme.text(MohallaType.BodySm),
                 color = MohallaTheme.colors.TextSecondary,
             )

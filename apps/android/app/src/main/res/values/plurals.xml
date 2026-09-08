@@ -17,6 +17,11 @@
         <item quantity="other">%1$d images</item>
     </plurals>
 
+    <plurals name="comment_count">
+        <item quantity="one">%1$d comment</item>
+        <item quantity="other">%1$d comments</item>
+    </plurals>
+
     <plurals name="event_going_count">
         <item quantity="one">%1$d person going</item>
         <item quantity="other">%1$d people going</item>

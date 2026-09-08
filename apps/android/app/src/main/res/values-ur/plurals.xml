@@ -5,6 +5,11 @@
         <item quantity="other">%1$d تصاویر</item>
     </plurals>
 
+    <plurals name="comment_count">
+        <item quantity="one">%1$d تبصرہ</item>
+        <item quantity="other">%1$d تبصرے</item>
+    </plurals>
+
     <plurals name="event_going_count">
         <item quantity="one">%1$d فرد جا رھا ھے</item>
         <item quantity="other">%1$d افراد جا رھے ھیں</item>
