@@ -51,6 +51,7 @@ android {
             // string that would imply a document existed. The release gate
             // below refuses to build without a real one.
             buildConfigField("String", "TERMS_VERSION", "\"unpublished-od-015\"")
+            buildConfigField("String", "SUPPORT_EMAIL", "\"\"")
         }
         release {
             // Signing config is deliberately absent. Release signing keys are
@@ -65,6 +66,11 @@ android {
             // empty version, so a release APK cannot record an acceptance of a
             // document that does not exist (OD-015).
             buildConfigField("String", "TERMS_VERSION", "\"\"")
+            // SET-FR-009 asks for "a working support contact". None has
+            // been published, so this is empty and the Help screen says so
+            // rather than mailing an address nobody reads - which matters
+            // most because this is also the suspension appeal channel.
+            buildConfigField("String", "SUPPORT_EMAIL", "\"\"")
         }
     }
 

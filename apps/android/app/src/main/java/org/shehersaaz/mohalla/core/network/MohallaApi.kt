@@ -682,6 +682,66 @@ interface MohallaApi {
         @Path("key") key: String,
         @Body body: PushPreferenceBody,
     ): Response<Unit>
+
+    // ----------------------------------------------------------------- settings
+
+    /**
+     * The settings screen, in one request (SET-API-002).
+     *
+     * Language, notification preferences and the blocked count, "assembled here
+     * so the screen is one request rather than four, and so a client cannot
+     * render a partial screen when one of them is slow."
+     */
+    @GET("me/settings")
+    suspend fun settings(): Response<SettingsScreenResponse>
+
+    /**
+     * The interface language (SET-FR-001 - LOCALE-FR-002).
+     *
+     * STORED ON THE ACCOUNT, NOT THE DEVICE, which is what makes the acceptance
+     * criterion true: "GIVEN Urdu is selected on one device, WHEN the user logs
+     * in on another device, THEN Urdu is applied there too." The DEVICE also
+     * keeps its own copy, because the direction of the very first frame has to
+     * be known before any request could answer.
+     */
+    @PUT("me/language")
+    suspend fun setLanguage(@Body body: LanguageRequest): Response<Unit>
+
+    // ------------------------------------------------------------------- blocks
+    //
+    // BLOCKING IS UNILATERAL, SILENT AND MUTUAL IN EFFECT (BR-024/025). Neither
+    // route ever tells the blocked party anything, and neither reveals whether
+    // the target exists - probing account existence through the block endpoint
+    // would defeat the point of the neutral 404 everywhere else.
+
+    /** SAFETY-FR-005 - idempotent, and removes follows in BOTH directions. */
+    @PUT("users/{id}/block")
+    suspend fun block(@Path("id") userId: String): Response<Unit>
+
+    /**
+     * SAFETY-FR-006 - idempotent, and does NOT restore the follows the block
+     * removed: re-creating a relationship the user severed would put somebody
+     * back in their feed unasked.
+     */
+    @DELETE("users/{id}/block")
+    suspend fun unblock(@Path("id") userId: String): Response<Unit>
+
+    /**
+     * The accounts this caller has blocked (SAFETY-FR-007 - SET-FR-003).
+     *
+     * ONLY EVER THE CALLER'S OWN LIST: "there is deliberately no route for who
+     * has blocked a given user - that question has no legitimate non-admin
+     * caller."
+     *
+     * IT RETURNS IDS AND DATES AND NOTHING ELSE, which is GAP-M-013: the only
+     * route that turns an id into a name refuses precisely the people on this
+     * list, because a block hides the profile in both directions.
+     */
+    @GET("me/blocks")
+    suspend fun blocks(
+        @Query("limit") limit: Int? = null,
+        @Query("before") before: String? = null,
+    ): Response<BlockListResponse>
 }
 
 // ============================================================ request bodies
@@ -1361,6 +1421,52 @@ data class NotificationPreferencesResponse(
 
 @Serializable
 data class PushPreferenceBody(val pushEnabled: Boolean)
+
+// ------------------------------------------------------------------ settings
+
+/**
+ * Everything the settings index needs, in one body (SET-API-002).
+ *
+ * `language` is NULLABLE and null is a real answer. BR-040 pre-selects no
+ * default, so an account that has never chosen has no stored language - and the
+ * client shows its own first-launch choice as current rather than inventing one.
+ */
+@Serializable
+data class SettingsScreenResponse(
+    val language: String? = null,
+    val notifications: Map<String, Boolean> = emptyMap(),
+    val blockedCount: Int = 0,
+)
+
+@Serializable
+data class LanguageRequest(val language: String)
+
+/**
+ * One blocked account.
+ *
+ * AN ID AND A DATE. There is no name here and no photo, and no way to get one:
+ * `GET /users/{id}` returns the neutral 404 for anybody blocked in either
+ * direction, which is every row in this list. See GAP-M-013.
+ */
+@Serializable
+data class BlockEntryResponse(
+    val blockedUserId: String,
+    val createdAt: String,
+)
+
+@Serializable
+data class BlockListResponse(
+    val blocks: List<BlockEntryResponse> = emptyList(),
+    /**
+     * A TIMESTAMP, and NOT a reliable end marker.
+     *
+     * The server sets it to the last row's `createdAt` whenever the page has
+     * rows, so it is non-null on the final page too. A client that paged until
+     * it went null would re-fetch that page forever; the repository stops on a
+     * SHORT page instead.
+     */
+    val nextBefore: String? = null,
+)
 
 @Serializable
 data class RestoreResponse(

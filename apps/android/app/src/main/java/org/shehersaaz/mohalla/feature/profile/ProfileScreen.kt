@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,6 +44,7 @@ import org.shehersaaz.mohalla.core.ui.MohallaTopBar
 import org.shehersaaz.mohalla.core.ui.OfflineState
 import org.shehersaaz.mohalla.core.ui.PostCard
 import org.shehersaaz.mohalla.core.ui.ServerErrorState
+import org.shehersaaz.mohalla.core.ui.TopBarAction
 import org.shehersaaz.mohalla.core.ui.VerifiedBadge
 
 /**
@@ -81,6 +84,7 @@ fun ProfileScreen(
     onMessage: () -> Unit,
     onEdit: () -> Unit,
     onOpenSaved: () -> Unit,
+    onSettings: () -> Unit,
     onOpenFollowers: () -> Unit,
     onOpenFollowing: () -> Unit,
     onOpenPost: (String) -> Unit,
@@ -97,7 +101,19 @@ fun ProfileScreen(
         // The owner's profile is a TAB and has nowhere to go back to; anybody
         // else's was pushed and does.
         if (onBack == null) {
-            MohallaTopBar(title = stringResource(R.string.nav_profile))
+            MohallaTopBar(
+                title = stringResource(R.string.nav_profile),
+                // §14's navigation tree puts SETTINGS under My profile, and this
+                // is the only way into it — a tab would spend one of five slots
+                // on screens visited deliberately and rarely.
+                actions = listOf(
+                    TopBarAction(
+                        icon = Icons.Filled.Settings,
+                        descriptionRes = R.string.settings_title,
+                        onClick = onSettings,
+                    ),
+                ),
+            )
         } else {
             MohallaBackHeader(title = "", onBack = onBack)
         }

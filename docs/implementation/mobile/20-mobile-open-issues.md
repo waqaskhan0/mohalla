@@ -16,7 +16,7 @@ incomplete — and who can clear it.
 | ID | What is blocked | Who can clear it |
 |---|---|---|
 | **Publication** | `PUBLIC PUSH BLOCKED`. No Stage 6 or Stage 7 work may reach the public remote until an approved publication-authorization record exists. Local commits are permitted and are what this stage produces. The hold was confirmed directly by the user. | Shehersaaz publication authorization. **Not self-authorizable.** |
-| **OD-015** | Terms of Service and Community Guidelines do not exist. Now a **release blocker**: `TERMS_VERSION` is empty in the release build config, `RegisterViewModel` refuses to submit a blank version, and the terms screen states that registration is unavailable. | Publish the documents **and** set the version in `apps/android/app/build.gradle.kts`. |
+| **OD-015** | Terms of Service, Privacy Policy and Community Guidelines do not exist. Now a **release blocker**: `TERMS_VERSION` is empty in the release build config, `RegisterViewModel` refuses to submit a blank version, the terms screen states that registration is unavailable, and UX-SET-006 states that the documents have not been published rather than showing placeholder text. PRIV-017 makes a reachable Privacy Policy a Google Play submission requirement. **No support address has been published either** — `SUPPORT_EMAIL` is empty, so UX-SET-007 says so instead of mailing an invented address, which matters because this is also the suspension appeal channel (OD-020). | Publish the documents, set `TERMS_VERSION`, and supply a support address — all in `apps/android/app/build.gradle.kts`. |
 | **OD-016 / DEP-011** | ~400 Urdu strings are written and structurally correct — locale parity is enforced by a build-failing test — but have not been reviewed by a native speaker. This is not a substitute for that review. | Shehersaaz language review. |
 | **OD-020** | No named technical owner (DEP-016), so no administrator may be provisioned and no bootstrap endpoint exists in any environment. The suspension explainer's appeal route therefore points at a support address rather than an in-app queue: a form filing into a queue nobody reads would be worse than saying where to write. | Name a technical owner. |
 | **DEP-013** | Noto Naskh Arabic and Noto Nastaliq are not bundled. Both currently resolve to the platform serif, which renders Urdu correctly on API 26+ but is not the approved face. | Supply the licensed font files. |
@@ -35,7 +35,7 @@ search's failed-versus-empty rule, messaging's send idempotency and duplicate
 reconciliation, the notification centre's day boundary in the reader's own
 timezone, the encoded shape of a PATCH body that has to distinguish absent from
 null, and the exact field shape of every type that enforces a privacy rule
-structurally. **377 tests, all passing.** |
+structurally. **398 tests, all passing.** |
 | **What that does not prove** | That pixels mirror. The tests prove Create sits at index 2 of 5 and that the list is never pre-reversed; they cannot prove the row renders right-to-left. §36 makes RTL release-critical, so this gap is the largest single verification debt in Stage 7. |
 
 The manifest defect found in group 05–06 is the argument for closing it:
@@ -355,6 +355,45 @@ implementing it.
 **To close it:** `viewerHasSaved` on the post body, and a design decision about
 where the control belongs.
 
+### GAP-M-013 · The blocked-accounts list cannot show who is blocked
+
+**SAFETY-FR-007** and **SET-FR-003** ask for "a list of blocked accounts with
+unblock controls". The client can build the controls and cannot build the list.
+
+`GET /me/blocks` returns `{blockedUserId, createdAt}` per row and nothing else.
+The only route that turns a user id into a name is `GET /users/{id}`, and it
+answers the neutral 404 for anybody blocked **in either direction** — which is
+every single row on this list, by definition. Search is filtered the same way.
+There is no request the client can make that would name these people.
+
+**What the client does instead.** Rows read "Blocked account" with the DATE the
+block was made, newest first, under a line explaining why no names appear. A list
+of identical unlabelled rows with no explanation reads as a bug; the same list
+with the explanation reads as a limitation, and somebody who blocked one person
+last week can still find them. No user id is rendered: a raw UUID identifies
+nobody a reader would recognise, and on a shared phone it puts a stranger's
+account identifier on display for no benefit.
+
+**The option deliberately not taken.** Unblocking to read the name and
+re-blocking would work — the profile resolves the instant the block lifts — and
+it would mean the app silently unblocking people in order to draw a list. A
+blocked person becoming able to message somebody for the length of a network
+round trip is not a trade this screen gets to make on the user's behalf.
+
+**SET-FR-003's acceptance criterion still holds**, because it is about removal
+rather than naming: "GIVEN an account is unblocked from this list, WHEN the list
+reloads, THEN it is no longer present."
+
+**To close it:** hydrate `/me/blocks` through the same public projection every
+other list uses. The blocker is plainly entitled to see who they blocked, and the
+server is the only party that can decide that — which is exactly why the client
+must not work around it.
+
+**A second, smaller thing found in the same route.** `nextBefore` is set to the
+last row's timestamp whenever the page has rows, so it is non-null on the FINAL
+page too. A client paging until it goes null re-fetches that page forever; the
+repository derives the end from a short page instead.
+
 ### GAP-M-003 · The prototype's attendee stack contradicts the SRS
 
 Recorded as resolved rather than open, because the API settles it.
@@ -379,7 +418,6 @@ Distinct from §3: these are things the client *can* build and has not yet.
 | Screen | What is missing | Consequence today |
 |---|---|---|
 | UX-EVENT-003 | The report action is present but inert — the report sheet is UX-SAFE-001, group 17. | The creator's Edit action works; a non-creator's Report does nothing yet. **This is now the only one left**: the conversation header's and the post detail's inert Report buttons were REMOVED in group 14–15 rather than left in place, because somebody being harassed who taps Report and sees nothing may reasonably believe they have reported it and stop. The event one follows in group 17, when the sheet exists for all three. |
-| My profile | There is no Settings entry, so `UX-SET-002` (language), `UX-SET-003` (notification preferences) and the rest are reachable only by route. | The notification preferences screen built in group 13 has no in-app path to it. `UX-SET-001` is group 16 and adds the row. |
 | Home | `UX-HOME-005` category filter sheet and `UX-HOME-006` announcement detail are not built. | `selectCategory` exists in the ViewModel and the filter reaches the API; there is no picker to drive it. |
 | Home | `UX-HOME-006` announcement detail is not built, so an ANNOUNCEMENT notification row is rendered and inert. | Every other notification row opens what it refers to. |
 | `ImagePicker.read` | Untested. It needs a real `ContentResolver` and `BitmapFactory`, so it cannot run on the JVM. | The attachment state machine around it IS tested through the real ViewModel (`AttachmentUploadTest`); the file-reading and compression path itself is only covered by an emulator run that cannot happen here. |

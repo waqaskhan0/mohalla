@@ -161,6 +161,34 @@ object Routes {
      */
     const val NOTIFICATION_PREFERENCES = "settings/notifications"
 
+    /**
+     * Settings (UX-SET-001..008).
+     *
+     * REACHED FROM MY PROFILE, per §14's navigation tree, and not a tab: these
+     * are screens a user visits deliberately and rarely, and one of five slots
+     * is not what "rarely" earns.
+     */
+    const val SETTINGS = "settings"
+    const val SETTINGS_LANGUAGE = "settings/language"
+    const val SETTINGS_PASSWORD = "settings/password"
+    const val SETTINGS_BLOCKED = "settings/blocked"
+    const val SETTINGS_HELP = "settings/help"
+    const val SETTINGS_ABOUT = "settings/about"
+
+    /**
+     * The legal documents (UX-SET-006).
+     *
+     * ONE ROUTE WITH A KIND rather than three, because they are one screen: none
+     * of the three exists (OD-015) and all three say so. When they do exist this
+     * becomes a reader and the argument selects the document.
+     */
+    fun legal(kind: String) = "legal/$kind"
+
+    const val LEGAL_PATTERN = "legal/{kind}"
+    const val LEGAL_TERMS = "terms"
+    const val LEGAL_PRIVACY = "privacy"
+    const val LEGAL_GUIDELINES = "guidelines"
+
     /** UX-PROFILE-003. The owner's own, so no id travels in the route. */
     const val EDIT_PROFILE = "me/edit"
 

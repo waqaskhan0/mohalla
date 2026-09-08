@@ -72,6 +72,7 @@
     <string name="field_password_policy">آٹھ سے چونسٹھ حروف، جن میں کم از کم ایک حرف اور ایک عدد ہو۔</string>
     <string name="field_password_too_short">کم از کم آٹھ حروف استعمال کریں۔</string>
     <string name="field_password_needs_letter">کم از کم ایک حرف شامل کریں۔</string>
+    <string name="field_password_too_long">64 حروف یا اس سے کم استعمال کریں۔</string>
     <string name="field_password_needs_digit">کم از کم ایک عدد شامل کریں۔</string>
 
     <string name="register_phone_title">آپ کا موبائل نمبر کیا ہے؟</string>
@@ -438,4 +439,39 @@
     <string name="saved_remove_failed">یہ نہیں ہٹایا جا سکا۔ دوبارہ کوشش کریں۔</string>
     <string name="saved_empty_title">ابھی کچھ محفوظ نہیں</string>
     <string name="saved_empty_body">کوئی پوسٹ محفوظ کریں تاکہ بعد میں دوبارہ مل جائے۔ یہ فہرست صرف آپ دیکھ سکتے ہیں، اور لکھنے والے کو کبھی پتا نہیں چلتا۔</string>
+    <!-- Settings (UX-SET-001, 002, 004..008) -->
+    <string name="settings_title">ترتیبات</string>
+    <string name="settings_language">زبان</string>
+    <string name="settings_change_password">پاس ورڈ تبدیل کریں</string>
+    <string name="settings_blocked_users">بلاک کیے گئے اکاؤنٹس</string>
+    <string name="settings_guidelines">کمیونٹی ہدایات</string>
+    <string name="settings_terms">شرائط اور پرائیویسی پالیسی</string>
+    <string name="settings_privacy">پرائیویسی پالیسی</string>
+    <string name="settings_help">مدد اور سپورٹ</string>
+    <string name="settings_about">ایپ کے بارے میں</string>
+    <string name="settings_sign_out">لاگ آؤٹ</string>
+    <string name="settings_language_note">یہ انتخاب آپ کے اکاؤنٹ کے ساتھ رہتا ہے، اس لیے ہر اُس ڈیوائس پر لاگو ہوگا جہاں آپ لاگ اِن کریں۔</string>
+
+    <string name="password_change_explainer">پاس ورڈ تبدیل کرنے پر آپ ہر دوسری جگہ سے لاگ آؤٹ ہو جائیں گے۔ یہ ڈیوائس لاگ اِن رہے گی۔</string>
+    <string name="password_current">موجودہ پاس ورڈ</string>
+    <string name="password_new">نیا پاس ورڈ</string>
+    <string name="password_confirm">نئے پاس ورڈ کی تصدیق کریں</string>
+    <string name="password_current_wrong">یہ آپ کا موجودہ پاس ورڈ نہیں ہے۔</string>
+    <string name="password_same_as_current">اپنے موجودہ پاس ورڈ سے مختلف پاس ورڈ منتخب کریں۔</string>
+    <string name="password_mismatch">یہ آپس میں میل نہیں کھاتے۔</string>
+    <string name="password_change_submit">پاس ورڈ تبدیل کریں</string>
+    <string name="password_change_failed">آپ کا پاس ورڈ تبدیل نہیں ہوا۔ دوبارہ کوشش کریں۔</string>
+
+    <string name="blocked_account">بلاک کیا گیا اکاؤنٹ</string>
+    <string name="blocked_since">%1$s کو بلاک کیا</string>
+    <string name="blocked_unblock">اَن بلاک کریں</string>
+    <string name="blocked_unblock_failed">یہ واپس نہیں ہو سکا۔ دوبارہ کوشش کریں۔</string>
+    <string name="blocked_no_names">یہاں نام نہیں دکھائے جاتے، کیونکہ بلاک کرنے پر وہ اکاؤنٹ دونوں طرف سے آپ سے چھپ جاتا ہے۔</string>
+    <string name="blocked_empty_title">آپ نے کسی کو بلاک نہیں کیا</string>
+    <string name="blocked_empty_body">بلاک کرنا خاموش ہوتا ہے — دوسرے شخص کو کبھی پتا نہیں چلتا۔</string>
+
+    <string name="legal_unavailable_body">یہ ابھی شائع نہیں ہوئی۔ یہاں کچھ نہیں دکھایا جا رہا، بجائے اس کے کہ کوئی ایسی چیز دکھائی جائے جو صرف سرکاری لگتی ہو۔</string>
+    <string name="help_body">ہمیں لکھیں، ہم آپ سے رابطہ کریں گے۔</string>
+    <string name="help_unavailable">سپورٹ کا پتا ابھی شائع نہیں ہوا۔</string>
+    <string name="about_version">ورژن %1$s (%2$d)</string>
 </resources>

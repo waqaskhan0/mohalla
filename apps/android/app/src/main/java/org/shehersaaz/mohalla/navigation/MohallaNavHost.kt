@@ -25,6 +25,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
+import org.shehersaaz.mohalla.MainActivity
 import org.shehersaaz.mohalla.core.di.AppContainer
 import org.shehersaaz.mohalla.core.media.rememberImagePickerLauncher
 import org.shehersaaz.mohalla.core.network.ApiFailure
@@ -78,6 +79,16 @@ import org.shehersaaz.mohalla.feature.profile.SavedPostsViewModel
 import org.shehersaaz.mohalla.feature.profile.UserListKind
 import org.shehersaaz.mohalla.feature.profile.UserListScreen
 import org.shehersaaz.mohalla.feature.profile.UserListViewModel
+import org.shehersaaz.mohalla.feature.settings.AboutScreen
+import org.shehersaaz.mohalla.feature.settings.BlockedUsersScreen
+import org.shehersaaz.mohalla.feature.settings.BlockedUsersViewModel
+import org.shehersaaz.mohalla.feature.settings.ChangePasswordScreen
+import org.shehersaaz.mohalla.feature.settings.ChangePasswordViewModel
+import org.shehersaaz.mohalla.feature.settings.HelpScreen
+import org.shehersaaz.mohalla.feature.settings.LanguageSettingsScreen
+import org.shehersaaz.mohalla.feature.settings.LegalDocumentScreen
+import org.shehersaaz.mohalla.feature.settings.SettingsScreen
+import org.shehersaaz.mohalla.feature.settings.SettingsViewModel
 import org.shehersaaz.mohalla.feature.post.ImageViewerScreen
 import org.shehersaaz.mohalla.feature.post.PostDetailScreen
 import org.shehersaaz.mohalla.feature.post.PostDetailViewModel
@@ -318,6 +329,57 @@ fun MohallaNavHost(
                     onBack = { navController.popBackStack() },
                 )
             }
+        }
+
+        // UX-SET-001 — the index, and everything under it.
+        composable(Routes.SETTINGS) {
+            SettingsRoute(container = container, navController = navController)
+        }
+
+        composable(Routes.SETTINGS_LANGUAGE) {
+            LanguageSettingsRoute(
+                container = container,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(Routes.SETTINGS_PASSWORD) {
+            ChangePasswordRoute(
+                container = container,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(Routes.SETTINGS_BLOCKED) {
+            BlockedUsersRoute(
+                container = container,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(Routes.SETTINGS_HELP) {
+            val context = LocalContext.current
+            HelpScreen(
+                onBack = { navController.popBackStack() },
+                onEmail = { address -> sendSupportEmail(context, address) },
+            )
+        }
+
+        composable(Routes.SETTINGS_ABOUT) {
+            AboutScreen(onBack = { navController.popBackStack() })
+        }
+
+        // UX-SET-006 — one screen, three documents, none of which exists.
+        composable(Routes.LEGAL_PATTERN) { entry ->
+            LegalDocumentScreen(
+                titleRes = when (entry.arguments?.getString("kind")) {
+                    Routes.LEGAL_GUIDELINES ->
+                        org.shehersaaz.mohalla.R.string.settings_guidelines
+                    Routes.LEGAL_PRIVACY -> org.shehersaaz.mohalla.R.string.settings_privacy
+                    else -> org.shehersaaz.mohalla.R.string.settings_terms
+                },
+                onBack = { navController.popBackStack() },
+            )
         }
 
         // UX-PROFILE-003.
@@ -652,6 +714,7 @@ private fun ProfileRoute(
         // profile entry point it was built for.
         onMessage = { id?.let { navController.navigate(Routes.conversationWith(it)) } },
         onEdit = { navController.navigate(Routes.EDIT_PROFILE) },
+        onSettings = { navController.navigate(Routes.SETTINGS) },
         onOpenSaved = { navController.navigate(Routes.SAVED_POSTS) },
         onOpenFollowers = { id?.let { navController.navigate(Routes.followers(it)) } },
         onOpenFollowing = { id?.let { navController.navigate(Routes.following(it)) } },
@@ -661,6 +724,141 @@ private fun ProfileRoute(
         onOpenMedia = { mediaIds, index ->
             navController.navigate(Routes.imageViewer(mediaIds, index))
         },
+    )
+}
+
+/**
+ * UX-SET-001 · UX-SET-002 — the settings index and the language switch.
+ *
+ * THE LANGUAGE CHANGE GOES THROUGH THE ACTIVITY, not through this graph.
+ * `applyLanguage` writes the device's copy and calls `recreate()`, which
+ * re-resolves every layout direction, string and configuration-dependent
+ * resource in one step — and destroys this back stack along with everything
+ * else, which is why the choice cannot be a destination that expects to be
+ * popped.
+ */
+@Composable
+private fun SettingsRoute(
+    container: AppContainer,
+    navController: NavHostController,
+) {
+    val vm: SettingsViewModel = viewModel(
+        factory = SettingsViewModel.Factory(
+            settings = container.settingsRepository,
+            storedLocale = { container.localeStore.stored() },
+            storeLocale = { container.localeStore.store(it) },
+            // SET-FR-006's criterion is about what THIS device shows afterwards,
+            // so the local clear is what satisfies it — see the ViewModel.
+            signOutLocally = {
+                container.sessionRepository.signOut()
+                container.viewerRelations.clear()
+            },
+            signOutRemotely = { container.authRepository.logout() },
+        ),
+    )
+    val state by vm.state.collectAsState()
+
+    SettingsScreen(
+        state = state,
+        onBack = { navController.popBackStack() },
+        onLanguage = { navController.navigate(Routes.SETTINGS_LANGUAGE) },
+        onNotifications = { navController.navigate(Routes.NOTIFICATION_PREFERENCES) },
+        onChangePassword = { navController.navigate(Routes.SETTINGS_PASSWORD) },
+        onBlockedUsers = { navController.navigate(Routes.SETTINGS_BLOCKED) },
+        onGuidelines = { navController.navigate(Routes.legal(Routes.LEGAL_GUIDELINES)) },
+        onTerms = { navController.navigate(Routes.legal(Routes.LEGAL_TERMS)) },
+        onHelp = { navController.navigate(Routes.SETTINGS_HELP) },
+        onAbout = { navController.navigate(Routes.SETTINGS_ABOUT) },
+        onSignOut = {
+            vm.signOut {
+                // The whole graph goes, so Back cannot return to a signed-in
+                // screen rendering cached content (SET-FR-006).
+                navController.navigate(Routes.WELCOME) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
+        },
+    )
+}
+
+/** UX-SET-002. */
+@Composable
+private fun LanguageSettingsRoute(
+    container: AppContainer,
+    onBack: () -> Unit,
+) {
+    val vm: SettingsViewModel = viewModel(
+        factory = SettingsViewModel.Factory(
+            settings = container.settingsRepository,
+            storedLocale = { container.localeStore.stored() },
+            storeLocale = { container.localeStore.store(it) },
+            signOutLocally = {},
+            signOutRemotely = { ApiResult.Ok(Unit) },
+        ),
+    )
+    val state by vm.state.collectAsState()
+    // Unwrapped from the context rather than taken from `LocalActivity`, which
+    // arrives in a later activity-compose than the one pinned here.
+    val activity = LocalContext.current.findMainActivity()
+
+    LanguageSettingsScreen(
+        current = state.effectiveLanguage,
+        onBack = onBack,
+        onChoose = { locale ->
+            vm.chooseLanguage(locale)
+            // One path for a language change, shared with first launch: the
+            // activity stores it and recreates itself.
+            activity?.applyLanguage(locale)
+        },
+    )
+}
+
+/** UX-SET-004. */
+@Composable
+private fun ChangePasswordRoute(
+    container: AppContainer,
+    onBack: () -> Unit,
+) {
+    val vm: ChangePasswordViewModel = viewModel(
+        factory = ChangePasswordViewModel.Factory(container.settingsRepository),
+    )
+    val state by vm.state.collectAsState()
+
+    ChangePasswordScreen(
+        state = state,
+        onBack = onBack,
+        onCurrentChanged = vm::onCurrentChanged,
+        onNewChanged = vm::onNewChanged,
+        onConfirmChanged = vm::onConfirmChanged,
+        // The other sessions are already gone by the time this returns; there is
+        // nothing further to show, so the screen leaves.
+        onSubmit = { vm.submit(onChanged = onBack) },
+    )
+}
+
+/** UX-SET-005. */
+@Composable
+private fun BlockedUsersRoute(
+    container: AppContainer,
+    onBack: () -> Unit,
+) {
+    val vm: BlockedUsersViewModel = viewModel(
+        factory = BlockedUsersViewModel.Factory(container.settingsRepository),
+    )
+    val state by vm.state.collectAsState()
+
+    BlockedUsersScreen(
+        state = state,
+        onBack = onBack,
+        onUnblock = vm::unblock,
+        onRetry = vm::refresh,
+        onLoadMore = vm::loadMore,
+        // The reader's own locale and zone, from the container as everywhere
+        // else that formats a date — the app's CHOSEN language rather than the
+        // device configuration, because those differ the moment somebody picks
+        // Urdu on an English phone.
+        locale = container.formattingLocale(),
+        zone = container.displayZone(),
     )
 }
 
@@ -1033,6 +1231,41 @@ private fun SearchRoute(
  * edit. So the sheet shares the app's own post URL and nothing else until then;
  * recorded in `20-mobile-open-issues.md`.
  */
+/**
+ * SET-FR-009 — hand the support address to a mail app.
+ *
+ * `ACTION_SENDTO` with a `mailto:` URI rather than `ACTION_SEND`, so the chooser
+ * offers MAIL clients only. `ACTION_SEND` with `text/plain` would also offer
+ * every messaging app on the device, and somebody trying to appeal a suspension
+ * does not need their support request going to WhatsApp.
+ *
+ * A device with no mail client does NOTHING rather than crashing. The address is
+ * on screen and can be copied, which is the honest fallback.
+ */
+/**
+ * The hosting activity, unwrapped.
+ *
+ * A language change is the activity's to perform — it stores the choice and
+ * calls `recreate()`, which is the platform's own mechanism for re-resolving
+ * every direction-dependent resource at once. Compose hands out a context, and
+ * under a themed wrapper that context is not the activity, so this walks the
+ * chain rather than casting once and hoping.
+ */
+private tailrec fun android.content.Context.findMainActivity(): MainActivity? = when (this) {
+    is MainActivity -> this
+    is android.content.ContextWrapper -> baseContext.findMainActivity()
+    else -> null
+}
+
+private fun sendSupportEmail(context: android.content.Context, address: String) {
+    val intent = android.content.Intent(
+        android.content.Intent.ACTION_SENDTO,
+        android.net.Uri.parse("mailto:$address"),
+    ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+
+    runCatching { context.startActivity(intent) }
+}
+
 private fun sharePost(context: android.content.Context, postId: String) {
     val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
         type = "text/plain"

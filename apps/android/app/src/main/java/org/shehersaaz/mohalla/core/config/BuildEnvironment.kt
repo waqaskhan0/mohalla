@@ -25,4 +25,20 @@ object BuildEnvironment {
      * written.
      */
     val termsVersion: String get() = BuildConfig.TERMS_VERSION
+
+    /**
+     * SET-FR-009's support contact, which is email in V1.
+     *
+     * EMPTY UNTIL SHEHERSAAZ PUBLISHES ONE, exactly as [termsVersion] is. The
+     * Help screen states that rather than opening a mail composer addressed to
+     * somewhere invented - and this is the channel a suspended user appeals
+     * through (OD-020), which is the one place where sending into a void has a
+     * real cost.
+     */
+    val supportEmail: String get() = BuildConfig.SUPPORT_EMAIL
+
+    /** SET-FR-010 - what support asks for when diagnosing a report. */
+    val versionName: String get() = BuildConfig.VERSION_NAME
+
+    val versionCode: Int get() = BuildConfig.VERSION_CODE
 }

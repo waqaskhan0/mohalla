@@ -66,6 +66,7 @@
     <string name="field_password_policy">8 to 64 characters, with at least one letter and one number.</string>
     <string name="field_password_too_short">Use at least 8 characters.</string>
     <string name="field_password_needs_letter">Add at least one letter.</string>
+    <string name="field_password_too_long">Use 64 characters or fewer.</string>
     <string name="field_password_needs_digit">Add at least one number.</string>
 
     <string name="register_phone_title">What is your mobile number?</string>
@@ -443,4 +444,39 @@
     <string name="saved_remove_failed">That couldn\'t be removed. Try again.</string>
     <string name="saved_empty_title">Nothing saved yet</string>
     <string name="saved_empty_body">Save a post to find it again later. Only you can see this list, and the author is never told.</string>
+    <!-- Settings (UX-SET-001, 002, 004..008) -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_change_password">Change password</string>
+    <string name="settings_blocked_users">Blocked accounts</string>
+    <string name="settings_guidelines">Community Guidelines</string>
+    <string name="settings_terms">Terms and Privacy Policy</string>
+    <string name="settings_privacy">Privacy Policy</string>
+    <string name="settings_help">Help and support</string>
+    <string name="settings_about">About</string>
+    <string name="settings_sign_out">Log out</string>
+    <string name="settings_language_note">This choice follows your account, so it applies on every device you log in to.</string>
+
+    <string name="password_change_explainer">Changing your password logs you out everywhere else. This device stays logged in.</string>
+    <string name="password_current">Current password</string>
+    <string name="password_new">New password</string>
+    <string name="password_confirm">Confirm new password</string>
+    <string name="password_current_wrong">That isn\'t your current password.</string>
+    <string name="password_same_as_current">Choose a password different from your current one.</string>
+    <string name="password_mismatch">These don\'t match.</string>
+    <string name="password_change_submit">Change password</string>
+    <string name="password_change_failed">Your password wasn\'t changed. Try again.</string>
+
+    <string name="blocked_account">Blocked account</string>
+    <string name="blocked_since">Blocked %1$s</string>
+    <string name="blocked_unblock">Unblock</string>
+    <string name="blocked_unblock_failed">That couldn\'t be undone. Try again.</string>
+    <string name="blocked_no_names">Names aren\'t shown here, because blocking hides the account from you in both directions.</string>
+    <string name="blocked_empty_title">You haven\'t blocked anyone</string>
+    <string name="blocked_empty_body">Blocking is silent — the other person is never told.</string>
+
+    <string name="legal_unavailable_body">It hasn\'t been published yet. Nothing is shown here rather than something that only looks official.</string>
+    <string name="help_body">Write to us and we\'ll get back to you.</string>
+    <string name="help_unavailable">A support address hasn\'t been published yet.</string>
+    <string name="about_version">Version %1$s (%2$d)</string>
 </resources>
