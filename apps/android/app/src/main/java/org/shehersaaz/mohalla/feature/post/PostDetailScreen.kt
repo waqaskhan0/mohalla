@@ -22,6 +22,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -48,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import org.shehersaaz.mohalla.R
 import org.shehersaaz.mohalla.core.design.MohallaTheme
 import org.shehersaaz.mohalla.core.design.MohallaType
+import org.shehersaaz.mohalla.core.state.Relation
 import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.network.CommentResponse
 import org.shehersaaz.mohalla.core.network.PostResponse
@@ -96,7 +99,7 @@ fun PostDetailScreen(
     onOpenAuthor: (String) -> Unit,
     onOpenMedia: (Int) -> Unit,
     onShare: () -> Unit,
-    onReport: () -> Unit,
+    onToggleSave: () -> Unit,
     onLoadMoreComments: () -> Unit,
     isUrdu: Boolean,
     modifier: Modifier = Modifier,
@@ -116,6 +119,38 @@ fun PostDetailScreen(
             title = stringResource(R.string.post_detail_title),
             onBack = onBack,
             actions = buildList {
+                // FEED-FR-007. THE ONLY PLACE A POST CAN BE SAVED, because the
+                // UX spec places a save control on no surface at all — the card
+                // carries like, comment and share, and the overflow carries
+                // report and block. A saved-posts screen with nothing that can
+                // fill it would be a feature in name only, so the control lives
+                // here, where a reader who has decided a post is worth keeping
+                // already is.
+                if (state.post != null) {
+                    add(
+                        TopBarAction(
+                            // A filled and an outlined star. Not a bookmark:
+                            // material-icons-core carries a deliberately small
+                            // set and has none, and pulling in the extended
+                            // pack for one glyph would add megabytes of vectors
+                            // to an APK NFR-PERF-003 caps. The state is carried
+                            // by the CONTENT DESCRIPTION as well as the shape,
+                            // which is what §35 asks for.
+                            icon = if (state.saveState == Relation.Yes) {
+                                Icons.Filled.Star
+                            } else {
+                                Icons.Outlined.Star
+                            },
+                            descriptionRes = if (state.saveState == Relation.Yes) {
+                                R.string.post_unsave
+                            } else {
+                                R.string.post_save
+                            },
+                            onClick = onToggleSave,
+                        ),
+                    )
+                }
+
                 if (state.canDeletePost) {
                     add(
                         TopBarAction(
@@ -124,15 +159,11 @@ fun PostDetailScreen(
                             onClick = { confirmingPostDelete = true },
                         ),
                     )
-                } else if (state.post != null) {
-                    add(
-                        TopBarAction(
-                            icon = Icons.Filled.Warning,
-                            descriptionRes = R.string.action_report,
-                            onClick = onReport,
-                        ),
-                    )
                 }
+                // NO REPORT CONTROL UNTIL IT REPORTS SOMETHING. UX-SAFE-001 is
+                // group 17; an inert Report is a dangerous lie on a safety path,
+                // because somebody who taps it and sees nothing may reasonably
+                // believe they have reported the post and stop.
             },
         )
 

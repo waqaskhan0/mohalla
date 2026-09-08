@@ -36,6 +36,17 @@ interface PostDetailSource {
     suspend fun unlike(postId: String): ApiResult<Unit>
 
     suspend fun deletePost(postId: String): ApiResult<Unit>
+
+    /**
+     * FEED-FR-007 — private, idempotent, and silent.
+     *
+     * "Saving is private and generates no notification to the author", so this
+     * pair is as safe to call twice as the like pair is, and there is no
+     * response body to read: the routes return 204 either way.
+     */
+    suspend fun save(postId: String): ApiResult<Unit>
+
+    suspend fun unsave(postId: String): ApiResult<Unit>
 }
 
 class PostDetailRepository(
@@ -44,6 +55,12 @@ class PostDetailRepository(
 
     override suspend fun post(postId: String): ApiResult<PostResponse> =
         apiCall { api.post(postId) }
+
+    override suspend fun save(postId: String): ApiResult<Unit> =
+        apiCall { api.savePost(postId) }.map { }
+
+    override suspend fun unsave(postId: String): ApiResult<Unit> =
+        apiCall { api.unsavePost(postId) }.map { }
 
     /**
      * ENGAGE-FR-002 — oldest first, twenty at a time.

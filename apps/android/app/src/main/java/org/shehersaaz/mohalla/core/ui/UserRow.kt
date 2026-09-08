@@ -17,6 +17,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import org.shehersaaz.mohalla.R
 import org.shehersaaz.mohalla.core.design.MohallaTheme
 import org.shehersaaz.mohalla.core.design.MohallaType
+import org.shehersaaz.mohalla.core.format.ltr
 import org.shehersaaz.mohalla.core.network.PublicProfileResponse
 
 /**
@@ -97,23 +98,21 @@ fun UserRow(
                 )
 
                 // ADMIN-FR-010 — granted by an administrator, never implied by
-                // account type. Text as well as colour, so it survives a
-                // colour-blind reader (§35).
-                if (user.verifiedBadge && !isDeleted) {
-                    Text(
-                        text = stringResource(R.string.badge_verified),
-                        style = MohallaTheme.text(MohallaType.Label),
-                        color = MohallaTheme.colors.BrandPrimary,
-                    )
-                }
+                // account type — see [VerifiedBadge], which is the one place
+                // this is drawn so five surfaces cannot drift apart.
+                if (user.verifiedBadge && !isDeleted) VerifiedBadge()
             }
 
-            // Handle and city, in one line. The handle is FORCED LTR: a username
-            // is ASCII by rule (BR-005), and rendering "@sana_bashir" in an
-            // otherwise right-to-left line puts the @ on the wrong side and
-            // makes a correct handle look mistyped.
+            // Handle and city, in one line. The handle is FORCED LTR, and
+            // until this group that was a comment rather than a fact: a
+            // username is ASCII by rule (BR-005), and an unmarked
+            // "@sana_bashir" in a right-to-left line has its `@` re-ordered to
+            // the far end by the bidi algorithm, so a correct handle renders as
+            // "sana_bashir@" and looks mistyped. `ltr` wraps the run in a
+            // directional isolate, which is the only thing that fixes it —
+            // alignment and layout direction both leave it alone.
             val meta = listOfNotNull(
-                user.username?.takeIf { !isDeleted }?.let { "@$it" },
+                user.username?.takeIf { !isDeleted }?.let { ltr("@$it") },
                 user.city?.takeIf { !isDeleted },
             )
 

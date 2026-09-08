@@ -17,6 +17,7 @@ import org.junit.Before
 import org.junit.Test
 import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.network.ApiResult
+import org.shehersaaz.mohalla.core.state.ViewerRelations
 import org.shehersaaz.mohalla.core.network.CommentResponse
 import org.shehersaaz.mohalla.core.network.FeedItemResponse
 import org.shehersaaz.mohalla.core.network.PostResponse
@@ -161,6 +162,21 @@ class PostDetailTest {
             deletePostCalls++
             return deletePostResult
         }
+
+        /** FEED-FR-007 — private, idempotent, and silent. */
+        var savedIds = mutableListOf<String>()
+        var unsavedIds = mutableListOf<String>()
+        var saveResult: ApiResult<Unit> = ApiResult.Ok(Unit)
+
+        override suspend fun save(postId: String): ApiResult<Unit> {
+            savedIds += postId
+            return saveResult
+        }
+
+        override suspend fun unsave(postId: String): ApiResult<Unit> {
+            unsavedIds += postId
+            return saveResult
+        }
     }
 
     private fun detail(
@@ -169,6 +185,7 @@ class PostDetailTest {
         viewer: String? = "me",
         forgotten: MutableList<String> = mutableListOf(),
     ) = PostDetailViewModel(
+            relations = ViewerRelations(),
         source = script,
         postId = "p1",
         cached = cached,

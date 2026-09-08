@@ -9,9 +9,11 @@ import org.shehersaaz.mohalla.core.network.EventResponse
 import org.shehersaaz.mohalla.core.network.EventType
 import org.shehersaaz.mohalla.core.network.RsvpResponse
 import org.shehersaaz.mohalla.core.network.MohallaApi
+import org.shehersaaz.mohalla.core.network.Patch
 import org.shehersaaz.mohalla.core.network.PublicProfileResponse
+import org.shehersaaz.mohalla.core.network.field
+import org.shehersaaz.mohalla.core.network.patch
 import org.shehersaaz.mohalla.core.network.RsvpBody
-import org.shehersaaz.mohalla.core.network.UpdateEventBody
 import org.shehersaaz.mohalla.core.network.apiCall
 import org.shehersaaz.mohalla.core.network.map
 
@@ -126,13 +128,20 @@ class EventRepository(
     }
 
     /**
-     * EVENT-FR-007 — only what changed.
+     * EVENT-FR-007 — only what changed, and sometimes what was CLEARED.
      *
      * The server notifies every attendee for a TIME, LOCATION or LINK change and
      * for nothing else, because "fixing a typo at midnight must not wake fifty
      * neighbours". Sending the whole object back would make every save look like
-     * a reschedule, so [EventChanges] carries nulls for untouched fields and
-     * this maps them to absent keys.
+     * a reschedule, so untouched fields are absent from the body.
+     *
+     * THE LINK AND THE LOCATION NEED A THIRD STATE, and not having one made
+     * changing an event's type impossible. Absent means "leave it alone", so an
+     * ONLINE event switched to PHYSICAL kept its old meeting link, the server
+     * merged it back, and the edit was refused for supplying both a link and a
+     * location — with the error naming the field the creator had just emptied.
+     * Exactly the failure the backend's own comment predicts. `Patch` carries
+     * the difference between untouched and emptied; see `PatchBody.kt`.
      */
     override suspend fun update(
         eventId: String,
@@ -140,15 +149,15 @@ class EventRepository(
     ): ApiResult<EventResponse> = apiCall {
         api.updateEvent(
             eventId,
-            UpdateEventBody(
-                title = changes.title?.trim(),
-                description = changes.description?.trim(),
-                startsAt = changes.startsAtIso,
-                eventType = changes.type?.wire,
-                meetingUrl = changes.meetingUrl?.trim(),
-                locationText = changes.locationText?.trim(),
-                categorySlug = changes.categorySlug,
-            ),
+            patch {
+                changes.title?.trim()?.let { field("title", it) }
+                changes.description?.trim()?.let { field("description", it) }
+                changes.startsAtIso?.let { field("startsAt", it) }
+                changes.type?.let { field("eventType", it.wire) }
+                field("meetingUrl", changes.meetingUrl)
+                field("locationText", changes.locationText)
+                changes.categorySlug?.let { field("categorySlug", it) }
+            },
         )
     }
 
@@ -193,19 +202,28 @@ data class EventDraft(
     val categorySlug: String?,
 )
 
-/** Only the fields the creator touched. `null` means "leave it alone". */
+/**
+ * Only the fields the creator touched.
+ *
+ * `null` means "leave it alone" for the fields that cannot be emptied — a title
+ * and a description are required, so there is no third state to express. The
+ * LINK and the LOCATION are different: an event that changes type must clear one
+ * of them, and [Patch] is what carries "the creator emptied this" separately
+ * from "the creator did not touch it".
+ */
 data class EventChanges(
     val title: String? = null,
     val description: String? = null,
     val startsAtIso: String? = null,
     val type: EventType? = null,
-    val meetingUrl: String? = null,
-    val locationText: String? = null,
+    val meetingUrl: Patch<String> = Patch.Unchanged,
+    val locationText: Patch<String> = Patch.Unchanged,
     val categorySlug: String? = null,
 ) {
     val isEmpty: Boolean
         get() = title == null && description == null && startsAtIso == null &&
-            type == null && meetingUrl == null && locationText == null && categorySlug == null
+            type == null && meetingUrl == Patch.Unchanged &&
+            locationText == Patch.Unchanged && categorySlug == null
 }
 
 /**

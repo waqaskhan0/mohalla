@@ -33,8 +33,9 @@ incomplete — and who can clear it.
 per-attachment upload sequencing, the comment thread's one-level nesting, and
 search's failed-versus-empty rule, messaging's send idempotency and duplicate
 reconciliation, the notification centre's day boundary in the reader's own
-timezone, and the exact field shape of every type that enforces a privacy rule
-structurally. **346 tests, all passing.** |
+timezone, the encoded shape of a PATCH body that has to distinguish absent from
+null, and the exact field shape of every type that enforces a privacy rule
+structurally. **377 tests, all passing.** |
 | **What that does not prove** | That pixels mirror. The tests prove Create sits at index 2 of 5 and that the list is never pre-reversed; they cannot prove the row renders right-to-left. §36 makes RTL release-critical, so this gap is the largest single verification debt in Stage 7. |
 
 The manifest defect found in group 05–06 is the argument for closing it:
@@ -298,6 +299,62 @@ config, then a token source, the two device routes, a contextual permission
 request, and a `FirebaseMessagingService` that routes a tap through the deep
 links the server already builds.
 
+### GAP-M-011 · Nothing says whether the viewer already follows somebody
+
+**SOCIAL-FR-001** makes Follow the primary action on UX-PROFILE-002. Nothing in
+the API says whether it should read *Follow* or *Following*.
+
+A post body carries `viewerHasLiked`, so a like renders correctly on a cold
+open. No response anywhere carries `viewerFollows`: the server has
+`isFollowing` in `FollowService` and exposes it on **no route**, and the public
+profile projection — the one shape every surface renders — has no field for it.
+The only endpoint that answers the question at all is the viewer's own
+`GET /users/{me}/following`, paginated at twenty, which would cost fifteen
+requests for somebody following three hundred people and would still be a
+guess between pages.
+
+**What the client does instead.** `ViewerRelations` holds a TRI-STATE per id —
+known-yes, known-no, unknown — seeded from actions performed this session and
+from the viewer's own following list when they open it. `Unknown` renders as
+**Follow**, deliberately: a repeat follow is idempotent and does not move the
+count, so the wrong guess costs a wasted tap, where a wrongly-shown "Following"
+would stop somebody following at all. It is session-scoped and never persisted
+— a stale answer written to disk would survive a follow performed on another
+device and be wrong for longer, with no way to notice.
+
+**It also decided what the follower and following lists do NOT show.** Twenty
+rows would each carry a control whose resting state is a guess; tapping through
+to the profile gives the same action with the same accuracy and without the wall
+of maybe-wrong buttons.
+
+**To close it:** one boolean on `PublicProfile` — `viewerFollows` — computed
+where `isFollowing` already is. The client then deletes a class.
+
+### GAP-M-012 · Nothing says whether a post is saved, and no surface offers to save one
+
+Two halves of the same shortfall, both under **FEED-FR-007**.
+
+**No response carries `viewerHasSaved`**, so the save control has the same
+problem the Follow control does, resolved the same way: `Unknown` offers Save,
+and saving is idempotent. The saved list itself is the one place the client can
+be certain, because every row in it is saved by definition.
+
+**And the UX spec places a save control on no screen at all.** The post card
+carries like, comment and share; the overflow carries report and block;
+UX-PROFILE-006 lists the results of an action the design never offers. The
+requirement is marked *Could* and the screen "cuttable if the schedule
+tightens", but the server side is complete — list, save and unsave are all live
+routes — so a Saved entry that opened an unfillable list would be worse than
+either building it or cutting it.
+
+**What the client does instead.** A star in the post detail's top bar, which is
+where a reader who has decided a post is worth keeping already is. Recorded here
+because it is a client decision filling a gap in the design rather than
+implementing it.
+
+**To close it:** `viewerHasSaved` on the post body, and a design decision about
+where the control belongs.
+
 ### GAP-M-003 · The prototype's attendee stack contradicts the SRS
 
 Recorded as resolved rather than open, because the API settles it.
@@ -321,11 +378,10 @@ Distinct from §3: these are things the client *can* build and has not yet.
 
 | Screen | What is missing | Consequence today |
 |---|---|---|
-| UX-EVENT-003 | The report action is present but inert — the report sheet is UX-SAFE-001, group 17. | The creator's Edit action works; a non-creator's Report does nothing yet. |
+| UX-EVENT-003 | The report action is present but inert — the report sheet is UX-SAFE-001, group 17. | The creator's Edit action works; a non-creator's Report does nothing yet. **This is now the only one left**: the conversation header's and the post detail's inert Report buttons were REMOVED in group 14–15 rather than left in place, because somebody being harassed who taps Report and sees nothing may reasonably believe they have reported it and stop. The event one follows in group 17, when the sheet exists for all three. |
+| My profile | There is no Settings entry, so `UX-SET-002` (language), `UX-SET-003` (notification preferences) and the rest are reachable only by route. | The notification preferences screen built in group 13 has no in-app path to it. `UX-SET-001` is group 16 and adds the row. |
 | Home | `UX-HOME-005` category filter sheet and `UX-HOME-006` announcement detail are not built. | `selectCategory` exists in the ViewModel and the filter reaches the API; there is no picker to drive it. |
 | Home | `UX-HOME-006` announcement detail is not built, so an ANNOUNCEMENT notification row is rendered and inert. | Every other notification row opens what it refers to. |
-| UX-MSG-003 | The report action in the conversation header is present but inert — the report sheet is UX-SAFE-001, group 17. | Viewing the other participant's profile works; Report does nothing yet. |
-| Profile → Message | `Routes.conversationWith(userId)` and its resolving screen exist and are wired, but no profile screen calls them yet — UX-PROFILE-002 is group 14–15. | The inbox and deep links reach a conversation; MSG-FR-001's entry *from a profile* has no button until that screen is built. |
 | `ImagePicker.read` | Untested. It needs a real `ContentResolver` and `BitmapFactory`, so it cannot run on the JVM. | The attachment state machine around it IS tested through the real ViewModel (`AttachmentUploadTest`); the file-reading and compression path itself is only covered by an emulator run that cannot happen here. |
 
 Three items left this table in group 08 and are now built: the event composer's

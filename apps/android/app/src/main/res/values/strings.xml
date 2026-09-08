@@ -414,4 +414,33 @@
     <string name="settings_notifications_messages">Messages</string>
     <string name="settings_notifications_events">Events</string>
     <string name="settings_notifications_announcements">Announcements</string>
+    <!-- Profile and the social graph (UX-PROFILE-001..006) -->
+    <string name="profile_posts">Posts</string>
+    <string name="profile_stat_posts">Posts</string>
+    <string name="profile_stat_followers">Followers</string>
+    <string name="profile_stat_following">Following</string>
+    <string name="profile_no_posts">No posts yet</string>
+    <string name="profile_posts_failed">These posts couldn\'t be loaded.</string>
+    <string name="profile_follow">Follow</string>
+    <string name="profile_following">Following</string>
+    <string name="profile_follow_failed">That didn\'t work. Try again.</string>
+    <string name="profile_message">Message</string>
+    <string name="profile_edit">Edit profile</string>
+    <string name="profile_saved">Saved</string>
+    <string name="profile_no_followers">No followers yet</string>
+    <string name="profile_no_following">Not following anyone yet</string>
+
+    <string name="profile_edit_title">Edit profile</string>
+    <string name="profile_edit_save_failed">Your changes weren\'t saved. Try again.</string>
+    <string name="profile_username_permanent">Your username can\'t be changed.</string>
+    <string name="photo_change">Change photo</string>
+    <string name="photo_uploading">Uploading…</string>
+    <string name="action_save">Save</string>
+
+    <string name="post_save">Save post</string>
+    <string name="post_unsave">Remove from saved</string>
+    <string name="saved_remove">Remove</string>
+    <string name="saved_remove_failed">That couldn\'t be removed. Try again.</string>
+    <string name="saved_empty_title">Nothing saved yet</string>
+    <string name="saved_empty_body">Save a post to find it again later. Only you can see this list, and the author is never told.</string>
 </resources>

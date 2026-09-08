@@ -69,6 +69,15 @@ import org.shehersaaz.mohalla.feature.notifications.NotificationPreferencesScree
 import org.shehersaaz.mohalla.feature.notifications.NotificationPreferencesViewModel
 import org.shehersaaz.mohalla.feature.notifications.NotificationsScreen
 import org.shehersaaz.mohalla.feature.notifications.NotificationsViewModel
+import org.shehersaaz.mohalla.feature.profile.EditProfileScreen
+import org.shehersaaz.mohalla.feature.profile.EditProfileViewModel
+import org.shehersaaz.mohalla.feature.profile.ProfileScreen
+import org.shehersaaz.mohalla.feature.profile.ProfileViewModel
+import org.shehersaaz.mohalla.feature.profile.SavedPostsScreen
+import org.shehersaaz.mohalla.feature.profile.SavedPostsViewModel
+import org.shehersaaz.mohalla.feature.profile.UserListKind
+import org.shehersaaz.mohalla.feature.profile.UserListScreen
+import org.shehersaaz.mohalla.feature.profile.UserListViewModel
 import org.shehersaaz.mohalla.feature.post.ImageViewerScreen
 import org.shehersaaz.mohalla.feature.post.PostDetailScreen
 import org.shehersaaz.mohalla.feature.post.PostDetailViewModel
@@ -294,7 +303,58 @@ fun MohallaNavHost(
         // than a stub that would claim the content is missing — UX-STATE-001 is
         // the one state that is honest about "not available here", and it says
         // nothing about why.
-        composable(Routes.PROFILE_PATTERN) { ContentUnavailable() }
+        // UX-PROFILE-002. Deep-linkable (§42), and reached from a post author
+        // row, a search result, a follower list and a FOLLOW notification.
+        composable(Routes.PROFILE_PATTERN) { entry ->
+            val handle = entry.arguments?.getString("handle")
+
+            if (handle == null) {
+                ContentUnavailable()
+            } else {
+                ProfileRoute(
+                    container = container,
+                    navController = navController,
+                    userId = handle,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+        }
+
+        // UX-PROFILE-003.
+        composable(Routes.EDIT_PROFILE) {
+            EditProfileRoute(
+                container = container,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        // UX-PROFILE-006.
+        composable(Routes.SAVED_POSTS) {
+            SavedPostsRoute(
+                container = container,
+                navController = navController,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        // UX-PROFILE-004 and UX-PROFILE-005.
+        composable(Routes.FOLLOWERS_PATTERN) { entry ->
+            UserListRoute(
+                container = container,
+                navController = navController,
+                userId = entry.arguments?.getString("userId"),
+                kind = UserListKind.FOLLOWERS,
+            )
+        }
+
+        composable(Routes.FOLLOWING_PATTERN) { entry ->
+            UserListRoute(
+                container = container,
+                navController = navController,
+                userId = entry.arguments?.getString("userId"),
+                kind = UserListKind.FOLLOWING,
+            )
+        }
     }
 }
 
@@ -371,10 +431,14 @@ private fun ShellRoute(
                 onFindPeople = { navController.navigate(Routes.SEARCH) },
             )
 
-            // Not yet built. The shell renders and mirrors correctly with any
-            // tab selected, which is what lets §36's both-directions check run
-            // on the chrome before this screen exists.
-            MohallaTab.PROFILE -> ContentUnavailable()
+            MohallaTab.PROFILE -> ProfileRoute(
+                container = container,
+                navController = navController,
+                // The owner's own, so no id: `GET /me` returns a superset of
+                // the public projection and the screen reads the same fields.
+                userId = null,
+                onBack = null,
+            )
 
             // Unreachable: the shell diverts Create before selection, and
             // `selectTab` refuses it. Listed so adding a tab fails to compile.
@@ -507,6 +571,7 @@ private fun PostDetailRoute(
     val vm: PostDetailViewModel = viewModel(
         factory = PostDetailViewModel.Factory(
             source = container.postDetailRepository,
+            relations = container.viewerRelations,
             postId = postId,
             cached = remember(postId) { container.postCache.get(postId) },
             viewerId = { container.sessionRepository.cachedUserId() },
@@ -536,10 +601,179 @@ private fun PostDetailRoute(
         onOpenAuthor = onOpenAuthor,
         onOpenMedia = { index -> onOpenMedia(state.post?.mediaIds.orEmpty(), index) },
         onShare = { sharePost(context, postId) },
-        // The report sheet is UX-SAFE-001, group 17.
-        onReport = {},
+        onToggleSave = vm::toggleSave,
         onLoadMoreComments = vm::loadMoreComments,
         isUrdu = container.localeStore.stored()?.isRtl == true,
+    )
+}
+
+/**
+ * UX-PROFILE-001 and UX-PROFILE-002 — one route composable for both.
+ *
+ * `userId == null` is the owner's own profile, reached as a TAB and with no back
+ * stack entry behind it; anything else was pushed. That is the only difference
+ * the navigation layer knows about — the screen decides what the action row
+ * says, and the ViewModel decides which endpoint answers.
+ */
+@Composable
+private fun ProfileRoute(
+    container: AppContainer,
+    navController: NavHostController,
+    userId: String?,
+    onBack: (() -> Unit)?,
+) {
+    val vm: ProfileViewModel = viewModel(
+        // KEYED BY THE USER ID. Without a key, opening one profile from another
+        // reuses the first one's ViewModel — `viewModel()` scopes to the
+        // destination, and both profiles are the same destination pattern.
+        key = userId ?: "me",
+        factory = ProfileViewModel.Factory(
+            profiles = container.profileRepository,
+            relations = container.viewerRelations,
+            userId = userId,
+            viewerId = { container.sessionRepository.cachedUserId() },
+        ),
+    )
+    val state by vm.state.collectAsState()
+    val context = LocalContext.current
+
+    val id = state.profile?.userId
+
+    ProfileScreen(
+        state = state,
+        onBack = onBack,
+        onRetry = vm::load,
+        onRetryPosts = vm::retryPosts,
+        onLoadMorePosts = vm::loadMorePosts,
+        onToggleFollow = vm::toggleFollow,
+        // MSG-FR-001 — BR-024 resolves the one conversation that exists for the
+        // pair, so this asks the server rather than inventing an id. The route
+        // has existed since group 12 with nothing calling it; this is the
+        // profile entry point it was built for.
+        onMessage = { id?.let { navController.navigate(Routes.conversationWith(it)) } },
+        onEdit = { navController.navigate(Routes.EDIT_PROFILE) },
+        onOpenSaved = { navController.navigate(Routes.SAVED_POSTS) },
+        onOpenFollowers = { id?.let { navController.navigate(Routes.followers(it)) } },
+        onOpenFollowing = { id?.let { navController.navigate(Routes.following(it)) } },
+        onOpenPost = { navController.navigate(Routes.post(it)) },
+        onToggleLike = vm::toggleLike,
+        onShare = { postId -> sharePost(context, postId) },
+        onOpenMedia = { mediaIds, index ->
+            navController.navigate(Routes.imageViewer(mediaIds, index))
+        },
+    )
+}
+
+/** UX-PROFILE-003 — edit own profile. */
+@Composable
+private fun EditProfileRoute(
+    container: AppContainer,
+    onBack: () -> Unit,
+) {
+    val vm: EditProfileViewModel = viewModel(
+        factory = EditProfileViewModel.Factory(
+            profiles = container.profileRepository,
+            uploader = container.imageUploader,
+        ),
+    )
+    val state by vm.state.collectAsState()
+    val scope = rememberCoroutineScope()
+
+    // The picker launcher must be registered against THIS destination's
+    // lifecycle, which is why it lives here and not in the ViewModel — the same
+    // split the composer uses.
+    val pickPhoto = rememberImagePickerLauncher(remaining = 1) { uris ->
+        val uri = uris.firstOrNull() ?: return@rememberImagePickerLauncher
+        scope.launch {
+            val picked = container.imagePicker.read(uri)
+            if (picked != null) {
+                vm.onPhotoSelected(picked.bytes)
+            } else {
+                // Unreadable, or no quality step reached the 500KB ceiling.
+                // Reported as a rejection rather than a failure: retrying the
+                // same file cannot help, so the screen asks for another.
+                vm.onPhotoUnusable()
+            }
+        }
+    }
+
+    EditProfileScreen(
+        state = state,
+        onBack = onBack,
+        onDisplayNameChanged = vm::onDisplayNameChanged,
+        onCityChanged = vm::onCityChanged,
+        onBioChanged = vm::onBioChanged,
+        onPickPhoto = pickPhoto,
+        onRetryPhoto = vm::retryPhotoUpload,
+        onRemovePhoto = vm::removePhoto,
+        onSave = { vm.save(onSaved = onBack) },
+        onRetryLoad = vm::load,
+    )
+}
+
+/** UX-PROFILE-004 · UX-PROFILE-005 — followers and following. */
+@Composable
+private fun UserListRoute(
+    container: AppContainer,
+    navController: NavHostController,
+    userId: String?,
+    kind: UserListKind,
+) {
+    if (userId == null) {
+        ContentUnavailable()
+        return
+    }
+
+    val vm: UserListViewModel = viewModel(
+        key = "$kind-$userId",
+        factory = UserListViewModel.Factory(
+            profiles = container.profileRepository,
+            relations = container.viewerRelations,
+            userId = userId,
+            kind = kind,
+            viewerId = { container.sessionRepository.cachedUserId() },
+        ),
+    )
+    val state by vm.state.collectAsState()
+
+    UserListScreen(
+        state = state,
+        onBack = { navController.popBackStack() },
+        onOpenUser = { navController.navigate(Routes.profile(it)) },
+        onRetry = vm::refresh,
+        onLoadMore = vm::loadMore,
+    )
+}
+
+/** UX-PROFILE-006 — the private saved collection. */
+@Composable
+private fun SavedPostsRoute(
+    container: AppContainer,
+    navController: NavHostController,
+    onBack: () -> Unit,
+) {
+    val vm: SavedPostsViewModel = viewModel(
+        factory = SavedPostsViewModel.Factory(
+            profiles = container.profileRepository,
+            relations = container.viewerRelations,
+        ),
+    )
+    val state by vm.state.collectAsState()
+    val context = LocalContext.current
+
+    SavedPostsScreen(
+        state = state,
+        onBack = onBack,
+        onOpenPost = { navController.navigate(Routes.post(it)) },
+        onOpenAuthor = { navController.navigate(Routes.profile(it)) },
+        onToggleLike = vm::toggleLike,
+        onShare = { postId -> sharePost(context, postId) },
+        onOpenMedia = { mediaIds, index ->
+            navController.navigate(Routes.imageViewer(mediaIds, index))
+        },
+        onUnsave = vm::unsave,
+        onRetry = vm::refresh,
+        onLoadMore = vm::loadMore,
     )
 }
 
@@ -696,8 +930,6 @@ private fun ConversationRoute(
         onAccept = vm::accept,
         onDecline = { vm.decline(onDeclined = onBack) },
         onOpenProfile = onOpenProfile,
-        // The report sheet is UX-SAFE-001, group 17.
-        onReport = {},
         onStartPolling = vm::startPolling,
         onStopPolling = vm::stopPolling,
         isUrdu = container.localeStore.stored()?.isRtl == true,

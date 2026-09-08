@@ -409,4 +409,33 @@
     <string name="settings_notifications_messages">پیغامات</string>
     <string name="settings_notifications_events">تقریبات</string>
     <string name="settings_notifications_announcements">اعلانات</string>
+    <!-- Profile and the social graph (UX-PROFILE-001..006) -->
+    <string name="profile_posts">پوسٹس</string>
+    <string name="profile_stat_posts">پوسٹس</string>
+    <string name="profile_stat_followers">فالوورز</string>
+    <string name="profile_stat_following">فالونگ</string>
+    <string name="profile_no_posts">ابھی کوئی پوسٹ نہیں</string>
+    <string name="profile_posts_failed">یہ پوسٹس لوڈ نہیں ہو سکیں۔</string>
+    <string name="profile_follow">فالو کریں</string>
+    <string name="profile_following">فالو کر رہے ہیں</string>
+    <string name="profile_follow_failed">یہ نہیں ہو سکا۔ دوبارہ کوشش کریں۔</string>
+    <string name="profile_message">پیغام</string>
+    <string name="profile_edit">پروفائل تبدیل کریں</string>
+    <string name="profile_saved">محفوظ</string>
+    <string name="profile_no_followers">ابھی کوئی فالوور نہیں</string>
+    <string name="profile_no_following">ابھی کسی کو فالو نہیں کر رہے</string>
+
+    <string name="profile_edit_title">پروفائل تبدیل کریں</string>
+    <string name="profile_edit_save_failed">آپ کی تبدیلیاں محفوظ نہیں ہوئیں۔ دوبارہ کوشش کریں۔</string>
+    <string name="profile_username_permanent">آپ کا یوزر نیم تبدیل نہیں ہو سکتا۔</string>
+    <string name="photo_change">تصویر تبدیل کریں</string>
+    <string name="photo_uploading">اپ لوڈ ہو رہی ہے…</string>
+    <string name="action_save">محفوظ کریں</string>
+
+    <string name="post_save">پوسٹ محفوظ کریں</string>
+    <string name="post_unsave">محفوظ سے ہٹائیں</string>
+    <string name="saved_remove">ہٹائیں</string>
+    <string name="saved_remove_failed">یہ نہیں ہٹایا جا سکا۔ دوبارہ کوشش کریں۔</string>
+    <string name="saved_empty_title">ابھی کچھ محفوظ نہیں</string>
+    <string name="saved_empty_body">کوئی پوسٹ محفوظ کریں تاکہ بعد میں دوبارہ مل جائے۔ یہ فہرست صرف آپ دیکھ سکتے ہیں، اور لکھنے والے کو کبھی پتا نہیں چلتا۔</string>
 </resources>

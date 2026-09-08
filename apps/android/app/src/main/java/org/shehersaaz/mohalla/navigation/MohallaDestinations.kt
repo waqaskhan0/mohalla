@@ -161,6 +161,26 @@ object Routes {
      */
     const val NOTIFICATION_PREFERENCES = "settings/notifications"
 
+    /** UX-PROFILE-003. The owner's own, so no id travels in the route. */
+    const val EDIT_PROFILE = "me/edit"
+
+    /** UX-PROFILE-006 - private to the caller, so likewise. */
+    const val SAVED_POSTS = "me/saved"
+
+    /**
+     * UX-PROFILE-004 and UX-PROFILE-005.
+     *
+     * TWO ROUTES RATHER THAN ONE WITH A FLAG, because a back stack entry is a
+     * place: going from a profile to Followers and then to Following should
+     * leave two entries, and a single route with a query argument would make
+     * navigating between them replace rather than push.
+     */
+    fun followers(userId: String) = "user/$userId/followers"
+    fun following(userId: String) = "user/$userId/following"
+
+    const val FOLLOWERS_PATTERN = "user/{userId}/followers"
+    const val FOLLOWING_PATTERN = "user/{userId}/following"
+
     /**
      * The image viewer (UX-HOME-004).
      *

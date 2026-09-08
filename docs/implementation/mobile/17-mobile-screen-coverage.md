@@ -1,6 +1,6 @@
 # 17 — Mobile Screen Coverage
 
-**Stage 7 · Android** · 61 required screens · last updated after group 13 (Notifications)
+**Stage 7 · Android** · 61 required screens · last updated after group 14–15 (Profiles and the social graph)
 
 > **This table is the answer to "is Stage 7 feature-complete?"** It is not, and
 > the count below says by how much. A screen is `DONE` only when it is built,
@@ -17,12 +17,12 @@ on a device**, because none is available (see `00-mobile-baseline.md` §6).
 
 | | Screens |
 |---|---|
-| ✅ Complete in both directions | **36** |
+| ✅ Complete in both directions | **42** |
 | ◐ Partial | **2** (UX-EVENT-002 · UX-CREATE-003, both API-limited) |
-| ✗ Not started | **23** |
+| ✗ Not started | **17** |
 | **Required total** | **61** |
 
-**Coverage: 59% complete.** Stage 7 is **NOT** feature-complete.
+**Coverage: 69% complete.** Stage 7 is **NOT** feature-complete.
 
 The four `UX-STATE-*` components left `◐` since group 01 are now `✅`: they are
 exercised by the feed, events, composer and detail screens across every failure
@@ -924,16 +924,128 @@ fully readable. There is no batch profile route, so a page of twenty
 notifications from twelve people costs twelve requests — which is why they are
 fetched *after* the list renders and why a failure is silent per person.
 
-## Group 14–15 · Profiles and graph
+## Group 14–15 · Profiles and the social graph
 
-| Screen | Name | Requirements | APIs | Status |
-|---|---|---|---|---|
-| UX-PROFILE-001 | My profile | PROFILE-FR-004 | `GET /me` | ✗ |
-| UX-PROFILE-002 | Other user's profile | PROFILE-FR-005 · PRIV-003 | `/users/:id` | ✗ |
-| UX-PROFILE-003 | Edit profile | PROFILE-FR-006 | `PATCH /me/profile` | ✗ |
-| UX-PROFILE-004 | Followers | SOCIAL-FR-003 | `/users/:id/followers` | ✗ |
-| UX-PROFILE-005 | Following | SOCIAL-FR-003 | `/users/:id/following` | ✗ |
-| UX-PROFILE-006 | Saved posts | FEED-FR-007 | `/me/saved` | ✗ |
+| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | Status |
+|---|---|---|---|---|---|---|---|---|---|---|
+| — | Verified badge (component) | PROFILE-FR-007 · ADMIN-FR-010 | — | ✅ | ✅ | — | — | — | — | ✅ |
+| UX-PROFILE-001 | My profile | PROFILE-FR-004/008/009 · BR-032 | `GET /me` · `/users/:id/posts` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-PROFILE-002 | Other user's profile | PROFILE-FR-005/007 · SOCIAL-FR-001 · BR-025 | `/users/:id` · `/users/:id/follow` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-PROFILE-003 | Edit profile | PROFILE-FR-003/010 · BR-005 | `PATCH /me/profile` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
+| UX-PROFILE-004 | Followers | SOCIAL-FR-003 | `/users/:id/followers` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-PROFILE-005 | Following | SOCIAL-FR-004 | `/users/:id/following` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-PROFILE-006 | Saved posts | FEED-FR-007 | `/me/saved` · `/posts/:id/save` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+**The Profile tab is no longer a placeholder**, and neither is the Message
+button that group 12 built a route for and nothing called: `conversationWith`
+exists to resolve BR-024's one-conversation-per-pair, and UX-PROFILE-002 is the
+screen it was written for.
+
+### The defect this group found, which was not in this group
+
+**The client could not send a JSON `null`, and two features were silently broken
+by it.** `MohallaJson` sets `explicitNulls = false` — right for *reading*, since
+a server that stops sending an optional field must not crash a screen — and it
+also **omits** a null property when *writing*. The API's rule for both PATCH
+routes is the exact opposite: *"send `null` to clear an optional field; omit it
+to leave it alone."*
+
+So `UpdateProfileRequest(bio = null)` serialised to `{}`. Nobody could clear a
+bio, a city or a profile photo: the request said "leave it alone" every time.
+
+**And on `PATCH /events/{id}` it broke a whole flow that shipped in group 07.**
+The backend's own comment predicts it exactly: *"a caller switching a PHYSICAL
+event to ONLINE — who must send a link AND null the location — would have the
+old location merged back in and be told they supplied both. The type change
+would be impossible, and the error message would blame a field they had just
+cleared."* That is what the app did. Changing an event's type was impossible,
+and the refusal named the field the creator had just emptied.
+
+The fix is `PatchBody.kt`: PATCH bodies are built as JSON rather than as data
+classes, because JSON already has three states and a Kotlin nullable field has
+two. `EventChanges` and `ProfileChanges` carry a `Patch` — *unchanged*, *clear*,
+*set* — so the distinction survives the trip from a ViewModel to the wire. The
+test asserts the ENCODED STRING, and demonstrates the old behaviour alongside
+it, so anyone tempted to replace the JsonObject with a tidier data class fails
+with the encoded body in the message.
+
+### What profiles decided, and why it is written down
+
+**Nothing in the API says whether the viewer already follows somebody.** A post
+carries `viewerHasLiked`; no response anywhere carries `viewerFollows`, and the
+server has `isFollowing` internally and exposes it on no route. So the Follow
+control's resting state on a cold open is a guess (**GAP-M-011**). It is
+resolved as a TRI-STATE rather than a boolean — `Unknown` is a real answer and
+the honest one — and `Unknown` offers **Follow**, because a repeat follow is
+idempotent and moves no count, where a wrongly-shown "Following" would stop
+somebody following at all. `ViewerRelations` remembers what the session has
+observed, so following from a profile still reads as Following when the same
+person is opened from search two taps later.
+
+**The one place the API does answer it is the viewer's own Following list**,
+twenty people at a time, incidentally — so opening it records the whole page.
+Somebody *else's* following list and *anyone's* follower list prove nothing
+about the viewer, and recording either would put a confident wrong answer where
+an honest `Unknown` was.
+
+**One ViewModel serves both profile screens**, because UX-PROFILE-001 and
+UX-PROFILE-002 are one screen with a different action row: identity, three stat
+pills and a post list are identical, and what differs is Edit and Saved versus
+Follow and Message. The route composable is keyed by user id — without a key,
+opening one profile from another reuses the first one's ViewModel, since
+`viewModel()` scopes to the destination and both are the same route pattern.
+
+**The header and the post list are two requests and two independent states.**
+The wireframe says so by hand: "No posts → 'No posts yet'. Statistics still
+render." A post list that failed must not take the identity down with it, and an
+empty one is a different thing from one that could not be read.
+
+**BR-032's under-review posts are not filtered out.** "GIVEN a post of mine is
+auto-hidden, WHEN I view my own profile, THEN I see it labelled under review,
+and no other user sees it at all." Both halves are the server's — it returns
+those rows only to their author, marked — and the client's job is not to drop
+them.
+
+**The follower count moves optimistically and reverts.** PROFILE-FR-009 says
+counts "update on follow or unfollow", and this is the one screen where the
+number *is* the feedback.
+
+**Likes work on every post list, not just the feed.** A heart that does nothing
+outside Home is the kind of inert control a reader taps three times before
+deciding the app is broken — so the profile and the saved list carry the same
+optimistic-and-reverting toggle.
+
+**The verified badge became one component.** PROFILE-FR-007 is a requirement
+about consistency across surfaces — profile, every post and comment, search
+results, the message inbox — and it was three copies of six lines drifting
+independently.
+
+**The handle is now actually forced left-to-right.** `UserRow` carried a comment
+saying it was, and the code did nothing: the `@` is a NEUTRAL character, so the
+bidi algorithm gives it the paragraph's direction and an unmarked
+"@sana_bashir" renders in an Urdu line as "sana_bashir@" — a correct handle that
+looks mistyped to the one person who knows it is not. `ltr()` wraps the run in a
+directional isolate, which is the only thing that fixes it; neither alignment
+nor layout direction touches it.
+
+**Saving a post has a home, because the UX spec gives it none.** FEED-FR-007
+says "user saves a post" and no surface in the design offers the action — the
+card carries like, comment and share, and the overflow carries report and block.
+A Saved screen nothing can fill would be a feature in name only, so the control
+is a star in the post detail's top bar. Its resting state is a guess for the
+same reason the Follow control's is: there is no `viewerHasSaved` (**GAP-M-012**).
+
+**The band's tint is the brand's, not the account's.** The wireframe wants it
+"from the account's most-used category"; no response carries a most-used
+category, and deriving one from the first page of posts would change the band's
+colour a second after the screen opened.
+
+**Two inert safety controls were removed rather than left in place.** The
+conversation header and the post detail both carried a Report button wired to
+nothing, pending UX-SAFE-001 in group 17. An inert control is a small lie on
+most screens and a dangerous one here: somebody being harassed who taps Report
+and sees nothing happen may reasonably believe they have reported it and stop.
+Both come back when the sheet is behind them.
 
 ## Group 16 · Settings
 

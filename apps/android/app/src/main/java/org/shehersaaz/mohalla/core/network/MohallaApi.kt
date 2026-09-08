@@ -1,6 +1,7 @@
 package org.shehersaaz.mohalla.core.network
 
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.Serializable
 import retrofit2.Response
 import retrofit2.http.Body
@@ -76,8 +77,19 @@ interface MohallaApi {
     @POST("me/profile")
     suspend fun createProfile(@Body body: CreateProfileRequest): Response<OwnProfileResponse>
 
+    /**
+     * Edit own profile (PROFILE-FR-003).
+     *
+     * A `JsonObject`, NOT A DATA CLASS, and that is deliberate. The API's rule
+     * is "send null to clear an optional field; omit it to leave it alone" -
+     * three states - and `MohallaJson` sets `explicitNulls = false`, which OMITS
+     * a null property when writing. A typed body therefore could not express a
+     * clear at all: nobody could remove a bio, a city or a photo, because the
+     * request said "leave it alone" every time. Built with `patch { }`; see
+     * `PatchBody.kt`.
+     */
     @PATCH("me/profile")
-    suspend fun updateProfile(@Body body: UpdateProfileRequest): Response<OwnProfileResponse>
+    suspend fun updateProfile(@Body body: JsonObject): Response<OwnProfileResponse>
 
     @GET("categories")
     suspend fun categories(): Response<CategoriesResponse>
@@ -96,11 +108,87 @@ interface MohallaApi {
     @GET("users/{id}")
     suspend fun user(@Path("id") userId: String): Response<PublicProfileResponse>
 
+    /**
+     * Follow (SOCIAL-FR-001).
+     *
+     * IDEMPOTENT, which is what makes the client's missing knowledge survivable:
+     * no response body anywhere says whether the viewer already follows somebody
+     * (GAP-M-011), so a Follow control can be offered in the wrong state - and a
+     * repeat follow leaves exactly one relationship and does not change the
+     * count. Refused with a neutral 404 across a block in either direction
+     * (BR-023).
+     */
     @PUT("users/{id}/follow")
     suspend fun follow(@Path("id") userId: String): Response<Unit>
 
+    /** SOCIAL-FR-002 - idempotent, and SILENT: no notification is ever produced (BR-020). */
     @DELETE("users/{id}/follow")
     suspend fun unfollow(@Path("id") userId: String): Response<Unit>
+
+    /**
+     * Who follows this account (SOCIAL-FR-003), and who it follows
+     * (SOCIAL-FR-004).
+     *
+     * PAGED BY A `before` TIMESTAMP, like the message inbox and unlike every
+     * keyset list - the ordering is by when the relationship was created, and
+     * one timestamp is enough to resume it.
+     *
+     * The server excludes anyone blocked in either direction RELATIVE TO THE
+     * VIEWER, so two people looking at the same profile can legitimately see
+     * different lists and different lengths. Suspended accounts are included,
+     * because a suspension is temporary and hiding them would silently rewrite
+     * the social graph.
+     */
+    @GET("users/{id}/followers")
+    suspend fun followers(
+        @Path("id") userId: String,
+        @Query("limit") limit: Int? = null,
+        @Query("before") before: String? = null,
+    ): Response<UserListResponse>
+
+    @GET("users/{id}/following")
+    suspend fun following(
+        @Path("id") userId: String,
+        @Query("limit") limit: Int? = null,
+        @Query("before") before: String? = null,
+    ): Response<UserListResponse>
+
+    /**
+     * A profile's posts (PROFILE-FR-008).
+     *
+     * Newest first, keyset-paginated on `(createdAt, id)` like the feed.
+     * BR-032: auto-hidden posts appear ONLY for their author and arrive marked
+     * `underReview`, which is what PROFILE-FR-004's acceptance criterion needs -
+     * "I see it labelled under review, and no other user sees it at all."
+     */
+    @GET("users/{id}/posts")
+    suspend fun userPosts(
+        @Path("id") userId: String,
+        @Query("limit") limit: Int? = null,
+        @Query("cursorCreatedAt") cursorCreatedAt: String? = null,
+        @Query("cursorId") cursorId: String? = null,
+    ): Response<AuthorPostsResponse>
+
+    /**
+     * Saved posts (FEED-FR-007).
+     *
+     * NEWEST-SAVED-FIRST, not newest-posted-first, and private to the caller:
+     * "there is no route that reveals who saved a given post, and saving
+     * generates no notification to its author."
+     */
+    @GET("me/saved")
+    suspend fun savedPosts(
+        @Query("limit") limit: Int? = null,
+        @Query("cursorCreatedAt") cursorCreatedAt: String? = null,
+        @Query("cursorId") cursorId: String? = null,
+    ): Response<FeedResponse>
+
+    /** Private, idempotent, and silent - the author is never told. */
+    @PUT("posts/{id}/save")
+    suspend fun savePost(@Path("id") postId: String): Response<Unit>
+
+    @DELETE("posts/{id}/save")
+    suspend fun unsavePost(@Path("id") postId: String): Response<Unit>
 
     // --------------------------------------------------------------------- feed
     //
@@ -447,10 +535,21 @@ interface MohallaApi {
     @POST("events")
     suspend fun createEvent(@Body body: CreateEventBody): Response<EventResponse>
 
+    /**
+     * Edit an event (EVENT-FR-007).
+     *
+     * A `JsonObject` for the same reason as the profile patch, and here the
+     * consequence was worse than a field that would not clear. The backend's own
+     * comment predicts it: "a caller switching a PHYSICAL event to ONLINE - who
+     * must send a link AND null the location - would have the old location
+     * merged back in and be told they supplied both. The type change would be
+     * impossible, and the error message would blame a field they had just
+     * cleared." Built with `patch { }`.
+     */
     @PATCH("events/{id}")
     suspend fun updateEvent(
         @Path("id") id: String,
-        @Body body: UpdateEventBody,
+        @Body body: JsonObject,
     ): Response<EventResponse>
 
     /**
@@ -649,14 +748,6 @@ data class CreateProfileRequest(
 )
 
 @Serializable
-data class UpdateProfileRequest(
-    val displayName: String? = null,
-    val city: String? = null,
-    val bio: String? = null,
-    val photoMediaId: String? = null,
-)
-
-@Serializable
 data class UploadSlotRequest(
     val kind: String,
     /** Advisory. The stored object is re-measured server-side (SEC-012). */
@@ -720,6 +811,30 @@ data class CategoryResponse(
     val slug: String,
     val nameEn: String? = null,
     val nameUr: String? = null,
+)
+
+/**
+ * A page of people (SOCIAL-FR-003/004).
+ *
+ * EVERY ROW IS THE SAME `PublicProfileResponse` every other surface renders -
+ * §162's "one definition of what a person looks like", so a revoked badge or a
+ * new block takes effect here at the same moment it does in search and in the
+ * inbox, rather than in the six places somebody remembered.
+ *
+ * `nextBefore` is a TIMESTAMP. `null` means the end, which is not the same as
+ * an empty page.
+ */
+@Serializable
+data class UserListResponse(
+    val users: List<PublicProfileResponse> = emptyList(),
+    val nextBefore: String? = null,
+)
+
+/** A profile's own posts (PROFILE-FR-008). */
+@Serializable
+data class AuthorPostsResponse(
+    val posts: List<FeedItemResponse> = emptyList(),
+    val nextCursor: FeedCursorResponse? = null,
 )
 
 @Serializable
@@ -944,17 +1059,6 @@ data class CreateEventBody(
  * "fixing a typo at midnight must not wake fifty neighbours". Sending the whole
  * object back on every save would make every edit look like a reschedule.
  */
-@Serializable
-data class UpdateEventBody(
-    val title: String? = null,
-    val description: String? = null,
-    val startsAt: String? = null,
-    val eventType: String? = null,
-    val meetingUrl: String? = null,
-    val locationText: String? = null,
-    val categorySlug: String? = null,
-)
-
 @Serializable
 data class RsvpBody(
     /** `GOING` or `INTERESTED`. */

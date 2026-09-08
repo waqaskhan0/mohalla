@@ -86,7 +86,6 @@ fun ConversationScreen(
     onAccept: () -> Unit,
     onDecline: () -> Unit,
     onOpenProfile: (String) -> Unit,
-    onReport: () -> Unit,
     onStartPolling: () -> Unit,
     onStopPolling: () -> Unit,
     isUrdu: Boolean,
@@ -121,20 +120,14 @@ fun ConversationScreen(
         MohallaBackHeader(
             title = state.otherUser?.displayName ?: stringResource(R.string.nav_messages),
             onBack = onBack,
-            actions = buildList {
-                if (state.otherUserId != null) {
-                    add(
-                        TopBarAction(
-                            // MSG-FR-007 — reporting a conversation is UX-SAFE-001,
-                            // group 17. The control is present because §19 lists it
-                            // among the secondary actions on this screen.
-                            icon = Icons.Filled.Warning,
-                            descriptionRes = R.string.action_report,
-                            onClick = onReport,
-                        ),
-                    )
-                }
-            },
+            // NO REPORT CONTROL UNTIL IT REPORTS SOMETHING. §19 lists reporting
+            // among this screen's secondary actions and UX-SAFE-001 is group 17,
+            // so the button was here and inert. An inert control is a small lie
+            // on most screens and a dangerous one here: somebody being harassed
+            // who taps Report and sees nothing happen may reasonably believe
+            // they have reported it, and stop. It comes back with the sheet
+            // behind it.
+            actions = emptyList(),
         )
 
         when {

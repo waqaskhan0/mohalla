@@ -166,16 +166,10 @@ private fun AuthorRow(post: FeedItemResponse, onOpenAuthor: () -> Unit) {
                     overflow = TextOverflow.Ellipsis,
                 )
 
-                // ADMIN-FR-010 — granted by an administrator, never implied by
-                // account type. Text as well as colour, so it survives a
-                // colour-blind reader (§35).
-                if (post.author.verifiedBadge) {
-                    Text(
-                        text = stringResource(R.string.badge_verified),
-                        style = MohallaTheme.text(MohallaType.Label),
-                        color = MohallaTheme.colors.BrandPrimary,
-                    )
-                }
+                // PROFILE-FR-007 · ADMIN-FR-010 — one component, because the
+                // requirement is about the badge looking the same on every
+                // surface and disappearing from all of them at once.
+                if (post.author.verifiedBadge) VerifiedBadge()
             }
 
             // City and time. A departed author has neither — the placeholder

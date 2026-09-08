@@ -33,7 +33,9 @@ import org.shehersaaz.mohalla.feature.search.RecentSearches
 import org.shehersaaz.mohalla.feature.search.SearchRepository
 import org.shehersaaz.mohalla.feature.home.FeedRepository
 import org.shehersaaz.mohalla.feature.messages.MessagingRepository
+import org.shehersaaz.mohalla.core.state.ViewerRelations
 import org.shehersaaz.mohalla.feature.notifications.NotificationRepository
+import org.shehersaaz.mohalla.feature.profile.ProfileRepository
 import org.shehersaaz.mohalla.feature.setup.SetupRepository
 import org.shehersaaz.mohalla.feature.startup.SessionRepository
 import retrofit2.Retrofit
@@ -136,6 +138,19 @@ class AppContainer private constructor(
     val messagingRepository: MessagingRepository = MessagingRepository(api)
 
     val notificationRepository: NotificationRepository = NotificationRepository(api)
+
+    val profileRepository: ProfileRepository = ProfileRepository(api)
+
+    /**
+     * What this viewer's relationship to a person or a post is.
+     *
+     * ON THE CONTAINER RATHER THAN IN A VIEWMODEL, because it has to outlive
+     * every screen that reads it: following somebody from their profile must
+     * still read as "Following" when the same person is opened from search two
+     * taps later. Session-scoped and never persisted - see the class comment
+     * for why a stale answer on disk would be worse than an honest `Unknown`.
+     */
+    val viewerRelations: ViewerRelations = ViewerRelations()
 
     /**
      * One person's public profile, as a function.

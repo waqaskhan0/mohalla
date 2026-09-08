@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import org.shehersaaz.mohalla.core.format.EventTimes
 import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.network.ApiResult
+import org.shehersaaz.mohalla.core.network.Patch
 import org.shehersaaz.mohalla.core.network.EventResponse
 import org.shehersaaz.mohalla.core.network.EventType
 
@@ -370,14 +371,24 @@ data class EventComposerUiState(
             startsAtIso = EventTimes.toIso(startsAtMillis)
                 .takeIf { EventTimes.toEpochMillis(before?.startsAt ?: "") != startsAtMillis },
             type = type.takeIf { it != EventType.fromWire(before?.eventType) },
-            // Sent only when the creator typed a NEW link. Blank means "keep
-            // the existing one", which is the only thing it can mean — no
-            // response body carries the current link to compare against.
-            meetingUrl = meetingUrl.trim().takeIf {
-                it.isNotEmpty() && type == EventType.ONLINE
+            // THE FIELD THAT DOES NOT BELONG TO THIS TYPE IS CLEARED, not left
+            // alone — that is what makes changing an event's type possible at
+            // all. Leaving it absent meant the server merged the old value back
+            // in and refused the edit for supplying both a link and a location.
+            //
+            // A blank link on an event that is STILL online means "keep the one
+            // you have", which is the only thing it can mean: no response body
+            // carries the current link to compare against (EVENT-FR-003 keeps it
+            // off every read).
+            meetingUrl = when {
+                type != EventType.ONLINE -> Patch.Clear
+                meetingUrl.isBlank() -> Patch.Unchanged
+                else -> Patch.Set(meetingUrl.trim())
             },
-            locationText = locationText.trim().takeIf {
-                type == EventType.PHYSICAL && it != before?.locationText
+            locationText = when {
+                type != EventType.PHYSICAL -> Patch.Clear
+                locationText.trim() == before?.locationText -> Patch.Unchanged
+                else -> Patch.Set(locationText.trim())
             },
             categorySlug = categorySlug.takeIf { it != before?.categorySlug },
         )

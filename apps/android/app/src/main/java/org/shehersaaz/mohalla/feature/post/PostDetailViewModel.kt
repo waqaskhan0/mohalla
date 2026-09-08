@@ -13,6 +13,8 @@ import org.shehersaaz.mohalla.core.network.ApiResult
 import org.shehersaaz.mohalla.core.network.CommentResponse
 import org.shehersaaz.mohalla.core.network.FeedItemResponse
 import org.shehersaaz.mohalla.core.network.PostResponse
+import org.shehersaaz.mohalla.core.state.Relation
+import org.shehersaaz.mohalla.core.state.ViewerRelations
 import org.shehersaaz.mohalla.feature.home.FeedCursor
 import org.shehersaaz.mohalla.feature.setup.graphemeLength
 
@@ -52,6 +54,7 @@ import org.shehersaaz.mohalla.feature.setup.graphemeLength
  */
 class PostDetailViewModel(
     private val source: PostDetailSource,
+    private val relations: ViewerRelations,
     private val postId: String,
     /** The feed's copy, for the first frame. Null when arriving by deep link. */
     cached: FeedItemResponse?,
@@ -73,6 +76,8 @@ class PostDetailViewModel(
     val state: StateFlow<PostDetailUiState> = _state.asStateFlow()
 
     init {
+        _state.update { it.copy(saveState = relations.saveState(postId)) }
+
         refreshPost()
         loadComments()
     }
@@ -416,8 +421,51 @@ class PostDetailViewModel(
         }
     }
 
+    /**
+     * Save, or unsave (FEED-FR-007).
+     *
+     * THE RESTING STATE OF THIS CONTROL IS A GUESS, and the guess is the
+     * permissive one. No response body says whether the viewer has saved a post
+     * — there is `viewerHasLiked` and no `viewerHasSaved` (GAP-M-012) — so an
+     * unvisited post offers SAVE. Saving something already saved is idempotent
+     * and changes nothing; showing "Saved" on something that is not would leave
+     * the reader unable to save it at all.
+     *
+     * Optimistic and reverting, like the like. Both routes return 204, so an
+     * optimistic flip is the only way to show the change happened.
+     */
+    fun toggleSave() {
+        val current = _state.value
+        if (current.savePending) return
+
+        val nowSaved = !current.saveState.isDone
+        _state.update { it.copy(saveState = if (nowSaved) Relation.Yes else Relation.No, savePending = true) }
+
+        viewModelScope.launch {
+            val result = if (nowSaved) source.save(postId) else source.unsave(postId)
+
+            when (result) {
+                is ApiResult.Ok -> {
+                    relations.recordSave(postId, nowSaved)
+                    _state.update { it.copy(savePending = false) }
+                }
+
+                // A post that vanished mid-save is the neutral state, exactly
+                // as it is for every other action on this screen.
+                is ApiResult.Err -> _state.update {
+                    it.copy(
+                        saveState = current.saveState,
+                        savePending = false,
+                        unavailable = it.unavailable || result.failure is ApiFailure.Unavailable,
+                    )
+                }
+            }
+        }
+    }
+
     class Factory(
         private val source: PostDetailSource,
+        private val relations: ViewerRelations,
         private val postId: String,
         private val cached: FeedItemResponse?,
         private val viewerId: () -> String?,
@@ -425,12 +473,16 @@ class PostDetailViewModel(
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            PostDetailViewModel(source, postId, cached, viewerId, onUnavailable) as T
+            PostDetailViewModel(source, relations, postId, cached, viewerId, onUnavailable) as T
     }
 }
 
 data class PostDetailUiState(
     val post: PostResponse? = null,
+
+    /** GAP-M-012 — what the session observed. `Unknown` offers Save. */
+    val saveState: Relation = Relation.Unknown,
+    val savePending: Boolean = false,
 
     /**
      * `true` once the server's own copy has arrived.
