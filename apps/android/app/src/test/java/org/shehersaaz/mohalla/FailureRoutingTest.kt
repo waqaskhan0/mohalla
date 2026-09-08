@@ -125,7 +125,7 @@ class FailureRoutingTest {
         // is the only signal the app gets, and until this group nothing was
         // listening.
         val revocation = SessionRevocation()
-        val storage = FakeStorage(token = "a-live-token")
+        val storage = FakeStorage(token = "synthetic-live-token")
         val interceptor = AuthInterceptor(storage) { revocation.raise() }
 
         interceptor.intercept(chain(status = 401))
@@ -151,7 +151,7 @@ class FailureRoutingTest {
     @Test
     fun `ANY OTHER STATUS LEAVES THE SESSION ALONE`() {
         val revocation = SessionRevocation()
-        val interceptor = AuthInterceptor(FakeStorage(token = "a-live-token")) {
+        val interceptor = AuthInterceptor(FakeStorage(token = "synthetic-live-token")) {
             revocation.raise()
         }
 
