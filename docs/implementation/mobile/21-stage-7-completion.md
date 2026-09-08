@@ -90,12 +90,12 @@ wrote, so there was nothing to review and nothing to call from a test.
 |---|---|
 | Branch | `feature/stage-7-android-v1` |
 | Base | `0981b1a` (`origin/main`, untouched) |
-| HEAD | `2fcb3de` (this report is committed on top of it) |
-| Commits ahead of `main` | **62** — 30 Stage 6 backend, the rest Stage 7 |
-| This pass | 10 commits, `02c3c03..HEAD` |
+| HEAD | `63d8cad` |
+| Commits ahead of `main` | **78** — 30 Stage 6 backend, the rest Stage 7 |
 | Remote | `origin/feature/stage-7-android-v1`, pushed and in sync |
+| Draft PR | [waqaskhan0/mohalla#14](https://github.com/waqaskhan0/mohalla/pull/14) — **draft**, base `main`, opened for review per the Git addendum §3 |
 | `main` touched | **NO** |
-| Merge status | **NOT MERGED — AWAITING OWNER REVIEW** |
+| Merge status | **NOT MERGED — AWAITING OWNER REVIEW.** No automatic merge, no force push, and no history rewritten |
 
 ## 2. Screen coverage — 61 of 61 represented
 
