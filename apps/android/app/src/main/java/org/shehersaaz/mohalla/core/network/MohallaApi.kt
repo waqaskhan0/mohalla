@@ -927,13 +927,48 @@ data class CategoriesResponse(
     val categories: List<CategoryResponse> = emptyList(),
 )
 
+/**
+ * One of BR-017's eleven seeded categories.
+ *
+ * THIS DECLARED A REQUIRED `id` THAT THE SERVER HAS NEVER SENT. `GET /categories`
+ * returns `slug`, `nameEn`, `nameUr` and `sortOrder` — no `id` — so with
+ * `val id: String` and no default, kotlinx-serialization threw
+ * `MissingFieldException` on **every** category fetch. The composer swallowed
+ * it into an empty list, which means POST-FR-006's category picker had never
+ * worked: it opened onto nothing, silently, and nothing else in the app read
+ * `id` at all.
+ *
+ * Found by building UX-HOME-005's filter on the same call. Third instance of
+ * one pattern in this stage — group 12's message cursor named a field the
+ * server spells differently, group 14's PATCH bodies could not express a null,
+ * and this required a field that does not exist. `ApiContractTest` catches none
+ * of them, and says so: the generated contract's `components.schemas` is empty,
+ * so it can prove a route exists and never that a field does.
+ *
+ * `slug` IS THE IDENTITY, which is what the rest of the app already assumed:
+ * posts carry `categorySlug`, the feed filters by slug, and the composer sends
+ * a slug.
+ */
 @Serializable
 data class CategoryResponse(
-    val id: String,
     val slug: String,
     val nameEn: String? = null,
     val nameUr: String? = null,
+    /** The seeded display order (1–11). Read so the list is not re-sorted. */
+    val sortOrder: Int? = null,
 )
+
+/**
+ * Both names arrive in one response, so either language renders (BR-017).
+ *
+ * It lives beside the type rather than in a feature package because THREE
+ * surfaces now localise a category - the composer picker (POST-FR-006), the
+ * home filter sheet and the active-filter row (UX-HOME-005) - and a second
+ * copy of this fallback chain is how two of them would come to disagree about
+ * what a category is called.
+ */
+fun CategoryResponse.displayName(isUrdu: Boolean): String =
+    (if (isUrdu) nameUr else nameEn) ?: nameEn ?: nameUr ?: slug
 
 /**
  * A page of people (SOCIAL-FR-003/004).

@@ -9,6 +9,7 @@ import org.shehersaaz.mohalla.core.network.MohallaApi
 import org.shehersaaz.mohalla.core.network.apiCall
 import org.shehersaaz.mohalla.core.network.map
 import retrofit2.Response
+import org.shehersaaz.mohalla.core.network.CategoryResponse
 
 /**
  * The feeds (FEED-FR-001…006).
@@ -56,6 +57,9 @@ class FeedRepository(
     }
 
     /** FEED-FR-002. Locale-parameterised so announcements arrive translated. */
+    override suspend fun categories(): ApiResult<List<CategoryResponse>> =
+        apiCall { api.categories() }.map { it.categories }
+
     override suspend fun featured(locale: String): ApiResult<List<FeaturedItemResponse>> =
         apiCall { api.feedFeatured(locale) }.map { it.announcements }
 
@@ -118,6 +122,15 @@ interface FeedSource {
     suspend fun following(cursor: FeedCursor? = null, category: String? = null): ApiResult<FeedPage>
     suspend fun discover(cursor: FeedCursor? = null, category: String? = null): ApiResult<FeedPage>
     suspend fun featured(locale: String): ApiResult<List<FeaturedItemResponse>>
+
+    /**
+     * The eleven seeded categories (BR-017), for UX-HOME-005's filter.
+     *
+     * Read from the server rather than hardcoded, and from the SAME route the
+     * composer's picker uses, so the two can never disagree about what exists
+     * or what it is called in Urdu.
+     */
+    suspend fun categories(): ApiResult<List<CategoryResponse>>
     suspend fun like(postId: String): ApiResult<Unit>
     suspend fun unlike(postId: String): ApiResult<Unit>
 }

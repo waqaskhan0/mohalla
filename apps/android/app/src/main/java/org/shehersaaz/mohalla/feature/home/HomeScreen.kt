@@ -1,6 +1,7 @@
 package org.shehersaaz.mohalla.feature.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,12 +21,18 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -46,6 +53,7 @@ import org.shehersaaz.mohalla.core.ui.MohallaSecondaryButton
 import org.shehersaaz.mohalla.core.ui.MohallaTopBar
 import org.shehersaaz.mohalla.core.ui.PostCard
 import org.shehersaaz.mohalla.core.ui.homeActions
+import org.shehersaaz.mohalla.core.network.displayName
 
 /**
  * Home — UX-HOME-001 (Following) · UX-HOME-002 (Discover).
@@ -81,12 +89,30 @@ fun HomeScreen(
     onShare: (String) -> Unit,
     onOpenAnnouncement: (String) -> Unit,
     onFindPeople: () -> Unit,
+    /** UX-HOME-005 — `null` slug means "all categories". */
+    onSelectCategory: (String?) -> Unit,
     onSearch: () -> Unit,
     onOpenNotifications: () -> Unit,
     /** NOTIF-FR-002 — a dot on the bell, and the count only in semantics. */
     unreadNotifications: Int = 0,
     modifier: Modifier = Modifier,
 ) {
+    // UX-HOME-005 is a sheet, so its visibility is this screen's own state
+    // rather than a destination — see `CategoryFilterSheet`.
+    var filtering by remember { mutableStateOf(false) }
+
+    if (filtering) {
+        CategoryFilterSheet(
+            categories = state.categories,
+            selected = state.category,
+            onSelect = { slug ->
+                onSelectCategory(slug)
+                filtering = false
+            },
+            onDismiss = { filtering = false },
+        )
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -110,7 +136,28 @@ fun HomeScreen(
 
         // Sticky under the top bar (§19), which falls out of both sitting above
         // the LazyColumn rather than inside it.
-        FeedTabRow(selected = state.tab, onSelect = onSelectTab)
+        FeedTabRow(
+            selected = state.tab,
+            onSelect = onSelectTab,
+            // Absent until the options exist: a filter with nothing to offer
+            // has nothing to say, so the control does not appear rather than
+            // opening an empty sheet.
+            onFilter = if (state.categories.isEmpty()) null else ({ filtering = true }),
+        )
+
+        // WHY A NAMED ROW AND NOT JUST A LIT ICON: a filtered feed is a SHORTER
+        // feed, and a reader who does not know a filter is on reads that as
+        // "there are no posts". This names the category doing it and gives one
+        // tap to undo — the whole difference between a narrowed list and an
+        // apparently broken one.
+        state.category?.let { slug ->
+            ActiveCategoryNotice(
+                label = state.categories.firstOrNull { it.slug == slug }
+                    ?.displayName(MohallaTheme.isUrdu)
+                    ?: slug,
+                onClear = { onSelectCategory(null) },
+            )
+        }
 
         val page = state.current
 
@@ -259,7 +306,11 @@ private fun FeedItems(
  * a reader who cannot see the colour (§35).
  */
 @Composable
-private fun FeedTabRow(selected: FeedTab, onSelect: (FeedTab) -> Unit) {
+private fun FeedTabRow(
+    selected: FeedTab,
+    onSelect: (FeedTab) -> Unit,
+    onFilter: (() -> Unit)?,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -294,6 +345,84 @@ private fun FeedTabRow(selected: FeedTab, onSelect: (FeedTab) -> Unit) {
                     },
                 )
             }
+        }
+
+        // UX-HOME-005. A FIXED-WIDTH trailing slot: the two tabs keep their
+        // `weight(1f)` each, so adding this does not shift the tab labels off
+        // the centres the spec draws them on.
+        onFilter?.let { open ->
+            Box(
+                modifier = Modifier
+                    .defaultMinSize(
+                        minWidth = MohallaTheme.spacing.Space12,
+                        minHeight = MohallaTheme.spacing.Space12,
+                    )
+                    .clickable(
+                        role = Role.Button,
+                        onClickLabel = stringResource(R.string.a11y_filter),
+                        onClick = open,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    // `FilterList` is not in material-icons-core and `Menu`
+                    // reads as navigation; `List` is the closest honest thing
+                    // this icon set has for "narrow this list". AutoMirrored,
+                    // because its lines are direction-bearing in Urdu.
+                    imageVector = Icons.AutoMirrored.Filled.List,
+                    contentDescription = stringResource(R.string.a11y_filter),
+                    tint = MohallaTheme.colors.TextSecondary,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The filter, while it is on — named, and removable in one tap.
+ *
+ * NOT A DECORATION. It exists because a filtered feed and an empty feed look
+ * identical, and only one of the two is the reader's own doing.
+ */
+@Composable
+private fun ActiveCategoryNotice(label: String, onClear: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MohallaTheme.colors.SurfacePrimary)
+            .padding(
+                horizontal = MohallaTheme.screenMargin,
+                vertical = MohallaTheme.spacing.Space2,
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(MohallaTheme.spacing.Space2),
+    ) {
+        Text(
+            text = label,
+            style = MohallaTheme.text(MohallaType.Caption),
+            // `weight`, not wrapContent: the clear control must not be pushed
+            // off the end by a long Urdu category name.
+            modifier = Modifier.weight(1f),
+            color = MohallaTheme.colors.TextSecondary,
+        )
+        Box(
+            modifier = Modifier
+                .defaultMinSize(
+                    minWidth = MohallaTheme.spacing.Space12,
+                    minHeight = MohallaTheme.spacing.Space12,
+                )
+                .clickable(
+                    role = Role.Button,
+                    onClickLabel = stringResource(R.string.feed_filter_clear),
+                    onClick = onClear,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Close,
+                contentDescription = stringResource(R.string.feed_filter_clear),
+                tint = MohallaTheme.colors.TextSecondary,
+            )
         }
     }
 }

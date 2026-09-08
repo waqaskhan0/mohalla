@@ -101,7 +101,7 @@ class AttachmentUploadTest {
         override suspend fun delete(postId: String): ApiResult<Unit> = ApiResult.Ok(Unit)
 
         override suspend fun categories(): ApiResult<List<CategoryResponse>> =
-            ApiResult.Ok(listOf(CategoryResponse(id = "1", slug = "general", nameEn = "General")))
+            ApiResult.Ok(listOf(CategoryResponse(slug = "general", nameEn = "General")))
     }
 
     /** Hands back prepared images; the picker's own file reading is elsewhere. */

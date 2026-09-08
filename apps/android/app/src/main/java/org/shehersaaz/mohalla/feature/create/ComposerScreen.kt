@@ -52,6 +52,7 @@ import org.shehersaaz.mohalla.core.ui.MohallaSecondaryButton
 import org.shehersaaz.mohalla.core.ui.UPLOAD_TILE
 import org.shehersaaz.mohalla.core.ui.UploadTile
 import org.shehersaaz.mohalla.core.ui.UploadTileState
+import org.shehersaaz.mohalla.core.network.displayName
 
 /**
  * The composer — UX-CREATE-001.
@@ -637,10 +638,6 @@ private fun DiscardConfirmation(onKeep: () -> Unit, onDiscard: () -> Unit) {
         containerColor = MohallaTheme.colors.SurfacePrimary,
     )
 }
-
-/** Both names arrive in one response, so either language renders (BR-017). */
-fun org.shehersaaz.mohalla.core.network.CategoryResponse.displayName(isUrdu: Boolean): String =
-    (if (isUrdu) nameUr else nameEn) ?: nameEn ?: nameUr ?: slug
 
 private fun AttachmentState.toTileState(): UploadTileState = when (this) {
     AttachmentState.Pending -> UploadTileState.Pending

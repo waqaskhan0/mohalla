@@ -107,6 +107,10 @@ object Routes {
     const val PROFILE_SETUP = "setup/profile"
     const val SUGGESTED = "setup/suggested"
 
+    /** UX-HOME-006. The id identifies which announcement, nothing more. */
+    const val ANNOUNCEMENT_PATTERN = "announcement/{announcementId}"
+    fun announcement(id: String) = "announcement/$id"
+
     const val SHELL = "shell"
 
     /**

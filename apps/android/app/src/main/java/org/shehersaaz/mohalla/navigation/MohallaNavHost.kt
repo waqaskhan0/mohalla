@@ -116,6 +116,7 @@ import org.shehersaaz.mohalla.feature.setup.SuggestedAccountsScreen
 import org.shehersaaz.mohalla.feature.setup.SuggestionsViewModel
 import org.shehersaaz.mohalla.feature.setup.UsernameScreen
 import org.shehersaaz.mohalla.feature.setup.UsernameViewModel
+import org.shehersaaz.mohalla.feature.home.AnnouncementDetailScreen
 
 /**
  * The navigation graph.
@@ -196,7 +197,32 @@ fun MohallaNavHost(
                 )
             }
 
-            // UX-EVENT-003. Deep-linkable (§42): reachable from the events list, a
+            /**
+         * UX-HOME-006 — an announcement, in full.
+         *
+         * IT READS FROM THE FEED'S OWN STATE rather than fetching. There is no
+         * public `GET /announcements/{id}`: Stage 6 serves single-announcement
+         * routes only under `/admin/`, which §49 excludes. The featured payload
+         * already carries every field this screen shows, so a fetch would be a
+         * request for data the device holds. See `AnnouncementDetailScreen`.
+         */
+        composable(Routes.ANNOUNCEMENT_PATTERN) { entry ->
+            val id = entry.arguments?.getString("announcementId")
+            val feed: FeedViewModel = viewModel(
+                factory = FeedViewModel.Factory(
+                    repository = container.feedRepository,
+                    locale = { container.formattingLocale().toLanguageTag() },
+                ),
+            )
+            val state by feed.state.collectAsState()
+
+            AnnouncementDetailScreen(
+                announcement = state.featured.firstOrNull { it.id == id },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        // UX-EVENT-003. Deep-linkable (§42): reachable from the events list, a
             // feed card, search and a notification, so it takes its id from the
             // route rather than from a shared object.
             composable(Routes.EVENT_PATTERN) { entry ->
@@ -618,6 +644,13 @@ private fun HomeRoute(
 
     val context = LocalContext.current
 
+    // UX-HOME-005's options. Once per process — eleven rows that do not
+
+    // change between launches (BR-017).
+
+    LaunchedEffect(Unit) { feed.loadCategories() }
+
+
     HomeScreen(
         state = state,
         onSelectTab = feed::selectTab,
@@ -627,11 +660,13 @@ private fun HomeRoute(
         onOpenAuthor = { navController.navigate(Routes.profile(it)) },
         onToggleLike = feed::toggleLike,
         onShare = { postId -> sharePost(context, postId) },
-        // The announcement detail is UX-HOME-006 and the notification centre is
-        // UX-HOME-007; both arrive with group 12.
-        // UX-HOME-006, the announcement detail, is not built. The bell is.
-        onOpenAnnouncement = {},
+        // UX-HOME-006. This was `{}` — an empty lambda — so the Featured strip's
+        // cards and every ANNOUNCEMENT notification were tappable and inert.
+        onOpenAnnouncement = { navController.navigate(Routes.announcement(it)) },
         onFindPeople = { navController.navigate(Routes.SEARCH) },
+        // UX-HOME-005. `selectCategory` has always reached the API; until now
+        // nothing called it.
+        onSelectCategory = feed::selectCategory,
         onSearch = { navController.navigate(Routes.SEARCH) },
         onOpenNotifications = { navController.navigate(Routes.NOTIFICATIONS) },
         unreadNotifications = unreadNotifications,

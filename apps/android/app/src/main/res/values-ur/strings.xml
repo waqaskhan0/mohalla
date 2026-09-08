@@ -14,6 +14,11 @@
 -->
 <resources>
     <string name="app_name">محلہ</string>
+    <string name="announcement_title">اعلان</string>
+    <string name="feed_filter_title">قسم کے مطابق چھانٹیں</string>
+    <string name="feed_filter_all">تمام اقسام</string>
+    <string name="feed_filter_clear">چھانٹی ہٹائیں</string>
+    <string name="a11y_filter">قسم کے مطابق چھانٹیں</string>
 
     <!-- ============================================ navigation (UI/UX §14) -->
     <string name="nav_home">ہوم</string>

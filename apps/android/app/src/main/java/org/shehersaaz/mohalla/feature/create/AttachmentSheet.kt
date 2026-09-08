@@ -34,6 +34,7 @@ import org.shehersaaz.mohalla.R
 import org.shehersaaz.mohalla.core.design.MohallaTheme
 import org.shehersaaz.mohalla.core.design.MohallaType
 import org.shehersaaz.mohalla.core.network.CategoryResponse
+import org.shehersaaz.mohalla.core.network.displayName
 
 /**
  * The attachment sheet — UX-CREATE-003 (POST-FR-002/004/005).

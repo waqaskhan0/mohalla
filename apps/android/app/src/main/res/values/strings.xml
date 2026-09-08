@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Mohalla</string>
+    <string name="announcement_title">Announcement</string>
+    <string name="feed_filter_title">Filter by category</string>
+    <string name="feed_filter_all">All categories</string>
+    <string name="feed_filter_clear">Clear filter</string>
+    <string name="a11y_filter">Filter by category</string>
 
     <!-- ============================================ navigation (UI/UX §14) -->
     <string name="nav_home">Home</string>

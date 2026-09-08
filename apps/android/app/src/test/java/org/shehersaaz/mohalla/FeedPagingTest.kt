@@ -24,6 +24,7 @@ import org.shehersaaz.mohalla.feature.home.FeedPage
 import org.shehersaaz.mohalla.feature.home.FeedSource
 import org.shehersaaz.mohalla.feature.home.FeedTab
 import org.shehersaaz.mohalla.feature.home.FeedViewModel
+import org.shehersaaz.mohalla.core.network.CategoryResponse
 
 /**
  * Pagination and optimistic likes, driven through the real [FeedViewModel].
@@ -99,6 +100,18 @@ class FeedPagingTest {
 
         override suspend fun featured(locale: String): ApiResult<List<FeaturedItemResponse>> =
             ApiResult.Ok(emptyList())
+
+        // UX-HOME-005's options. Scripted so a test can assert the filter is
+        // offered only once they exist, and counted so nothing re-reads a list
+        // that cannot change (BR-017 — eleven, not user-extensible).
+        var categoriesResult: ApiResult<List<CategoryResponse>> =
+            ApiResult.Ok(emptyList())
+        var categoryCalls = 0
+
+        override suspend fun categories(): ApiResult<List<CategoryResponse>> {
+            categoryCalls++
+            return categoriesResult
+        }
 
         override suspend fun like(postId: String): ApiResult<Unit> {
             likeCalls++
@@ -423,4 +436,91 @@ class FeedPagingTest {
             assertTrue(vm.state.value.discover.items.isEmpty())
             assertNull(vm.state.value.firstPageFailure)
         }
+
+    // ----------------------------------------- UX-HOME-005, the category filter
+
+    @Test
+    fun `THE FILTER OPTIONS ARE READ ONCE, NOT PER OPENING`() = runTest {
+        // BR-017 fixes eleven categories and makes them non-extensible, so the
+        // list cannot change between launches. Re-reading it every time the
+        // sheet opens would be a request for an answer already held - and on a
+        // 2GB phone over 3G (NFR-COMP-002) that is exactly the kind of request
+        // that is free to make and not free to wait for.
+        val script = Script()
+        script.categoriesResult = ApiResult.Ok(
+            listOf(
+                CategoryResponse(slug = "water", nameEn = "Water", nameUr = "پانی"),
+                CategoryResponse(slug = "power", nameEn = "Power", nameUr = "بجلی"),
+            ),
+        )
+        val vm = FeedViewModel(script) { "en" }
+
+        vm.loadCategories()
+        advanceUntilIdle()
+        assertEquals(2, vm.state.value.categories.size)
+        assertEquals(1, script.categoryCalls)
+
+        // Opening the sheet again must not ask again.
+        vm.loadCategories()
+        advanceUntilIdle()
+        assertEquals(1, script.categoryCalls)
+    }
+
+    @Test
+    fun `A FILTER WHOSE OPTIONS NEVER ARRIVED IS SIMPLY NOT OFFERED`() = runTest {
+        // The control is absent rather than present-and-useless. A sheet that
+        // opens onto an error is worse than no filter icon, because the reader
+        // has to work out that the failure was not theirs.
+        val script = Script()
+        script.categoriesResult = ApiResult.Err(ApiFailure.Offline)
+        val vm = FeedViewModel(script) { "en" }
+
+        vm.loadCategories()
+        advanceUntilIdle()
+
+        assertTrue(
+            "no options means the top bar shows no filter control",
+            vm.state.value.categories.isEmpty(),
+        )
+    }
+
+    @Test
+    fun `CHOOSING A CATEGORY REFETCHES BOTH TABS THROUGH IT`() = runTest {
+        // FEED-FR-006 filters BOTH Home tabs, so the slug has to reach the
+        // request rather than being applied to the page already held.
+        val script = Script()
+        val vm = FeedViewModel(script) { "en" }
+        advanceUntilIdle()
+        script.requestedCategories.clear()
+
+        vm.selectCategory("water")
+        advanceUntilIdle()
+
+        assertEquals(
+            "the chosen slug must be sent, not filtered client-side",
+            listOf("water"),
+            script.requestedCategories,
+        )
+        assertEquals("water", vm.state.value.category)
+    }
+
+    @Test
+    fun `ALL CATEGORIES IS A NULL SLUG, AND IS NOT A NO-OP`() = runTest {
+        // "All" is a real option in the sheet, not a clear button, so choosing
+        // it has to send `null` and refetch - otherwise a reader who filtered
+        // can never get back.
+        val script = Script()
+        val vm = FeedViewModel(script) { "en" }
+        advanceUntilIdle()
+
+        vm.selectCategory("water")
+        advanceUntilIdle()
+        script.requestedCategories.clear()
+
+        vm.selectCategory(null)
+        advanceUntilIdle()
+
+        assertEquals(listOf<String?>(null), script.requestedCategories)
+        assertNull(vm.state.value.category)
+    }
 }

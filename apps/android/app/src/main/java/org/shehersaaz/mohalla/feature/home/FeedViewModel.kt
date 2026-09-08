@@ -12,6 +12,7 @@ import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.network.ApiResult
 import org.shehersaaz.mohalla.core.network.FeaturedItemResponse
 import org.shehersaaz.mohalla.core.network.FeedItemResponse
+import org.shehersaaz.mohalla.core.network.CategoryResponse
 
 /**
  * Home — UX-HOME-001 (Following) and UX-HOME-002 (Discover).
@@ -65,6 +66,27 @@ class FeedViewModel(
     }
 
     /** FEED-FR-006 — filtering changes membership, never ordering. */
+    /**
+     * Load UX-HOME-005's options.
+     *
+     * ONCE, AND SILENTLY ON FAILURE. The list is fixed at eleven rows that do
+     * not change between launches, so re-reading it on every sheet open would
+     * be a request for an answer already held. And a filter whose options did
+     * not arrive is a filter that cannot be offered — there is nothing useful to
+     * say about it, so the control simply does not appear rather than opening a
+     * sheet with an error in it.
+     */
+    fun loadCategories() {
+        if (_state.value.categories.isNotEmpty()) return
+
+        viewModelScope.launch {
+            when (val result = repository.categories()) {
+                is ApiResult.Ok -> _state.update { it.copy(categories = result.value) }
+                is ApiResult.Err -> Unit
+            }
+        }
+    }
+
     fun selectCategory(slug: String?) {
         if (_state.value.category == slug) return
         _state.update {
@@ -281,6 +303,9 @@ data class FeedList(
 data class FeedUiState(
     val tab: FeedTab = FeedTab.FOLLOWING,
     val category: String? = null,
+
+    /** UX-HOME-005's options, loaded once (BR-017 — eleven, not extensible). */
+    val categories: List<CategoryResponse> = emptyList(),
 
     val following: FeedList = FeedList(),
     val discover: FeedList = FeedList(),
