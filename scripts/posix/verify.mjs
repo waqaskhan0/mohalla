@@ -135,7 +135,26 @@ run('guard: secret scan', process.execPath, [resolve(repoRoot, 'scripts/posix/ch
 // ---------------------------------------------------------------- node lanes
 run('format check', ...npmRun('run', 'format:check'));
 run('lint (includes the RTL gate)', ...npmRun('run', 'lint'));
-run('build all apps', ...npmRun('run', 'build:apps'));
+// NODE_ENV IS FORCED, and the reason is not cosmetic.
+//
+// `next build` prerenders, and prerendering under `NODE_ENV=development` mixes
+// React's development and production builds. The result is
+// `TypeError: Cannot read properties of null (reading 'useContext')` on the
+// first static page — a failure with no relationship to the source, which
+// compiles cleanly in the same run ("✓ Compiled successfully", then the export
+// dies).
+//
+// It surfaces because a developer with a local `.env` exported into their shell
+// has `NODE_ENV=development` set, and this harness inherits `process.env`. So
+// the same commit built or failed depending on whether the person running
+// verify had sourced their own `.env` — which is the worst kind of red, the
+// kind that sends somebody looking at code that is fine. Found while running
+// verify against a live stack during the Stage 7 completion pass.
+//
+// A production build is what this lane means, so it says so.
+run('build all apps', ...npmRun('run', 'build:apps'), {
+  env: { ...process.env, NODE_ENV: 'production' },
+});
 run(
   'unit tests (api, worker, validation, admin)',
   ...npmRun('run', 'test', '--workspaces', '--if-present'),

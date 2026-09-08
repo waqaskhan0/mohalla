@@ -37,11 +37,31 @@ pass. `sdkmanager` installed `emulator` + `system-images;android-36;google_apis;
 
 ### `npm run verify`
 
-| | |
+**12 passed · 0 failed · 3 blocked · 15 total.**
+
+It began this pass at **9 passed / 0 failed / 6 blocked** — no database at all —
+and spent two runs at **11 / 1 / 3**. The failed lane took three hypotheses to
+pin down, and the first two were wrong:
+
+| Hypothesis | Verdict |
 |---|---|
-| **11 passed · 1 failed · 3 blocked · 15 total** | |
-| The failure | `build all apps` — the **admin** Next.js app failed to prerender `/_global-error` with `TypeError: Cannot read properties of null (reading 'useContext')`. **A stale `.next` cache**, not a source defect: `rm -rf apps/admin/.next` and the build succeeds. No Stage 7 commit touches `apps/admin`; its last change is `c9fc19e`, already on public `main`. |
-| The 3 blocked | release gate, backup, restore rehearsal — all need a second database (`mohalla_restore_check`) that was not provisioned. **Recorded as BLOCKED, not converted to PASS.** |
+| A stale `.next` cache | **Wrong.** `rm -rf apps/admin/.next` and verify still failed. |
+| Memory pressure — 1.1 GB free of 8 GB with a 4 GB emulator running | **Wrong.** Stopping the emulator changed nothing. |
+| **`NODE_ENV=development` inherited from a sourced `.env`** | **Correct**, and proven both ways. |
+
+`next build` prerenders, and prerendering under `NODE_ENV=development` mixes
+React's development and production builds — producing
+`TypeError: Cannot read properties of null (reading 'useContext')` on the first
+static page, right after the same run reports "✓ Compiled successfully". So the
+lane's result depended on whether the person running verify had exported their
+own `.env`, which is the worst kind of red: it sends somebody to read code that
+is fine. **Fixed** by forcing `NODE_ENV=production` for that lane, which is what
+"build all apps" means.
+
+The 3 blocked lanes — release gate, backup, restore rehearsal — need a second
+database (`mohalla_restore_check`) that was not provisioned. **Recorded as
+BLOCKED, not converted to PASS**, and the harness itself refuses to call the run
+complete.
 
 ---
 
