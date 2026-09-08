@@ -6,8 +6,8 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "migrate": "node-pg-migrate up -m migrations -j js",
-    "migrate:down": "node-pg-migrate down -m migrations -j js",
+    "migrate": "node-pg-migrate up -d MIGRATION_DATABASE_URL -m migrations -j js",
+    "migrate:down": "node-pg-migrate down -d MIGRATION_DATABASE_URL -m migrations -j js",
     "migrate:status": "node scripts/migration-status.mjs",
     "roles": "node scripts/apply-roles.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
