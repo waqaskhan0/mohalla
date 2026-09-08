@@ -252,6 +252,7 @@
     <string name="event_problem_both">Choose one: a meeting link for an online event, or a location for an in-person one. For both, choose in person and put the link in the description.</string>
     <string name="state_restricted_body">Your account cannot do this right now.</string>
     <string name="action_report">Report</string>
+    <string name="action_more">More options</string>
     <!-- Media -->
     <string name="media_unavailable">Image unavailable</string>
     <string name="media_more_count">+%1$d</string>
@@ -479,4 +480,43 @@
     <string name="help_body">Write to us and we\'ll get back to you.</string>
     <string name="help_unavailable">A support address hasn\'t been published yet.</string>
     <string name="about_version">Version %1$s (%2$d)</string>
+    <!-- Safety (UX-SAFE-001..003) -->
+    <string name="report_title_post">Report this post</string>
+    <string name="report_title_comment">Report this comment</string>
+    <string name="report_title_event">Report this event</string>
+    <string name="report_title_profile">Report this account</string>
+    <string name="report_title_conversation">Report this conversation</string>
+    <string name="report_why">Why are you reporting it?</string>
+    <string name="report_change_reason">Change</string>
+    <string name="report_note_optional">Anything you want to add? (optional)</string>
+    <string name="report_submit">Send report</string>
+    <string name="report_thanks_title">Thank you</string>
+    <string name="report_thanks_body">Our team will review this.</string>
+    <string name="report_also_block">Would you like to block this person as well?</string>
+    <string name="report_failed">This couldn\'t be sent. Try again.</string>
+    <string name="report_offline">You\'re offline, so this hasn\'t been sent. Nothing you typed is lost — try again when you\'re back.</string>
+
+    <!--
+      SAFETY-FR-003's eight reasons, in "plain sentences - not policy
+      language". A reporter choosing between these is describing their own
+      situation, not classifying it against a rulebook they have not read.
+    -->
+    <string name="report_reason_spam">Spam or misleading</string>
+    <string name="report_reason_harassment">Harassment or bullying</string>
+    <string name="report_reason_hate">Hate speech</string>
+    <string name="report_reason_violence">Violence or threats</string>
+    <string name="report_reason_sexual">Sexual or inappropriate content</string>
+    <string name="report_reason_false">False information</string>
+    <string name="report_reason_impersonation">Pretending to be someone else</string>
+    <string name="report_reason_other">Something else</string>
+
+    <string name="block_action">Block</string>
+    <string name="block_title">Block %1$s?</string>
+    <string name="block_title_generic">Block this person?</string>
+    <string name="block_effect_visibility">Neither of you will see the other\'s profile, posts or comments.</string>
+    <string name="block_effect_contact">Neither of you can follow, message or mention the other.</string>
+    <string name="block_effect_follows">If either of you follows the other, that will be undone — unblocking later doesn\'t bring it back.</string>
+    <string name="block_effect_silent">They are never told that you blocked them.</string>
+    <string name="block_failed">That didn\'t work. Try again.</string>
+    <string name="comment_report">Report</string>
 </resources>

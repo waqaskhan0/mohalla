@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,6 +52,7 @@ fun CommentThreadItem(
     onReply: (CommentResponse) -> Unit,
     onDelete: (CommentResponse) -> Unit,
     canDelete: (CommentResponse) -> Boolean,
+    onReport: (CommentResponse) -> Unit,
     isDeleting: (CommentResponse) -> Boolean,
     onOpenAuthor: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -64,6 +66,7 @@ fun CommentThreadItem(
             onReply = { onReply(thread.comment) },
             onDelete = { onDelete(thread.comment) },
             canDelete = canDelete(thread.comment),
+            onReport = { onReport(thread.comment) },
             deleting = isDeleting(thread.comment),
             onOpenAuthor = onOpenAuthor,
         )
@@ -77,6 +80,7 @@ fun CommentThreadItem(
                 onReply = { onReply(reply) },
                 onDelete = { onDelete(reply) },
                 canDelete = canDelete(reply),
+                onReport = { onReport(reply) },
                 deleting = isDeleting(reply),
                 onOpenAuthor = onOpenAuthor,
                 // §19's "comment indent 32". `padding(start = …)` rather than
@@ -93,6 +97,7 @@ private fun CommentRow(
     onReply: () -> Unit,
     onDelete: () -> Unit,
     canDelete: Boolean,
+    onReport: () -> Unit,
     deleting: Boolean,
     onOpenAuthor: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -218,6 +223,36 @@ private fun CommentRow(
                         )
                         Text(
                             text = stringResource(R.string.comment_delete),
+                            style = MohallaTheme.text(MohallaType.Label),
+                            color = MohallaTheme.colors.TextTertiary,
+                        )
+                    }
+                } else if (!isDeletedAuthor) {
+                    // SAFETY-FR-001 lists a COMMENT among the five things that
+                    // can be reported, and this row is the only surface a
+                    // comment has. Exclusive with Delete for the same reason the
+                    // post's is: an author cannot report their own content, so
+                    // one of the two is always the wrong control to show.
+                    //
+                    // Absent on a departed author's placeholder — PRIV-007 keeps
+                    // what remains carrying no link back, and there is nobody
+                    // left to action.
+                    Row(
+                        modifier = Modifier
+                            .defaultMinSize(minHeight = MohallaTheme.spacing.Space12)
+                            .clickable(role = Role.Button, onClick = onReport)
+                            .padding(vertical = MohallaTheme.spacing.Space3),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(MohallaTheme.spacing.Space1),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Warning,
+                            contentDescription = null,
+                            tint = MohallaTheme.colors.TextTertiary,
+                            modifier = Modifier.size(MohallaTheme.spacing.Space4),
+                        )
+                        Text(
+                            text = stringResource(R.string.comment_report),
                             style = MohallaTheme.text(MohallaType.Label),
                             color = MohallaTheme.colors.TextTertiary,
                         )

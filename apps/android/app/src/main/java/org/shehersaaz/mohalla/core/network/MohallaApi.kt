@@ -742,6 +742,28 @@ interface MohallaApi {
         @Query("limit") limit: Int? = null,
         @Query("before") before: String? = null,
     ): Response<BlockListResponse>
+
+    // ------------------------------------------------------------------ reports
+
+    /**
+     * Report content, an account or a conversation (SAFE-API-001).
+     *
+     * 202 ACCEPTED, NOT 201, AND WITH NOTHING IN THE BODY WORTH READING.
+     * "Nothing addressable is created from the reporter's point of view: they
+     * cannot read their report back, and there is no resource to point them at.
+     * 202 says 'received, and what happens next is not yours to see', which is
+     * precisely the contract."
+     *
+     * EVERY SUCCESSFUL PATH IS IDENTICAL. A first report, a fourth from the same
+     * account, and the one that crossed the auto-hide threshold all return the
+     * same thing - SAFETY-FR-001 requires that a repeat shows "the
+     * acknowledgement again without incrementing the count, SO THE REPORTER
+     * CANNOT INFER THE CURRENT TALLY". The tally is what tells a coordinated
+     * group how many more accounts they need, and RSK-010 names coordinated
+     * reporting as this platform's characteristic abuse.
+     */
+    @POST("reports")
+    suspend fun report(@Body body: ReportRequest): Response<Unit>
 }
 
 // ============================================================ request bodies
@@ -1466,6 +1488,24 @@ data class BlockListResponse(
      * SHORT page instead.
      */
     val nextBefore: String? = null,
+)
+
+/**
+ * A report (SAFETY-FR-001/002/003).
+ *
+ * `reasonCode` IS AN ENUM ON BOTH SIDES AND CARRIES NO SEVERITY. Severity is
+ * derived from the reason by the server, because it orders the moderation queue
+ * - and a reporter who could set it would make CRITICAL the rational choice
+ * every time, costing the one reviewer the only signal they have about what to
+ * open first. There is deliberately no field here that could carry one.
+ */
+@Serializable
+data class ReportRequest(
+    val targetType: String,
+    val targetId: String,
+    val reasonCode: String,
+    /** SAFETY-FR-001 - "optionally adds a note of up to 500 characters". */
+    val note: String? = null,
 )
 
 @Serializable

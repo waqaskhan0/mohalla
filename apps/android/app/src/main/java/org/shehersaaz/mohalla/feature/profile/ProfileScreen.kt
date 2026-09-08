@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -85,6 +86,7 @@ fun ProfileScreen(
     onEdit: () -> Unit,
     onOpenSaved: () -> Unit,
     onSettings: () -> Unit,
+    onMore: () -> Unit,
     onOpenFollowers: () -> Unit,
     onOpenFollowing: () -> Unit,
     onOpenPost: (String) -> Unit,
@@ -115,7 +117,26 @@ fun ProfileScreen(
                 ),
             )
         } else {
-            MohallaBackHeader(title = "", onBack = onBack)
+            MohallaBackHeader(
+                title = "",
+                onBack = onBack,
+                // SAFETY-FR-002 — reporting an ACCOUNT rather than one of its
+                // items, which is what somebody does when the pattern is the
+                // problem. Blocking is offered from the same sheet after the
+                // report, and on its own from here (SAFETY-FR-005 lists a
+                // profile among the four places a block can start).
+                actions = if (state.profile == null) {
+                    emptyList()
+                } else {
+                    listOf(
+                        TopBarAction(
+                            icon = Icons.Filled.MoreVert,
+                            descriptionRes = R.string.action_more,
+                            onClick = onMore,
+                        ),
+                    )
+                },
+            )
         }
 
         when {

@@ -36,6 +36,7 @@ import org.shehersaaz.mohalla.feature.messages.MessagingRepository
 import org.shehersaaz.mohalla.core.state.ViewerRelations
 import org.shehersaaz.mohalla.feature.notifications.NotificationRepository
 import org.shehersaaz.mohalla.feature.profile.ProfileRepository
+import org.shehersaaz.mohalla.feature.safety.SafetyRepository
 import org.shehersaaz.mohalla.feature.settings.SettingsRepository
 import org.shehersaaz.mohalla.feature.setup.SetupRepository
 import org.shehersaaz.mohalla.feature.startup.SessionRepository
@@ -143,6 +144,8 @@ class AppContainer private constructor(
     val profileRepository: ProfileRepository = ProfileRepository(api)
 
     val settingsRepository: SettingsRepository = SettingsRepository(api)
+
+    val safetyRepository: SafetyRepository = SafetyRepository(api)
 
     /**
      * What this viewer's relationship to a person or a post is.

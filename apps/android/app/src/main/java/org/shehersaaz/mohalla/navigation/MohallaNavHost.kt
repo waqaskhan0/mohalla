@@ -94,6 +94,11 @@ import org.shehersaaz.mohalla.feature.post.PostDetailScreen
 import org.shehersaaz.mohalla.feature.post.PostDetailViewModel
 import org.shehersaaz.mohalla.feature.search.SearchScreen
 import org.shehersaaz.mohalla.feature.search.SearchViewModel
+import org.shehersaaz.mohalla.feature.safety.BlockConfirmSheet
+import org.shehersaaz.mohalla.feature.safety.ReportSheet
+import org.shehersaaz.mohalla.feature.safety.ReportTarget
+import org.shehersaaz.mohalla.feature.safety.ReportViewModel
+import org.shehersaaz.mohalla.feature.safety.SafetyMenuSheet
 import org.shehersaaz.mohalla.feature.safety.SuspensionExplainerSheet
 import org.shehersaaz.mohalla.feature.setup.ProfileSetupScreen
 import org.shehersaaz.mohalla.feature.setup.ProfileSetupViewModel
@@ -645,6 +650,7 @@ private fun PostDetailRoute(
     )
     val state by vm.state.collectAsState()
     val context = LocalContext.current
+    var safety by remember { mutableStateOf<SafetyRequest?>(null) }
 
     PostDetailScreen(
         state = state,
@@ -664,8 +670,35 @@ private fun PostDetailRoute(
         onOpenMedia = { index -> onOpenMedia(state.post?.mediaIds.orEmpty(), index) },
         onShare = { sharePost(context, postId) },
         onToggleSave = vm::toggleSave,
+        onReportPost = {
+            state.post?.let { post ->
+                safety = SafetyRequest(
+                    target = ReportTarget.POST,
+                    targetId = post.id,
+                    subjectUserId = post.author.userId,
+                    subjectName = post.author.displayName,
+                )
+            }
+        },
+        // SAFETY-FR-001 lists a COMMENT among the five reportable things, and
+        // the thread is the only surface a comment has.
+        onReportComment = { comment ->
+            safety = SafetyRequest(
+                target = ReportTarget.COMMENT,
+                targetId = comment.id,
+                subjectUserId = comment.author.userId,
+                subjectName = comment.author.displayName,
+            )
+        },
         onLoadMoreComments = vm::loadMoreComments,
         isUrdu = container.localeStore.stored()?.isRtl == true,
+    )
+
+    SafetySheets(
+        container = container,
+        request = safety,
+        onDismiss = { safety = null },
+        onChange = { safety = it },
     )
 }
 
@@ -700,6 +733,7 @@ private fun ProfileRoute(
     val context = LocalContext.current
 
     val id = state.profile?.userId
+    var safety by remember { mutableStateOf<SafetyRequest?>(null) }
 
     ProfileScreen(
         state = state,
@@ -716,6 +750,21 @@ private fun ProfileRoute(
         onEdit = { navController.navigate(Routes.EDIT_PROFILE) },
         onSettings = { navController.navigate(Routes.SETTINGS) },
         onOpenSaved = { navController.navigate(Routes.SAVED_POSTS) },
+        // §14's "⋯ Report · Block". SAFETY-FR-002 reports the ACCOUNT rather
+        // than one of its items, which is what somebody does when the pattern
+        // is the problem; SAFETY-FR-005 lists a profile among the four places a
+        // block can start.
+        onMore = {
+            id?.let {
+                safety = SafetyRequest(
+                    target = ReportTarget.PROFILE,
+                    targetId = it,
+                    subjectUserId = it,
+                    subjectName = state.profile?.displayName,
+                    step = SafetyStep.MENU,
+                )
+            }
+        },
         onOpenFollowers = { id?.let { navController.navigate(Routes.followers(it)) } },
         onOpenFollowing = { id?.let { navController.navigate(Routes.following(it)) } },
         onOpenPost = { navController.navigate(Routes.post(it)) },
@@ -725,6 +774,107 @@ private fun ProfileRoute(
             navController.navigate(Routes.imageViewer(mediaIds, index))
         },
     )
+
+    SafetySheets(
+        container = container,
+        request = safety,
+        onDismiss = { safety = null },
+        onChange = { safety = it },
+    )
+}
+
+/**
+ * The safety sheets, hosted for one screen — UX-SAFE-001 · 002 · 003.
+ *
+ * ONE COMPOSABLE, FIVE ENTRY POINTS. SAFETY-FR-001 puts reporting on a post, a
+ * comment, an event, a profile and a conversation; SAFETY-FR-005 puts blocking
+ * on four of the same places. Five copies of this wiring would be five chances
+ * to get the acknowledgement subtly different, on the one flow where a
+ * difference between two outcomes IS a disclosure.
+ *
+ * THE VIEWMODEL IS KEYED BY WHAT IS BEING REPORTED. `viewModel()` scopes to the
+ * destination, and a post detail screen whose comments can each be reported
+ * would otherwise hand the second comment the first one's half-finished sheet,
+ * with a reason already chosen.
+ *
+ * EVERY SHEET HERE IS DISMISSIBLE BY TAPPING OUTSIDE. "Reporting is never a
+ * trap", and that includes having opened the menu by accident.
+ */
+@Composable
+private fun SafetySheets(
+    container: AppContainer,
+    request: SafetyRequest?,
+    onDismiss: () -> Unit,
+    onChange: (SafetyRequest) -> Unit,
+) {
+    if (request == null) return
+
+    // The ⋯ menu decides nothing on its own; it chooses which of the two real
+    // sheets opens next.
+    if (request.step == SafetyStep.MENU) {
+        SafetyMenuSheet(
+            onDismiss = onDismiss,
+            onReport = { onChange(request.copy(step = SafetyStep.REPORT)) },
+            onBlock = { onChange(request.copy(step = SafetyStep.BLOCK)) },
+        )
+        return
+    }
+
+    val vm: ReportViewModel = viewModel(
+        key = "safety-${request.target}-${request.targetId}",
+        factory = ReportViewModel.Factory(
+            safety = container.safetyRepository,
+            target = request.target,
+            targetId = request.targetId,
+            subjectUserId = request.subjectUserId,
+        ),
+    )
+    val state by vm.state.collectAsState()
+
+    if (request.step == SafetyStep.BLOCK) {
+        BlockConfirmSheet(
+            displayName = request.subjectName,
+            blocking = state.blocking,
+            failed = state.blockFailed,
+            onDismiss = onDismiss,
+            onConfirm = { vm.block(onBlocked = onDismiss) },
+        )
+    } else {
+        ReportSheet(
+            state = state,
+            onDismiss = onDismiss,
+            onChooseReason = vm::chooseReason,
+            onClearReason = vm::clearReason,
+            onNoteChanged = vm::onNoteChanged,
+            onSubmit = vm::submit,
+            // Offered from the acknowledgement, and it closes the sheet on
+            // success: the report is already sent, and the block is the second
+            // half of a decision the reporter has taken.
+            onBlock = { vm.block(onBlocked = onDismiss) },
+        )
+    }
+}
+
+/**
+ * What a screen is asking the safety sheets to act on.
+ *
+ * `subjectUserId` is null where the target has no single person behind it —
+ * there is no such thing as blocking an event — and that is what decides whether
+ * the block is offered at all.
+ */
+private data class SafetyRequest(
+    val target: ReportTarget,
+    val targetId: String,
+    val subjectUserId: String? = null,
+    val subjectName: String? = null,
+    val step: SafetyStep = SafetyStep.REPORT,
+)
+
+private enum class SafetyStep {
+    /** §14's "⋯ Report · Block", where the person rather than an item is the subject. */
+    MENU,
+    REPORT,
+    BLOCK,
 }
 
 /**
@@ -1116,6 +1266,7 @@ private fun ConversationRoute(
         ),
     )
     val state by vm.state.collectAsState()
+    var safety by remember { mutableStateOf<SafetyRequest?>(null) }
 
     ConversationScreen(
         state = state,
@@ -1128,9 +1279,30 @@ private fun ConversationRoute(
         onAccept = vm::accept,
         onDecline = { vm.decline(onDeclined = onBack) },
         onOpenProfile = onOpenProfile,
+        // §14's "⋯ Report · Block" again. MSG-FR-007 makes a conversation
+        // reportable as a whole, and a conversation ALWAYS has a person behind
+        // it — so unlike an event, both options are real here.
+        onReport = {
+            state.otherUserId?.let { userId ->
+                safety = SafetyRequest(
+                    target = ReportTarget.CONVERSATION,
+                    targetId = conversationId,
+                    subjectUserId = userId,
+                    subjectName = state.otherUser?.displayName,
+                    step = SafetyStep.MENU,
+                )
+            }
+        },
         onStartPolling = vm::startPolling,
         onStopPolling = vm::stopPolling,
         isUrdu = container.localeStore.stored()?.isRtl == true,
+    )
+
+    SafetySheets(
+        container = container,
+        request = safety,
+        onDismiss = { safety = null },
+        onChange = { safety = it },
     )
 }
 
@@ -1350,6 +1522,7 @@ private fun EventDetailRoute(
         ),
     )
     val state by vm.state.collectAsState()
+    var safety by remember { mutableStateOf<SafetyRequest?>(null) }
     val context = LocalContext.current
 
     // The join outcome is a one-shot, so it is handled in an effect and cleared.
@@ -1382,7 +1555,25 @@ private fun EventDetailRoute(
         onOpenCreator = onOpenCreator,
         onEdit = onEdit,
         // The report sheet is UX-SAFE-001, which arrives with group 17.
-        onReport = {},
+        onReport = {
+            state.event?.let { event ->
+                safety = SafetyRequest(
+                    target = ReportTarget.EVENT,
+                    targetId = event.id,
+                    // An event is not a person: SAFETY-FR-005 offers no block
+                    // here, and the sheet omits the offer when there is nobody
+                    // behind the target.
+                    subjectUserId = null,
+                )
+            }
+        },
+    )
+
+    SafetySheets(
+        container = container,
+        request = safety,
+        onDismiss = { safety = null },
+        onChange = { safety = it },
     )
 }
 

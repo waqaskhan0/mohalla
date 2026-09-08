@@ -20,7 +20,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -86,6 +86,7 @@ fun ConversationScreen(
     onAccept: () -> Unit,
     onDecline: () -> Unit,
     onOpenProfile: (String) -> Unit,
+    onReport: () -> Unit,
     onStartPolling: () -> Unit,
     onStopPolling: () -> Unit,
     isUrdu: Boolean,
@@ -120,14 +121,22 @@ fun ConversationScreen(
         MohallaBackHeader(
             title = state.otherUser?.displayName ?: stringResource(R.string.nav_messages),
             onBack = onBack,
-            // NO REPORT CONTROL UNTIL IT REPORTS SOMETHING. §19 lists reporting
-            // among this screen's secondary actions and UX-SAFE-001 is group 17,
-            // so the button was here and inert. An inert control is a small lie
-            // on most screens and a dangerous one here: somebody being harassed
-            // who taps Report and sees nothing happen may reasonably believe
-            // they have reported it, and stop. It comes back with the sheet
-            // behind it.
-            actions = emptyList(),
+            // MSG-FR-007 · §19 — reporting a conversation. The control was
+            // removed in group 14–15 while UX-SAFE-001 did not exist, because an
+            // inert Report is a dangerous lie on a safety path: somebody being
+            // harassed who taps it and sees nothing may reasonably believe they
+            // have reported it and stop. It is back, with the sheet behind it.
+            actions = buildList {
+                if (state.otherUserId != null) {
+                    add(
+                        TopBarAction(
+                            icon = Icons.Filled.MoreVert,
+                            descriptionRes = R.string.action_more,
+                            onClick = onReport,
+                        ),
+                    )
+                }
+            },
         )
 
         when {

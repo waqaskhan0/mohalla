@@ -254,6 +254,7 @@
     <string name="event_problem_both">ایک منتخب کریں: آن لائن تقریب کے لیے لنک، یا بالمشافہ کے لیے مقام۔ دونوں کے لیے بالمشافہ منتخب کرکے لنک تفصیل میں لکھ دیں۔</string>
     <string name="state_restricted_body">آپ کا اکاؤنٹ اس وقت یہ نھیں کر سکتا۔</string>
     <string name="action_report">رپورٹ کریں</string>
+    <string name="action_more">مزید اختیارات</string>
     <!-- Media -->
     <string name="media_unavailable">تصویر دستیاب نھیں</string>
     <string name="media_more_count">+%1$d</string>
@@ -474,4 +475,38 @@
     <string name="help_body">ہمیں لکھیں، ہم آپ سے رابطہ کریں گے۔</string>
     <string name="help_unavailable">سپورٹ کا پتا ابھی شائع نہیں ہوا۔</string>
     <string name="about_version">ورژن %1$s (%2$d)</string>
+    <!-- Safety (UX-SAFE-001..003) -->
+    <string name="report_title_post">اس پوسٹ کی شکایت کریں</string>
+    <string name="report_title_comment">اس تبصرے کی شکایت کریں</string>
+    <string name="report_title_event">اس تقریب کی شکایت کریں</string>
+    <string name="report_title_profile">اس اکاؤنٹ کی شکایت کریں</string>
+    <string name="report_title_conversation">اس گفتگو کی شکایت کریں</string>
+    <string name="report_why">آپ اس کی شکایت کیوں کر رہے ہیں؟</string>
+    <string name="report_change_reason">تبدیل کریں</string>
+    <string name="report_note_optional">کچھ اور بتانا چاہیں گے؟ (اختیاری)</string>
+    <string name="report_submit">شکایت بھیجیں</string>
+    <string name="report_thanks_title">شکریہ</string>
+    <string name="report_thanks_body">ہماری ٹیم اس کا جائزہ لے گی۔</string>
+    <string name="report_also_block">کیا آپ اس شخص کو بلاک بھی کرنا چاہیں گے؟</string>
+    <string name="report_failed">یہ نہیں بھیجی جا سکی۔ دوبارہ کوشش کریں۔</string>
+    <string name="report_offline">آپ آف لائن ہیں، اس لیے یہ نہیں بھیجی گئی۔ آپ نے جو لکھا وہ محفوظ ہے — آن لائن آ کر دوبارہ کوشش کریں۔</string>
+
+    <string name="report_reason_spam">اسپیم یا گمراہ کن</string>
+    <string name="report_reason_harassment">ہراسانی یا دھونس</string>
+    <string name="report_reason_hate">نفرت انگیز باتیں</string>
+    <string name="report_reason_violence">تشدد یا دھمکی</string>
+    <string name="report_reason_sexual">جنسی یا نامناسب مواد</string>
+    <string name="report_reason_false">غلط معلومات</string>
+    <string name="report_reason_impersonation">کسی اور کے نام سے ظاہر ہونا</string>
+    <string name="report_reason_other">کوئی اور بات</string>
+
+    <string name="block_action">بلاک کریں</string>
+    <string name="block_title">%1$s کو بلاک کریں؟</string>
+    <string name="block_title_generic">اس شخص کو بلاک کریں؟</string>
+    <string name="block_effect_visibility">آپ دونوں میں سے کوئی بھی دوسرے کی پروفائل، پوسٹس یا تبصرے نہیں دیکھ سکے گا۔</string>
+    <string name="block_effect_contact">آپ دونوں میں سے کوئی بھی دوسرے کو فالو، پیغام یا ذکر نہیں کر سکے گا۔</string>
+    <string name="block_effect_follows">اگر آپ میں سے کوئی دوسرے کو فالو کرتا ہے تو وہ ختم ہو جائے گا — بعد میں اَن بلاک کرنے سے واپس نہیں آتا۔</string>
+    <string name="block_effect_silent">انہیں کبھی پتا نہیں چلے گا کہ آپ نے انہیں بلاک کیا ہے۔</string>
+    <string name="block_failed">یہ نہیں ہو سکا۔ دوبارہ کوشش کریں۔</string>
+    <string name="comment_report">شکایت</string>
 </resources>

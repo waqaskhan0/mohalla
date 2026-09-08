@@ -100,6 +100,8 @@ fun PostDetailScreen(
     onOpenMedia: (Int) -> Unit,
     onShare: () -> Unit,
     onToggleSave: () -> Unit,
+    onReportPost: () -> Unit,
+    onReportComment: (CommentResponse) -> Unit,
     onLoadMoreComments: () -> Unit,
     isUrdu: Boolean,
     modifier: Modifier = Modifier,
@@ -151,6 +153,17 @@ fun PostDetailScreen(
                     )
                 }
 
+                // DELETE OR REPORT, NEVER BOTH — §18.5 caps this bar at two
+                // actions and Save has one of them. They are mutually exclusive
+                // anyway: SAFETY-FR-001 refuses a report of your own content, so
+                // an author has nothing to report and everybody else has nothing
+                // to delete.
+                //
+                // The Report control was REMOVED in group 14–15 while
+                // UX-SAFE-001 did not exist, rather than left inert: somebody
+                // who taps Report and sees nothing happen may reasonably believe
+                // they have reported the post and stop. It is back, with the
+                // sheet behind it.
                 if (state.canDeletePost) {
                     add(
                         TopBarAction(
@@ -159,11 +172,15 @@ fun PostDetailScreen(
                             onClick = { confirmingPostDelete = true },
                         ),
                     )
+                } else if (state.post != null) {
+                    add(
+                        TopBarAction(
+                            icon = Icons.Filled.Warning,
+                            descriptionRes = R.string.action_report,
+                            onClick = onReportPost,
+                        ),
+                    )
                 }
-                // NO REPORT CONTROL UNTIL IT REPORTS SOMETHING. UX-SAFE-001 is
-                // group 17; an inert Report is a dangerous lie on a safety path,
-                // because somebody who taps it and sees nothing may reasonably
-                // believe they have reported the post and stop.
             },
         )
 
@@ -186,6 +203,7 @@ fun PostDetailScreen(
                         onReplyTo = onReplyTo,
                         onDeleteComment = { confirmingCommentDelete = it },
                         canDeleteComment = canDeleteComment,
+                        onReportComment = onReportComment,
                         onOpenAuthor = onOpenAuthor,
                         onOpenMedia = onOpenMedia,
                         onShare = onShare,
@@ -251,6 +269,7 @@ private fun Thread(
     onReplyTo: (CommentResponse) -> Unit,
     onDeleteComment: (CommentResponse) -> Unit,
     canDeleteComment: (CommentResponse) -> Boolean,
+    onReportComment: (CommentResponse) -> Unit,
     onOpenAuthor: (String) -> Unit,
     onOpenMedia: (Int) -> Unit,
     onShare: () -> Unit,
@@ -297,6 +316,7 @@ private fun Thread(
                 onReply = onReplyTo,
                 onDelete = onDeleteComment,
                 canDelete = canDeleteComment,
+                onReport = onReportComment,
                 isDeleting = { it.id in state.deletingComments },
                 onOpenAuthor = onOpenAuthor,
             )

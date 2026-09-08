@@ -35,7 +35,7 @@ search's failed-versus-empty rule, messaging's send idempotency and duplicate
 reconciliation, the notification centre's day boundary in the reader's own
 timezone, the encoded shape of a PATCH body that has to distinguish absent from
 null, and the exact field shape of every type that enforces a privacy rule
-structurally. **398 tests, all passing.** |
+structurally. **418 tests, all passing.** |
 | **What that does not prove** | That pixels mirror. The tests prove Create sits at index 2 of 5 and that the list is never pre-reversed; they cannot prove the row renders right-to-left. §36 makes RTL release-critical, so this gap is the largest single verification debt in Stage 7. |
 
 The manifest defect found in group 05–06 is the argument for closing it:
@@ -394,6 +394,30 @@ last row's timestamp whenever the page has rows, so it is non-null on the FINAL
 page too. A client paging until it goes null re-fetches that page forever; the
 repository derives the end from a short page instead.
 
+### GAP-M-014 · A report made offline is refused, not queued
+
+**UX-SAFE-001/002** specifies the offline case as "queued, submitted on
+reconnect, user told". The app refuses it instead, keeps the reason and every
+word of the note, and says so.
+
+**Why.** Queueing honestly needs durability. A report held only in memory is lost
+when the process is killed — which on a low-end device under memory pressure is
+routine — and it would be lost *after* telling the reporter it was on its way.
+On the one flow where somebody most needs to know whether their report went, a
+claim that turns out to be false is worse than a refusal they can act on. The app
+has no persisted work queue and no `WorkManager` dependency; adding one for this
+alone, unrunnable on any device here (§2), would be writing a delivery guarantee
+blind.
+
+**What ships instead.** The sheet stays open with the reason chosen and the note
+intact, and the copy says the report has *not* been sent and that nothing typed
+was lost. A retry is one tap.
+
+**To close it:** a small persisted outbox — the report body plus its target — and
+a flush on the connectivity signal `ConnectivityObserver` already provides, or
+`WorkManager` with a network constraint. The copy then changes from "try again"
+to "we'll send this when you're back", and only then.
+
 ### GAP-M-003 · The prototype's attendee stack contradicts the SRS
 
 Recorded as resolved rather than open, because the API settles it.
@@ -417,10 +441,14 @@ Distinct from §3: these are things the client *can* build and has not yet.
 
 | Screen | What is missing | Consequence today |
 |---|---|---|
-| UX-EVENT-003 | The report action is present but inert — the report sheet is UX-SAFE-001, group 17. | The creator's Edit action works; a non-creator's Report does nothing yet. **This is now the only one left**: the conversation header's and the post detail's inert Report buttons were REMOVED in group 14–15 rather than left in place, because somebody being harassed who taps Report and sees nothing may reasonably believe they have reported it and stop. The event one follows in group 17, when the sheet exists for all three. |
 | Home | `UX-HOME-005` category filter sheet and `UX-HOME-006` announcement detail are not built. | `selectCategory` exists in the ViewModel and the filter reaches the API; there is no picker to drive it. |
 | Home | `UX-HOME-006` announcement detail is not built, so an ANNOUNCEMENT notification row is rendered and inert. | Every other notification row opens what it refers to. |
 | `ImagePicker.read` | Untested. It needs a real `ContentResolver` and `BitmapFactory`, so it cannot run on the JVM. | The attachment state machine around it IS tested through the real ViewModel (`AttachmentUploadTest`); the file-reading and compression path itself is only covered by an emulator run that cannot happen here. |
+
+**Every Report control in the app is now wired**, which is what closed the last
+row of this table. Three were inert or removed while UX-SAFE-001 did not exist;
+all three are back with the sheet behind them, and a comment and an account
+gained entry points that never existed.
 
 Three items left this table in group 08 and are now built: the event composer's
 date and time picker, profile setup's photo picker, and the post card's media and
