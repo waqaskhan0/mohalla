@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DEBUG ONLY. This file lives in `src/debug/` and is not part of any release
+  build, which keeps the platform default - cleartext denied everywhere - in
+  the artefact that reaches a phone.
+
+  WHY IT IS NEEDED. Android has blocked cleartext HTTP by default since API 28,
+  and the debug build's `API_BASE_URL` is `http://10.0.2.2:3000` - the emulator's
+  alias for the host loopback, where the Stage 6 stack runs. Without this the
+  platform refuses every request before it leaves the process, and the app maps
+  the resulting IOException to `ApiFailure.Offline`. The reader is then told
+  "No internet connection" while the device is plainly online, which is what
+  happened on the first emulator run of Flow A: registration could not complete
+  and the message named the wrong cause.
+
+  NARROWED TO TWO HOSTS RATHER THAN A BLANKET FLAG.
+  `android:usesCleartextTraffic="true"` would permit plaintext to ANY host in
+  the debug build, including a real one if somebody pointed a debug build at
+  staging. These two addresses cannot be anything but a development machine:
+  10.0.2.2 is the emulator's host loopback and has no meaning off-device, and
+  `localhost` is reachable only over `adb reverse`.
+
+  `cleartextTrafficPermitted="false"` on the base config is deliberate and not
+  redundant: it states that everything NOT listed here is still refused, so
+  adding a third host has to be a deliberate edit to this file.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- The emulator's alias for the host machine's loopback. -->
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <!-- Reachable only via `adb reverse tcp:3000 tcp:3000`. -->
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>
