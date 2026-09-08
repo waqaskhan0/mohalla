@@ -99,7 +99,7 @@ describe('OtpService.verify', () => {
     const userId = await ctx.seed();
     const r = await ctx.service.verify({ phone: PHONE, code: CORRECT, purpose: 'REGISTRATION' });
 
-    expect(r).toEqual({ status: 'VERIFIED', userId });
+    expect(r).toMatchObject({ status: 'VERIFIED', userId, capability: 'FULL' });
     expect(ctx.repo.users.get(userId)?.state).toBe('ACTIVE');
   });
 
@@ -252,6 +252,55 @@ describe('OtpService.verify', () => {
     expect(
       await ctx.service.verify({ phone: '+13001234567', code: CORRECT, purpose: 'REGISTRATION' }),
     ).toEqual({ status: 'INVALID_INPUT', field: 'phone' });
+  });
+
+  it('ESTABLISHES A SESSION, because AUTH-FR-002 step 5 says it does', async () => {
+    // MOBILE-BACKEND-FIX-001.
+    //
+    // AUTH-FR-002's main flow ends "A session is established and the visitor
+    // proceeds to username selection (PROFILE-FR-002)". This service consumed
+    // the challenge, marked the account ACTIVE, and returned
+    // `{status:'VERIFIED', userId}` with nothing to authenticate with. A new
+    // user was therefore ACTIVE and signed out, and every authenticated call
+    // answered 401.
+    //
+    // FOUND BY ANDROID INTEGRATION ON AN EMULATOR, and not findable from
+    // either side alone. The client's `SessionResponse` declares every field
+    // nullable with a default, so a token-less body deserialized happily into
+    // `token = null` and the app believed it had a session; and the generated
+    // OpenAPI contract carries no schemas, so the client-vs-server contract
+    // test could prove the route existed and never that the field did.
+    //
+    // WITHOUT THE FIX this test fails on the first expectation.
+    const userId = await ctx.seed();
+
+    const r = await ctx.service.verify({ phone: PHONE, code: CORRECT, purpose: 'REGISTRATION' });
+
+    expect(r.status).toBe('VERIFIED');
+    if (r.status !== 'VERIFIED') return;
+
+    expect(r.token).toBeTruthy();
+    expect(r.expiresAt).toBeInstanceOf(Date);
+    expect(r.capability).toBe('FULL');
+
+    // And a real row, not just a value in a response.
+    const live = ctx.repo.sessions.filter((x) => x.userId === userId && x.revokedAt === null);
+    expect(live).toHaveLength(1);
+  });
+
+  it('does NOT sign anybody in on a PASSWORD_RESET verification', async () => {
+    // AUTH-FR-007 revokes every session when the password is reset, so
+    // issuing one here would contradict the next step of the same flow.
+    const userId = await ctx.seed(CORRECT, 'PASSWORD_RESET');
+
+    const r = await ctx.service.verify({ phone: PHONE, code: CORRECT, purpose: 'PASSWORD_RESET' });
+
+    expect(r.status).toBe('VERIFIED');
+    if (r.status !== 'VERIFIED') return;
+
+    expect(r.token).toBeNull();
+    expect(r.capability).toBeNull();
+    expect(ctx.repo.sessions.filter((x) => x.userId === userId)).toHaveLength(0);
   });
 
   it('does not let a PASSWORD_RESET code verify a REGISTRATION', async () => {

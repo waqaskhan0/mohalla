@@ -107,7 +107,15 @@ export class AuthController {
     // One 401 for wrong, expired, already-used, absent and unknown.
     if (result.status === 'REJECTED') throw invalidCredentials();
 
-    return { status: 'VERIFIED', userId: result.userId };
+    // AUTH-FR-002 step 5. `token` is null for PASSWORD_RESET, deliberately —
+    // see VerifyOtpResult.
+    return {
+      status: 'VERIFIED',
+      userId: result.userId,
+      token: result.token,
+      expiresAt: result.expiresAt?.toISOString() ?? null,
+      capability: result.capability,
+    };
   }
 
   @Post('otp/resend')

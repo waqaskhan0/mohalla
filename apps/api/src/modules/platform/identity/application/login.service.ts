@@ -7,6 +7,7 @@ import { tryNormalizePakistaniMobile } from '../domain/phone-number.js';
 import { authOutcomeFor } from '../domain/user-state.js';
 import { LOGIN_FAILURE_WINDOW_MS, checkLoginLockout } from '../domain/login-lockout.js';
 import { issueSessionToken, sessionsToEvict } from '../domain/session-token.js';
+import { issueSessionFor } from './issue-session.js';
 import { CLOCK, type Clock } from '../ports/clock.port.js';
 import { PASSWORD_HASHER, type PasswordHasher } from '../ports/password-hasher.port.js';
 import {
@@ -196,39 +197,16 @@ export class LoginService {
   /**
    * Issue a session, evicting the oldest if this is the sixth device.
    *
-   * Both steps inside the caller's transaction (BR-007, EDGE-009): read, evict
-   * and insert must be atomic or two simultaneous logins each see five live
-   * sessions, each evict one, and six survive.
+   * NOW SHARED with OTP verification - see [issueSessionFor]. It was private
+   * here, which is how AUTH-FR-002's "a session is established" ended up
+   * implemented on the login path and nowhere else.
    */
   private async issueSession(
     userId: string,
     deviceLabel: string | null,
     client: Parameters<Parameters<DatabaseService['withTransaction']>[0]>[0],
   ): Promise<{ token: string; expiresAt: Date }> {
-    const live = await this.repo.listLiveSessions(userId, client);
-    const evict = sessionsToEvict(live);
-
-    if (evict.length > 0) {
-      await this.repo.revokeSessions(
-        evict.map((s) => s.id),
-        'EVICTED',
-        client,
-      );
-    }
-
-    const issued = issueSessionToken(this.clock.now());
-    await this.repo.createSession(
-      {
-        id: randomUUID(),
-        userId,
-        tokenHash: issued.tokenHash,
-        expiresAt: issued.expiresAt,
-        deviceLabel,
-      },
-      client,
-    );
-
-    return { token: issued.token, expiresAt: issued.expiresAt };
+    return issueSessionFor(this.repo, this.clock, userId, deviceLabel, client);
   }
 
   private async recordFailure(

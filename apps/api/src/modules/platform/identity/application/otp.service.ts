@@ -13,6 +13,7 @@ import {
   type OtpPurpose,
 } from '../domain/otp.js';
 import { tryNormalizePakistaniMobile } from '../domain/phone-number.js';
+import { issueSessionFor } from './issue-session.js';
 import { CLOCK, type Clock } from '../ports/clock.port.js';
 import { SMS_PROVIDER, type SmsProvider } from '../ports/sms-provider.port.js';
 import {
@@ -42,7 +43,21 @@ export interface ResendOtpCommand {
  * membership oracle that registration is careful not to be.
  */
 export type VerifyOtpResult =
-  | { status: 'VERIFIED'; userId: string }
+  | {
+      status: 'VERIFIED';
+      userId: string;
+      /**
+       * AUTH-FR-002 step 5 — "A session is established".
+       *
+       * Present for REGISTRATION and null for PASSWORD_RESET: proving control
+       * of a number in order to reset a password must NOT sign the holder in,
+       * because the reset itself revokes every session (AUTH-FR-007), and
+       * handing out a session here would immediately contradict that.
+       */
+      token: string | null;
+      expiresAt: Date | null;
+      capability: 'FULL' | null;
+    }
   | { status: 'REJECTED' }
   | { status: 'INVALID_INPUT'; field: 'phone' | 'code' };
 
@@ -147,12 +162,45 @@ export class OtpService {
         // means a replay of the same code cannot find it live again.
         await this.repo.consumeOtpChallenge(challenge.id, client);
 
+        // A SESSION IS ESTABLISHED HERE, for REGISTRATION only.
+        //
+        // AUTH-FR-002's main flow ends: "A session is established and the
+        // visitor proceeds to username selection (PROFILE-FR-002)". Without it
+        // a new account becomes ACTIVE and cannot make a single authenticated
+        // call — which is exactly what mobile integration found. On Android the
+        // username screen's Continue did nothing at all, because
+        // `POST /me/username` was answering 401 and that screen renders only
+        // `Offline` and `Server` failures.
+        //
+        // IN THE SAME TRANSACTION as consuming the challenge and activating the
+        // user. A session issued after the commit could be handed out for a
+        // registration that then failed to land.
         if (cmd.purpose === 'REGISTRATION') {
           await this.repo.markUserVerified(userId, client);
+
+          const session = await issueSessionFor(this.repo, this.clock, userId, null, client);
+
+          this.logInternal('otp_verified', cmd.purpose, cmd.correlationId);
+          return {
+            status: 'VERIFIED',
+            userId,
+            token: session.token,
+            expiresAt: session.expiresAt,
+            // A just-verified account cannot be suspended, so FULL is the only
+            // capability reachable from this path.
+            capability: 'FULL',
+          } as const;
         }
 
+        // PASSWORD_RESET — verified, and deliberately not signed in.
         this.logInternal('otp_verified', cmd.purpose, cmd.correlationId);
-        return { status: 'VERIFIED', userId } as const;
+        return {
+          status: 'VERIFIED',
+          userId,
+          token: null,
+          expiresAt: null,
+          capability: null,
+        } as const;
       });
     } catch (e) {
       this.logger.error(
