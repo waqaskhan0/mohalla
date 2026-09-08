@@ -1,9 +1,11 @@
 package org.shehersaaz.mohalla
 
-import android.os.Bundle
-import org.shehersaaz.mohalla.navigation.DeepLinks
-import org.shehersaaz.mohalla.core.config.BuildEnvironment
+import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
+import android.os.Build
+import android.os.Bundle
+import android.os.LocaleList
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -11,14 +13,18 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
+import java.util.Locale
+import org.shehersaaz.mohalla.core.config.BuildEnvironment
 import org.shehersaaz.mohalla.core.design.MohallaTheme
 import org.shehersaaz.mohalla.core.di.AppContainer
 import org.shehersaaz.mohalla.core.locale.AppLocale
+import org.shehersaaz.mohalla.core.locale.LocaleStore
 import org.shehersaaz.mohalla.core.ui.LoadingState
 import org.shehersaaz.mohalla.core.ui.LocalMediaBaseUrl
 import org.shehersaaz.mohalla.feature.auth.LanguageSelectionScreen
 import org.shehersaaz.mohalla.feature.startup.StartupDestination
 import org.shehersaaz.mohalla.feature.startup.StartupViewModel
+import org.shehersaaz.mohalla.navigation.DeepLinks
 import org.shehersaaz.mohalla.navigation.MohallaNavHost
 import org.shehersaaz.mohalla.navigation.startRoute
 
@@ -40,6 +46,48 @@ import org.shehersaaz.mohalla.navigation.startRoute
  * "whatever we forgot".
  */
 class MainActivity : ComponentActivity() {
+
+    /**
+     * Resolve resources in the chosen language.
+     *
+     * THE DEFECT THIS FIXES made "switch language" not switch the language.
+     * `applyLanguage` stored the choice and called `recreate()`, and the theme
+     * derived `LayoutDirection` from the stored value — so the app **mirrored**
+     * and went on reading every string out of `values/`. On the emulator,
+     * choosing اردو flipped the whole layout, moved the back arrow to the
+     * right, mirrored the chevron, ticked اردو, and left the screen in English.
+     *
+     * Nothing told Android to USE the Urdu resources. The manifest declares
+     * `localeConfig`, the build declares `localeFilters += setOf("en", "ur")`,
+     * so `values-ur/` ships in the APK — it was simply never selected. Which
+     * means all ~400 translated strings (OD-016) had never once been rendered.
+     *
+     * DONE HERE, in `attachBaseContext`, because this runs before `onCreate`
+     * and therefore before the first `Resources` lookup. Setting the locale in
+     * `onCreate` would leave frame one in the wrong language.
+     *
+     * `LocaleStore` is plain `SharedPreferences` (deliberately — see its own
+     * comment about the first read on a cold start), so it is safe to read at
+     * this point in the lifecycle, where the DI container does not exist yet.
+     */
+    override fun attachBaseContext(newBase: Context) {
+        val stored = LocaleStore(newBase).stored()
+        if (stored == null) {
+            // No choice made yet: the language screen is about to ask.
+            super.attachBaseContext(newBase)
+            return
+        }
+
+        val locale = Locale.forLanguageTag(stored.tag)
+        val config = Configuration(newBase.resources.configuration)
+        config.setLocale(locale)
+        // Set explicitly rather than inferred: `setLocale` alone leaves the
+        // layout direction on some API levels, and the direction is the half
+        // of this that was already working.
+        config.setLayoutDirection(locale)
+
+        super.attachBaseContext(newBase.createConfigurationContext(config))
+    }
 
     private lateinit var container: AppContainer
 
@@ -152,9 +200,36 @@ class MainActivity : ComponentActivity() {
         container.pendingDeepLink.hold(route)
     }
 
-    /** Settings uses the same path, so there is one way to change language. */
+    /**
+     * Settings uses the same path, so there is one way to change language.
+     *
+     * TWO MECHANISMS, CHOSEN BY API LEVEL, and the reason is the manifest.
+     *
+     * This app declares `android:localeConfig`, which opts it into the
+     * platform's **per-app language** feature. From API 33 the system then owns
+     * locale selection for the app: it applies its own locale list while the
+     * activity is being attached, AFTER `attachBaseContext` has run — so the
+     * `createConfigurationContext` override there is silently discarded and the
+     * app renders in the system language. That is exactly what happened on the
+     * emulator: `ur` was stored, the layout mirrored, and every string stayed
+     * English because the platform put `en-US` back.
+     *
+     * So on 33+ the choice is handed to the system, which is the supported API
+     * for a `localeConfig` app and additionally survives reinstall-free
+     * upgrades and appears in Android's own per-app language settings. Below 33
+     * the platform feature does not exist and `attachBaseContext` is the
+     * mechanism, so both are kept and neither is guessed at.
+     */
     fun applyLanguage(locale: AppLocale) {
         container.localeStore.store(locale)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // The system recreates the activity itself for this change.
+            getSystemService(android.app.LocaleManager::class.java)
+                ?.applicationLocales = LocaleList.forLanguageTags(locale.tag)
+            return
+        }
+
         recreate()
     }
 }
