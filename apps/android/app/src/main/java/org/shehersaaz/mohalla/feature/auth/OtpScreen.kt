@@ -172,6 +172,8 @@ private fun OtpDigitRow(
     hasError: Boolean,
     focusRequester: FocusRequester,
 ) {
+    val otpLabel = stringResource(R.string.a11y_otp_field, OTP_LENGTH)
+
     Box {
         // The real field, invisible and one pixel wide. It owns focus, the
         // keyboard, backspace and paste; the boxes below only render its value.
@@ -189,9 +191,12 @@ private fun OtpDigitRow(
                 .focusRequester(focusRequester)
                 // Announced as one field with a clear label, rather than as six
                 // unlabelled boxes a screen reader would read as empty.
-                .semantics {
-                    contentDescription = "verification code, $OTP_LENGTH digits"
-                },
+                //
+                // FROM A RESOURCE, NOT A LITERAL. This was
+                // `"verification code, $OTP_LENGTH digits"` inline, so the one
+                // screen where an Urdu reader is copying digits out of an SMS
+                // announced its only label in English (RUNTIME-016).
+                .semantics { contentDescription = otpLabel },
         )
 
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {

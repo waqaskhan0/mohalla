@@ -99,6 +99,7 @@
 
     <!-- =============================================== UX-AUTH-009 the OTP -->
     <string name="otp_title">اپنا کوڈ درج کریں</string>
+    <string name="a11y_otp_field">تصدیقی کوڈ، %1$d ہندسے</string>
     <string name="otp_sent_to">ہم نے %1$s پر چھ ہندسوں کا کوڈ بھیجا ہے</string>
     <string name="otp_submit">تصدیق کریں</string>
     <string name="otp_resend">نیا کوڈ بھیجیں</string>

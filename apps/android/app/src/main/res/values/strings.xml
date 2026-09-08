@@ -93,6 +93,7 @@
 
     <!-- =============================================== UX-AUTH-009 the OTP -->
     <string name="otp_title">Enter your code</string>
+    <string name="a11y_otp_field">Verification code, %1$d digits</string>
     <string name="otp_sent_to">We sent a 6-digit code to %1$s</string>
     <string name="otp_submit">Verify</string>
     <string name="otp_resend">Send a new code</string>

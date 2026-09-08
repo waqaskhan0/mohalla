@@ -39,9 +39,24 @@
         android:localeConfig="@xml/locales_config"
         android:theme="@style/Theme.Mohalla">
 
+        <!--
+          THE WINDOW MUST NOT RESIZE FOR THE KEYBOARD.
+
+          Every screen that takes text applies `imePadding()`, which is the
+          Compose way and what `ComposerScreen` documents: it lifts the toolbar
+          above the keyboard rather than shrinking the text area. But the
+          platform default is `adjustResize`, so the window ALSO shrank -
+          measured at 1520px of 2280 with the keyboard up - and `imePadding`
+          then subtracted the same 760px again from the already-shortened
+          window. Post detail was left with 700px for a header, a scrolling
+          thread and a composer, and rendered as a comment box floating in an
+          empty screen with the post, its author, the engagement row and the
+          header all gone (RUNTIME-017).
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:windowSoftInputMode="adjustNothing"
             android:theme="@style/Theme.Mohalla">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

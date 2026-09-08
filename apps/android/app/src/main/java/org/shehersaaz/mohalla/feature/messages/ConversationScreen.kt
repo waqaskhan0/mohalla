@@ -26,22 +26,23 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import org.shehersaaz.mohalla.R
 import org.shehersaaz.mohalla.core.design.MohallaTheme
 import org.shehersaaz.mohalla.core.design.MohallaType
@@ -310,6 +311,10 @@ private fun Composer(
     onSend: () -> Unit,
     isUrdu: Boolean,
 ) {
+    // Read once and used twice - as the drawn placeholder and as the
+    // field's accessibility label - so the two can never disagree.
+    val messagePlaceholder = stringResource(R.string.conversation_placeholder)
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -336,7 +341,7 @@ private fun Composer(
             Box(modifier = Modifier.weight(1f)) {
                 if (state.draft.isEmpty()) {
                     Text(
-                        text = stringResource(R.string.conversation_placeholder),
+                        text = messagePlaceholder,
                         style = MohallaTheme.text(MohallaType.Body, display = isUrdu),
                         color = MohallaTheme.colors.TextSecondary,
                     )
@@ -347,7 +352,13 @@ private fun Composer(
                     textStyle = MohallaTheme.text(MohallaType.Body, display = isUrdu)
                         .copy(color = MohallaTheme.colors.TextPrimary),
                     cursorBrush = SolidColor(MohallaTheme.colors.BrandPrimary),
-                    modifier = Modifier.fillMaxWidth(),
+                    // RUNTIME-015 - the placeholder behind this field is drawn,
+                    // not announced.
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            contentDescription = messagePlaceholder
+                        },
                 )
             }
 

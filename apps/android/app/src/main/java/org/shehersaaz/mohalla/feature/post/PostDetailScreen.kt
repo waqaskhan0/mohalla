@@ -23,8 +23,8 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -43,6 +43,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -51,10 +52,10 @@ import androidx.compose.ui.unit.dp
 import org.shehersaaz.mohalla.R
 import org.shehersaaz.mohalla.core.design.MohallaTheme
 import org.shehersaaz.mohalla.core.design.MohallaType
-import org.shehersaaz.mohalla.core.state.Relation
 import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.network.CommentResponse
 import org.shehersaaz.mohalla.core.network.PostResponse
+import org.shehersaaz.mohalla.core.state.Relation
 import org.shehersaaz.mohalla.core.ui.ContentUnavailable
 import org.shehersaaz.mohalla.core.ui.DELETED_USER_KEY
 import org.shehersaaz.mohalla.core.ui.LoadingState
@@ -535,6 +536,10 @@ private fun CommentComposer(
     onClearReplyTarget: () -> Unit,
     isUrdu: Boolean,
 ) {
+    // Read once and used twice - as the drawn placeholder and as the
+    // field's accessibility label - so the two can never disagree.
+    val commentPlaceholder = stringResource(R.string.comment_placeholder)
+
     val focus = remember { FocusRequester() }
 
     LaunchedEffect(state.isEmptyThread) {
@@ -611,7 +616,7 @@ private fun CommentComposer(
             Box(modifier = Modifier.weight(1f)) {
                 if (state.draft.isEmpty()) {
                     Text(
-                        text = stringResource(R.string.comment_placeholder),
+                        text = commentPlaceholder,
                         style = MohallaTheme.text(MohallaType.Body, display = isUrdu),
                         color = MohallaTheme.colors.TextSecondary,
                     )
@@ -622,9 +627,14 @@ private fun CommentComposer(
                     textStyle = MohallaTheme.text(MohallaType.Body, display = isUrdu)
                         .copy(color = MohallaTheme.colors.TextPrimary),
                     cursorBrush = SolidColor(MohallaTheme.colors.BrandPrimary),
+                    // RUNTIME-015 - the placeholder behind this field is
+                    // drawn, not announced.
                     modifier = Modifier
                         .fillMaxWidth()
-                        .focusRequester(focus),
+                        .focusRequester(focus)
+                        .semantics {
+                            contentDescription = commentPlaceholder
+                        },
                 )
             }
 

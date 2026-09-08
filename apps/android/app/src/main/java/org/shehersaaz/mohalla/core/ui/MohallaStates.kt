@@ -199,13 +199,16 @@ fun OfflineBanner(modifier: Modifier = Modifier) {
  */
 @Composable
 fun LoadingState(modifier: Modifier = Modifier) {
+    // A resource, not a literal: this was the English word "loading", so an
+    // Urdu reader heard English on every spinner (RUNTIME-016). Read out here
+    // because the semantics lambda is not composable.
+    val label = stringResource(R.string.a11y_loading)
+
     Box(
         modifier = modifier
             .fillMaxSize()
             // One announcement, not "progress bar, 0 percent" repeated.
-            .clearAndSetSemantics {
-                contentDescription = "loading"
-            },
+            .clearAndSetSemantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
         CircularProgressIndicator(color = MohallaTheme.colors.BrandPrimary)

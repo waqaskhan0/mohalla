@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -174,6 +175,10 @@ private fun SearchField(
     onBack: () -> Unit,
     isUrdu: Boolean,
 ) {
+    // Read once and used twice - as the drawn placeholder and as the
+    // field's accessibility label - so the two can never disagree.
+    val searchPlaceholder = stringResource(R.string.search_placeholder)
+
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
 
@@ -215,7 +220,7 @@ private fun SearchField(
             Box(modifier = Modifier.weight(1f)) {
                 if (query.isEmpty()) {
                     Text(
-                        text = stringResource(R.string.search_placeholder),
+                        text = searchPlaceholder,
                         style = MohallaTheme.text(MohallaType.Body, display = isUrdu),
                         color = MohallaTheme.colors.TextSecondary,
                     )
@@ -229,9 +234,14 @@ private fun SearchField(
                     cursorBrush = SolidColor(MohallaTheme.colors.BrandPrimary),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { onSubmit() }),
+                    // RUNTIME-015 - the placeholder behind this field is drawn,
+                    // not announced.
                     modifier = Modifier
                         .fillMaxWidth()
-                        .focusRequester(focus),
+                        .focusRequester(focus)
+                        .semantics {
+                            contentDescription = searchPlaceholder
+                        },
                 )
             }
 

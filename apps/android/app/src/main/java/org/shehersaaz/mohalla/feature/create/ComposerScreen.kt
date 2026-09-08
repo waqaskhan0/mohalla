@@ -31,20 +31,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import org.shehersaaz.mohalla.R
 import org.shehersaaz.mohalla.core.design.MohallaTheme
 import org.shehersaaz.mohalla.core.design.MohallaType
 import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.network.PublicProfileResponse
+import org.shehersaaz.mohalla.core.network.displayName
 import org.shehersaaz.mohalla.core.ui.AddAttachmentTile
 import org.shehersaaz.mohalla.core.ui.MohallaAvatar
 import org.shehersaaz.mohalla.core.ui.MohallaButton
@@ -52,7 +54,6 @@ import org.shehersaaz.mohalla.core.ui.MohallaSecondaryButton
 import org.shehersaaz.mohalla.core.ui.UPLOAD_TILE
 import org.shehersaaz.mohalla.core.ui.UploadTile
 import org.shehersaaz.mohalla.core.ui.UploadTileState
-import org.shehersaaz.mohalla.core.network.displayName
 
 /**
  * The composer — UX-CREATE-001.
@@ -342,11 +343,13 @@ private fun BodyField(
     error: String?,
     isUrdu: Boolean,
 ) {
+    val placeholder = stringResource(R.string.composer_placeholder)
+
     Column(verticalArrangement = Arrangement.spacedBy(MohallaTheme.spacing.Space1)) {
         Box(modifier = Modifier.fillMaxWidth()) {
             if (value.isEmpty()) {
                 Text(
-                    text = stringResource(R.string.composer_placeholder),
+                    text = placeholder,
                     style = MohallaTheme.text(MohallaType.Body, display = isUrdu),
                     color = MohallaTheme.colors.TextSecondary,
                 )
@@ -363,7 +366,14 @@ private fun BodyField(
                     // A floor rather than a fixed height, so the field grows
                     // with the text and never scrolls inside itself while the
                     // page around it also scrolls.
-                    .defaultMinSize(minHeight = MohallaTheme.spacing.Space16),
+                    .defaultMinSize(minHeight = MohallaTheme.spacing.Space16)
+                    // THE PLACEHOLDER ABOVE IS A DRAWING, NOT A LABEL. It is a
+                    // sibling `Text` behind the field, so it never reached the
+                    // accessibility tree: the node read
+                    // `text="" content-desc="" hint=""` and TalkBack announced
+                    // "edit box" on the one screen that exists to write a post
+                    // (RUNTIME-015). Same string, so the two cannot drift.
+                    .semantics { contentDescription = placeholder },
             )
         }
 
