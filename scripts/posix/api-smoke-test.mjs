@@ -2907,7 +2907,25 @@ async function main() {
         const fan = await onboard(Date.now() + 10700 + i);
         await send('PUT', `/posts/${busyPost.id}/like`, undefined, fan.token);
       }
-      await drain.drain();
+
+      // DRAIN UNTIL IT STOPS PRODUCING, rather than once.
+      //
+      // One pass handles whatever is in the outbox when it starts reading, and
+      // the last like's row can land after that. The notification ROWS are
+      // written synchronously, so the six-entry assertion below always held;
+      // only the push count came up short, and it did so intermittently — five
+      // pushes instead of six on one run, in a lane the release gate depends
+      // on. A gate that fails for no reason teaches people to re-run it.
+      //
+      // THE PRODUCT IS NOT AT FAULT HERE, which is why the fix is in the test:
+      // in production the worker polls continuously, so a row written after one
+      // pass is picked up by the next. Only this test assumed a single pass was
+      // the whole story.
+      for (let pass = 0; pass < 5; pass += 1) {
+        const before = pushes.to('synthetic-device-busy').length;
+        await drain.drain();
+        if (pushes.to('synthetic-device-busy').length === before) break;
+      }
 
       const centre = await (await get('/notifications?limit=50', busy.token)).json();
       const likeEntries = (centre?.notifications ?? []).filter((n) => n.category === 'LIKE');
