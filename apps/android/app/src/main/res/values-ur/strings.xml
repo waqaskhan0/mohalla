@@ -509,4 +509,23 @@
     <string name="block_effect_silent">انہیں کبھی پتا نہیں چلے گا کہ آپ نے انہیں بلاک کیا ہے۔</string>
     <string name="block_failed">یہ نہیں ہو سکا۔ دوبارہ کوشش کریں۔</string>
     <string name="comment_report">شکایت</string>
+    <!-- Delete account (UX-SET-009) -->
+    <string name="settings_delete_account">اکاؤنٹ ڈیلیٹ کریں</string>
+    <string name="delete_warning">%1$d دن کے بعد یہ مستقل ہو جائے گا</string>
+    <string name="delete_here_is_what_happens">بالکل یہ ہوگا:</string>
+    <string name="delete_password_label">تصدیق کے لیے اپنا پاس ورڈ درج کریں</string>
+    <string name="delete_password_wrong">یہ پاس ورڈ درست نہیں ہے۔</string>
+    <string name="delete_submit">میرا اکاؤنٹ ڈیلیٹ کریں</string>
+    <string name="delete_failed">آپ کا اکاؤنٹ ڈیلیٹ نہیں ہوا۔ دوبارہ کوشش کریں۔</string>
+    <string name="delete_offline">آپ آف لائن ہیں، اس لیے کچھ تبدیل نہیں ہوا۔ آن لائن آ کر دوبارہ کوشش کریں۔</string>
+    <string name="delete_consequences_incomplete">یہ ایپ ڈیلیٹ کرنے کے تمام نتائج نہیں دکھا سکتی۔ فیصلہ کرنے سے پہلے مکمل فہرست دیکھنے کے لیے ایپ اپ ڈیٹ کریں۔</string>
+
+    <string name="delete_consequence_profile">آپ کی پروفائل، تصویر اور تعارف محلہ سے ہٹا دیے جائیں گے۔</string>
+    <string name="delete_consequence_posts">آپ کی پوسٹس اور تبصرے وہیں رہیں گے، ”ڈیلیٹ شدہ صارف“ کے نام سے۔ انہیں ہٹایا نہیں جاتا، کیونکہ دوسرے لوگوں نے ان پر جواب دیا ہے۔</string>
+    <string name="delete_consequence_messages">آپ کے بھیجے ہوئے پیغامات دوسرے شخص کی گفتگو میں رہیں گے، ”ڈیلیٹ شدہ صارف“ کے نام سے۔</string>
+    <string name="delete_consequence_sessions">آپ فوراً ہر ڈیوائس سے لاگ آؤٹ ہو جائیں گے۔</string>
+    <string name="delete_consequence_restorable">آپ 30 دن کے اندر لاگ اِن کر کے اپنا اکاؤنٹ واپس لا سکتے ہیں۔ آپ کے فالوورز، فالونگ اور پوسٹس بھی ساتھ واپس آ جائیں گی۔</string>
+    <string name="delete_consequence_permanent">30 دن کے بعد اسے واپس نہیں لایا جا سکتا۔</string>
+
+    <string name="restore_deadline">اپنا اکاؤنٹ واپس لانے کے لیے %1$s سے پہلے لاگ اِن کریں۔</string>
 </resources>

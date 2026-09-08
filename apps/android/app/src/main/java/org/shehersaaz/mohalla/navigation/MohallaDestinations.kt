@@ -176,6 +176,15 @@ object Routes {
     const val SETTINGS_ABOUT = "settings/about"
 
     /**
+     * UX-SET-009 (SET-FR-004).
+     *
+     * A SCREEN, NOT A DIALOG. "Not a bottom sheet. A screen, a password, and an
+     * enumerated list" - PRIV-006 requires the consequences to be READ before
+     * anybody confirms, and a dialog is the wrong shape for six paragraphs.
+     */
+    const val DELETE_ACCOUNT = "settings/delete"
+
+    /**
      * The legal documents (UX-SET-006).
      *
      * ONE ROUTE WITH A KIND rather than three, because they are one screen: none

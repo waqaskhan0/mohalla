@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 import org.shehersaaz.mohalla.R
 import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.network.ApiResult
+import org.shehersaaz.mohalla.feature.settings.DeletionSource
 import org.shehersaaz.mohalla.core.ui.AuthNotice
 import org.shehersaaz.mohalla.core.ui.AuthNoticeTone
 import org.shehersaaz.mohalla.core.ui.AuthScaffold
@@ -56,7 +57,12 @@ fun RestoreAccountScreen(
     AuthScaffold(
         modifier = modifier,
         title = stringResource(R.string.restore_title),
-        body = stringResource(R.string.restore_body),
+        // The deadline joins the body rather than becoming a separate line,
+        // because it is part of the same offer: what comes back, and by when.
+        body = listOfNotNull(
+            stringResource(R.string.restore_body),
+            state.deadlineLabel?.let { stringResource(R.string.restore_deadline, it) },
+        ).joinToString(" "),
         notice = when {
             state.restored -> AuthNotice(
                 stringResource(R.string.restore_done),
@@ -108,10 +114,41 @@ fun RestoreAccountScreen(
 
 class RestoreAccountViewModel(
     private val auth: AuthRepository,
+    private val deletion: DeletionSource,
+    /** Pre-formatted in the reader's locale and calendar by the caller. */
+    private val formatDate: (String) -> String?,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(RestoreUiState())
     val state: StateFlow<RestoreUiState> = _state.asStateFlow()
+
+    init {
+        loadDeadline()
+    }
+
+    /**
+     * SET-FR-005 — how long is left.
+     *
+     * The consequences endpoint carries `scheduledErasureAt` for exactly this,
+     * and until now nothing called it: the screen said something was pending
+     * without saying by when. "Restoration is available for exactly 30 days",
+     * and somebody deciding at 2am whether to deal with this now or in the
+     * morning needs the date rather than a reassurance.
+     *
+     * A FAILURE IS SILENT. The offer stands either way — a missing date is a
+     * weaker screen, and a screen that refused to load over one would strand
+     * somebody inside a grace period that is running out.
+     */
+    private fun loadDeadline() {
+        viewModelScope.launch {
+            when (val result = deletion.deletionConsequences()) {
+                is ApiResult.Ok -> _state.update {
+                    it.copy(deadlineLabel = result.value.scheduledErasureAt?.let(formatDate))
+                }
+                is ApiResult.Err -> Unit
+            }
+        }
+    }
 
     fun restore() {
         if (_state.value.restoring) return
@@ -141,14 +178,20 @@ class RestoreAccountViewModel(
         viewModelScope.launch { auth.logout() }
     }
 
-    class Factory(private val auth: AuthRepository) : ViewModelProvider.Factory {
+    class Factory(
+        private val auth: AuthRepository,
+        private val deletion: DeletionSource,
+        private val formatDate: (String) -> String?,
+    ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            RestoreAccountViewModel(auth) as T
+            RestoreAccountViewModel(auth, deletion, formatDate) as T
     }
 }
 
 data class RestoreUiState(
+    /** SET-FR-005's deadline, already formatted. Null when it could not be read. */
+    val deadlineLabel: String? = null,
     val restoring: Boolean = false,
     val restored: Boolean = false,
     /** The grace period has passed, or the erasure already ran. */

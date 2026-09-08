@@ -7,6 +7,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.HTTP
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
@@ -764,6 +765,45 @@ interface MohallaApi {
      */
     @POST("reports")
     suspend fun report(@Body body: ReportRequest): Response<Unit>
+
+    // ----------------------------------------------------------------- deletion
+
+    /**
+     * What deleting will do - BEFORE confirming (SET-FR-004 - PRIV-006).
+     *
+     * ITS OWN ENDPOINT SO THE CONFIRMATION SCREEN CANNOT BE BUILT WITHOUT IT.
+     * PRIV-006: users "MUST BE TOLD THIS CLEARLY BEFORE CONFIRMING, because it
+     * differs from the erasure many will assume". Returned as localization KEYS
+     * rather than sentences, so both languages say the same thing and the ORDER
+     * is the server's - the surprising line, that posts remain attributed to
+     * "Deleted User", is SECOND in the list where it is read rather than last
+     * where it is skipped.
+     *
+     * SERVES THE RESTORE SCREEN TOO (UX-AUTH-012): a `RESTORE_ONLY` session can
+     * reach it and gets `scheduledErasureAt`, which is how that screen says how
+     * long is left rather than only that something is pending.
+     */
+    @GET("me/deletion-consequences")
+    suspend fun deletionConsequences(): Response<DeletionConsequencesResponse>
+
+    /**
+     * Delete this account (SET-FR-004 - BR-008/009).
+     *
+     * A DELETE WITH A BODY, because SET-FR-004 requires the password to be
+     * re-entered: "the phone is already unlocked and in somebody's hand - a
+     * friend, a relative, a partner. The password is the one thing that
+     * distinguishes the account's owner from whoever is holding the device, and
+     * this is the only irreversible action in the product." Retrofit needs
+     * `@HTTP` for that; `@DELETE` cannot carry one.
+     *
+     * AVAILABLE IN EVERY STATE EXCEPT ALREADY-DELETED, INCLUDING WHILE
+     * SUSPENDED (BR-008) - an account that cannot leave while it is being
+     * punished is a hostage.
+     */
+    @HTTP(method = "DELETE", path = "me", hasBody = true)
+    suspend fun deleteAccount(
+        @Body body: DeleteAccountRequest,
+    ): Response<DeleteAccountResponse>
 }
 
 // ============================================================ request bodies
@@ -1506,6 +1546,30 @@ data class ReportRequest(
     val reasonCode: String,
     /** SAFETY-FR-001 - "optionally adds a note of up to 500 characters". */
     val note: String? = null,
+)
+
+/**
+ * What deletion does, as keys (PRIV-006).
+ *
+ * KEYS RATHER THAN SENTENCES, and the client translates them. That is what makes
+ * "readable in the user's chosen language" true without the server holding two
+ * copies of six paragraphs - and the ORDER IS LOAD-BEARING, so the list is
+ * rendered exactly as it arrives.
+ */
+@Serializable
+data class DeletionConsequencesResponse(
+    val keys: List<String> = emptyList(),
+    val graceDays: Int = 0,
+    /** Null for anybody who is not already pending deletion. */
+    val scheduledErasureAt: String? = null,
+)
+
+@Serializable
+data class DeleteAccountRequest(val password: String)
+
+@Serializable
+data class DeleteAccountResponse(
+    val scheduledErasureAt: String? = null,
 )
 
 @Serializable

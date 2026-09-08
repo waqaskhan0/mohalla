@@ -84,6 +84,8 @@ import org.shehersaaz.mohalla.feature.settings.BlockedUsersScreen
 import org.shehersaaz.mohalla.feature.settings.BlockedUsersViewModel
 import org.shehersaaz.mohalla.feature.settings.ChangePasswordScreen
 import org.shehersaaz.mohalla.feature.settings.ChangePasswordViewModel
+import org.shehersaaz.mohalla.feature.settings.DeleteAccountScreen
+import org.shehersaaz.mohalla.feature.settings.DeleteAccountViewModel
 import org.shehersaaz.mohalla.feature.settings.HelpScreen
 import org.shehersaaz.mohalla.feature.settings.LanguageSettingsScreen
 import org.shehersaaz.mohalla.feature.settings.LegalDocumentScreen
@@ -372,6 +374,23 @@ fun MohallaNavHost(
 
         composable(Routes.SETTINGS_ABOUT) {
             AboutScreen(onBack = { navController.popBackStack() })
+        }
+
+        // UX-SET-009.
+        composable(Routes.DELETE_ACCOUNT) {
+            DeleteAccountRoute(
+                container = container,
+                onBack = { navController.popBackStack() },
+                onDeleted = {
+                    // Every session was revoked server-side, so this device is
+                    // holding a token that no longer answers. The whole graph
+                    // goes with it — Back must not return to a shell rendering
+                    // cached content for an account that is gone.
+                    navController.navigate(Routes.WELCOME) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+            )
         }
 
         // UX-SET-006 — one screen, three documents, none of which exists.
@@ -919,6 +938,7 @@ private fun SettingsRoute(
         onTerms = { navController.navigate(Routes.legal(Routes.LEGAL_TERMS)) },
         onHelp = { navController.navigate(Routes.SETTINGS_HELP) },
         onAbout = { navController.navigate(Routes.SETTINGS_ABOUT) },
+        onDeleteAccount = { navController.navigate(Routes.DELETE_ACCOUNT) },
         onSignOut = {
             vm.signOut {
                 // The whole graph goes, so Back cannot return to a signed-in
@@ -960,6 +980,40 @@ private fun LanguageSettingsRoute(
             // activity stores it and recreates itself.
             activity?.applyLanguage(locale)
         },
+    )
+}
+
+/**
+ * UX-SET-009 — delete account.
+ *
+ * THE LOCAL CLEAR HAPPENS HERE AND NOT IN THE VIEWMODEL, because it is the same
+ * clear the sign-out path performs and there should be one of it: the session
+ * store and the session-scoped relationship cache both belong to an account, and
+ * the account has just stopped existing.
+ */
+@Composable
+private fun DeleteAccountRoute(
+    container: AppContainer,
+    onBack: () -> Unit,
+    onDeleted: () -> Unit,
+) {
+    val vm: DeleteAccountViewModel = viewModel(
+        factory = DeleteAccountViewModel.Factory(container.settingsRepository),
+    )
+    val state by vm.state.collectAsState()
+
+    DeleteAccountScreen(
+        state = state,
+        onBack = onBack,
+        onPasswordChanged = vm::onPasswordChanged,
+        onDelete = {
+            vm.submit {
+                container.sessionRepository.signOut()
+                container.viewerRelations.clear()
+                onDeleted()
+            }
+        },
+        onRetryLoad = vm::loadConsequences,
     )
 }
 
@@ -1781,7 +1835,11 @@ private fun NavGraphBuilder.authGraph(
 
     composable(Routes.RESTORE_ACCOUNT) {
         val vm: RestoreAccountViewModel =
-            viewModel(factory = RestoreAccountViewModel.Factory(container.authRepository))
+            viewModel(factory = RestoreAccountViewModel.Factory(
+                    auth = container.authRepository,
+                    deletion = container.settingsRepository,
+                    formatDate = container.formatDate,
+                ))
         val state by vm.state.collectAsState()
 
         RestoreAccountScreen(

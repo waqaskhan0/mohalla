@@ -34,8 +34,9 @@ per-attachment upload sequencing, the comment thread's one-level nesting, and
 search's failed-versus-empty rule, messaging's send idempotency and duplicate
 reconciliation, the notification centre's day boundary in the reader's own
 timezone, the encoded shape of a PATCH body that has to distinguish absent from
-null, and the exact field shape of every type that enforces a privacy rule
-structurally. **418 tests, all passing.** |
+null, the ordering of the deletion consequences PRIV-006 requires a user to read,
+and the exact field shape of every type that enforces a privacy rule
+structurally. **432 tests, all passing.** |
 | **What that does not prove** | That pixels mirror. The tests prove Create sits at index 2 of 5 and that the list is never pre-reversed; they cannot prove the row renders right-to-left. §36 makes RTL release-critical, so this gap is the largest single verification debt in Stage 7. |
 
 The manifest defect found in group 05–06 is the argument for closing it:

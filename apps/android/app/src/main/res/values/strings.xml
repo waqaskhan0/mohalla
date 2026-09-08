@@ -519,4 +519,30 @@
     <string name="block_effect_silent">They are never told that you blocked them.</string>
     <string name="block_failed">That didn\'t work. Try again.</string>
     <string name="comment_report">Report</string>
+    <!-- Delete account (UX-SET-009) -->
+    <string name="settings_delete_account">Delete account</string>
+    <string name="delete_warning">This is permanent after %1$d days</string>
+    <string name="delete_here_is_what_happens">Here\'s exactly what happens:</string>
+    <string name="delete_password_label">Enter your password to confirm</string>
+    <string name="delete_password_wrong">That password is not correct.</string>
+    <string name="delete_submit">Delete my account</string>
+    <string name="delete_failed">Your account wasn\'t deleted. Try again.</string>
+    <string name="delete_offline">You\'re offline, so nothing has changed. Try again when you\'re back.</string>
+    <string name="delete_consequences_incomplete">This app can\'t show every consequence of deleting. Update it to see the full list before you decide.</string>
+
+    <!--
+      PRIV-006's consequences. The SERVER decides which of these appear and in
+      what ORDER — the line about posts remaining is second, "where it is read,
+      rather than last where it is skipped" — and the client only translates the
+      keys. Wording follows the backend's own copy so the two cannot say
+      different things about the same act.
+    -->
+    <string name="delete_consequence_profile">Your profile, photo and bio are removed from Mohalla.</string>
+    <string name="delete_consequence_posts">Your posts and comments stay where they are, shown as “Deleted User”. They are not removed, because other people replied to them.</string>
+    <string name="delete_consequence_messages">Messages you sent stay in the other person\'s conversation, shown as “Deleted User”.</string>
+    <string name="delete_consequence_sessions">You are signed out on every device straight away.</string>
+    <string name="delete_consequence_restorable">You can bring your account back by logging in within 30 days. Your followers, following and posts return with it.</string>
+    <string name="delete_consequence_permanent">After 30 days this cannot be undone.</string>
+
+    <string name="restore_deadline">Log in before %1$s to bring your account back.</string>
 </resources>

@@ -22,6 +22,7 @@ import org.shehersaaz.mohalla.feature.auth.PasswordProblem
 import org.shehersaaz.mohalla.feature.settings.BlockPage
 import org.shehersaaz.mohalla.feature.settings.BlockedUsersViewModel
 import org.shehersaaz.mohalla.feature.settings.ChangePasswordViewModel
+import org.shehersaaz.mohalla.feature.settings.DeletionConsequences
 import org.shehersaaz.mohalla.feature.settings.SettingsScreen
 import org.shehersaaz.mohalla.feature.settings.SettingsSource
 import org.shehersaaz.mohalla.feature.settings.SettingsViewModel
@@ -83,6 +84,17 @@ class SettingsTest {
             unblocked += userId
             return unblockResult
         }
+
+        // The deletion half of the same source. Exercised in `DeleteAccountTest`
+        // against its own narrower interface; present here because the settings
+        // repository implements both.
+        override suspend fun deletionConsequences(): ApiResult<DeletionConsequences> =
+            ApiResult.Ok(
+                DeletionConsequences(keys = emptyList(), graceDays = 30, scheduledErasureAt = null),
+            )
+
+        override suspend fun deleteAccount(password: String): ApiResult<Unit> =
+            ApiResult.Ok(Unit)
     }
 
     private class Harness(

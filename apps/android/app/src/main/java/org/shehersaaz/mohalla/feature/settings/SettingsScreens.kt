@@ -65,6 +65,7 @@ fun SettingsScreen(
     onHelp: () -> Unit,
     onAbout: () -> Unit,
     onSignOut: () -> Unit,
+    onDeleteAccount: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -138,9 +139,17 @@ fun SettingsScreen(
                 destructive = true,
             )
 
-            // UX-SET-009 is group 18–19. The row is absent rather than present
-            // and inert: an account-deletion control that does nothing is the
-            // worst possible thing to leave inert.
+            // UX-SET-009 — "Settings, bottom of list, visually separated". §6.7
+            // puts a Tier-3 destructive action alone at the end, where it cannot
+            // be hit while reaching for the row above it.
+            SectionGap()
+
+            SettingsRow(
+                label = stringResource(R.string.settings_delete_account),
+                value = null,
+                onClick = onDeleteAccount,
+                destructive = true,
+            )
         }
     }
 }

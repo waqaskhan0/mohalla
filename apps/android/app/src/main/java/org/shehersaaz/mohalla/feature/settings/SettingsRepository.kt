@@ -3,6 +3,7 @@ package org.shehersaaz.mohalla.feature.settings
 import org.shehersaaz.mohalla.core.locale.AppLocale
 import org.shehersaaz.mohalla.core.network.ApiResult
 import org.shehersaaz.mohalla.core.network.ChangePasswordRequest
+import org.shehersaaz.mohalla.core.network.DeleteAccountRequest
 import org.shehersaaz.mohalla.core.network.LanguageRequest
 import org.shehersaaz.mohalla.core.network.MohallaApi
 import org.shehersaaz.mohalla.core.network.apiCall
@@ -26,7 +27,7 @@ import org.shehersaaz.mohalla.core.network.map
  * does not undo the local switch: LOCALE-FR-002 promises the interface changes
  * immediately, and it did.
  */
-interface SettingsSource {
+interface SettingsSource : DeletionSource {
     suspend fun screen(): ApiResult<SettingsScreen>
 
     suspend fun setLanguage(locale: AppLocale): ApiResult<Unit>
@@ -84,6 +85,25 @@ class SettingsRepository(
 
     override suspend fun unblock(userId: String): ApiResult<Unit> =
         apiCall { api.unblock(userId) }.map { }
+
+    /**
+     * What deletion does (PRIV-006).
+     *
+     * PASSED THROUGH UNCHANGED, keys and order alike. The order is a decision
+     * the requirement made about what gets read — the surprising line is SECOND
+     * — and a repository that sorted or filtered here would undo it silently.
+     */
+    override suspend fun deletionConsequences(): ApiResult<DeletionConsequences> =
+        apiCall { api.deletionConsequences() }.map {
+            DeletionConsequences(
+                keys = it.keys,
+                graceDays = it.graceDays,
+                scheduledErasureAt = it.scheduledErasureAt,
+            )
+        }
+
+    override suspend fun deleteAccount(password: String): ApiResult<Unit> =
+        apiCall { api.deleteAccount(DeleteAccountRequest(password)) }.map { }
 
     companion object {
         const val PAGE_SIZE = 20
