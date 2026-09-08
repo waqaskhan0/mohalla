@@ -11,6 +11,52 @@ incomplete — and who can clear it.
 
 ---
 
+## 0 · Baseline, re-audited
+
+**Classified per the final-pass addendum §1.** This is what is actually left,
+after Flow A and Flow G were executed and six defects were fixed.
+
+| Item | Class |
+|---|---|
+| **RUNTIME-005** — setup and auth screens render only `Offline` and `Server` failures; every other `ApiFailure` shows nothing | **IMPLEMENTABLE NOW** |
+| **RUNTIME-006** — Home's Urdu empty-state button compressed to ≈28dp with a clipped label | **IMPLEMENTABLE NOW** |
+| **GAP-M-016** · **GAP-M-017** · **GAP-M-018** — interests, post editing, mark-all-read | **IMPLEMENTABLE NOW**, and deliberately not built: each is a Could with no designed screen, and §49 forbids adding one |
+| `UX-HOME-005` category filter · `UX-HOME-006` announcement detail | **IMPLEMENTABLE NOW** — the only two unbuilt screens of 61 |
+| Compose UI tests (none exist) | **IMPLEMENTABLE NOW** — the emulator exists |
+| §44 flows B, C, D, E, F, H, I, J, K | **RUNTIME VERIFICATION REQUIRED** — environment ready, fixtures and time are not |
+| `UX-SETUP-003` re-render after the RUNTIME-003 crash fix | **RUNTIME VERIFICATION REQUIRED** |
+| §45 image picker · camera · large font · slow network · offline/reconnect · chat · scrolling | **RUNTIME VERIFICATION REQUIRED** |
+| **GAP-M-013** — `/me/blocks` returns no display name or handle | **BACKEND GAP** — see §0.1 |
+| **EVENT-FR-004** — no endpoint returns the events a user RSVP'd to, so `UX-EVENT-002` cannot list them | **BACKEND GAP** |
+| **GAP-M-009** — a reply notification carries no navigable target | **BACKEND GAP** |
+| **OD-015** — the three legal documents and a support address | **EXTERNAL CONTENT DEPENDENCY** |
+| **OD-016** — ~400 Urdu strings unreviewed. They now actually render (RUNTIME-004), so this is newly reviewable and newly urgent | **EXTERNAL CONTENT DEPENDENCY** |
+| **DEP-003** — push provider | **EXTERNAL SERVICE DEPENDENCY** |
+| **DEP-013** — the licensed Noto Nastaliq face | **EXTERNAL CONTENT DEPENDENCY** |
+| **ADR-013 / OD-023** — the PDF safety gate | **EXTERNAL SERVICE DEPENDENCY** |
+| **DEP-006** — Play account and release keystore · **DEP-007** — the domain | **RELEASE-ONLY BLOCKER** |
+| Publication authorization · licence decision | **RELEASE-ONLY BLOCKER** |
+| Physical-device matrix · UAT · production environment | **RELEASE-ONLY BLOCKER** |
+| Admin Web Portal · all of Phase 2 (§49) | **OUT OF SCOPE** |
+| **OD-020 / DEP-016** — no named technical owner, so no administrator may be provisioned | **OUT OF SCOPE** for Stage 7, and it makes BR-011's "an administrator may correct it" currently untrue |
+
+### 0.1 · GAP-M-013 re-evaluated as a backend gap
+
+§22D asks for this specifically. **SET-FR-003 and SAFETY-FR-007 are Musts**, the
+screen is built, and `GET /me/blocks` returns no `displayName` and no `username` —
+so a row cannot name the person it is about. That is not an external dependency;
+it is Stage 6 not returning enough to render an approved screen.
+
+**It is not fixed here.** MOBILE-BACKEND-FIX-001 was made because Flow A proved
+the defect end to end and the SRS named the expected behaviour in one sentence.
+This one needs the same standard of evidence — an executed flow reaching the
+blocked-users screen with a real block relationship — and Flow H is NOT
+EXECUTED. Making a privacy-sensitive projection change on a screen nobody has
+run would be exactly the guesswork the earlier fix avoided. Recorded as
+**MOBILE-BACKEND-GAP-002**, with the shape of the fix stated: add the same
+public-profile projection `/users/{id}` already returns, for blocked users only,
+visible only to the blocking user.
+
 ## 1 · Governance — not the implementation's to clear
 
 | ID | What is blocked | Who can clear it |
@@ -28,7 +74,7 @@ incomplete — and who can clear it.
 
 | | |
 |---|---|
-| **No AVD, no system image, no device** | `adb devices` is empty. Every Compose UI test and every §44/§45 end-to-end flow **cannot run** here. Needs roughly a 1 GB system-image download. |
+| ~~No AVD, no system image, no device~~ | **RESOLVED.** `emulator` and `system-images;android-36;google_apis;x86_64` were installed (4.4 GB unpacked) and the `mohalla_test` AVD created — API 36, x86_64, 1080×2280 @ 420dpi, 4 GB, 4 cores. The full Stage 6 stack runs beside it: Postgres 18.6, 22 migrations, API, worker and Socket.IO, with `npm run smoke` at **8 passed / 0 failed / 0 blocked**. Flows A and G were executed against it. **The other nine §44 flows are NOT EXECUTED — for want of time and fixtures, no longer for want of a device.** Compose UI tests are now writable and remain unwritten. |
 | **What was done instead** | Every rule that can be asserted without a device was written as a JVM unit test rather than deferred: the RTL invariants, the state machines, the cursor sequences, the neutral-refusal structure, locale and zone handling, the composer's
 per-attachment upload sequencing, the comment thread's one-level nesting, and
 search's failed-versus-empty rule, messaging's send idempotency and duplicate
@@ -38,7 +84,7 @@ null, the ordering of the deletion consequences PRIV-006 requires a user to read
 which of the eight API failures each of §21's four states answers for, every
 link shape §42 accepts and the many more it refuses, eight accessibility and RTL
 invariants asserted over the whole source tree, and the exact field shape of
-every type that enforces a privacy rule structurally. **478 tests, all passing.** |
+every type that enforces a privacy rule structurally. **487 Android tests and 904 backend tests, all passing.** |
 | **What group 22 added** | Eight source-level invariants: no absolute alignment, no left/right padding or text alignment, every directional icon mirrored, the tab list never reversed, `text-tertiary` never colouring informational text, no bare 40dp `TextButton`, no hardcoded user-visible string, every lazy item keyed. Each an allowlist, so a new permitted use has to be argued for in the test. The RTL rules were all already satisfied; the contrast ones were violated on 55 sites. |
 | **What group 23 added** | Two integration tests over the seams a unit test cannot see. `ApiContractTest`: all 75 client routes exist in Stage 6's generated contract, 0 missing, and each of the 29 uncalled server routes carries a stated reason so a new one fails the build. `IntegrationWiringTest`: every function on every `*Source` interface reaches a caller, with the orphan set pinned at exactly three. Between them they found a **Must** requirement that had never been implemented and three declarations nothing called. |
 | **What that does not prove** | That pixels mirror. The tests prove Create sits at index 2 of 5 and that the list is never pre-reversed; they cannot prove the row renders right-to-left. §36 makes RTL release-critical, so this gap is the largest single verification debt in Stage 7. |
@@ -471,6 +517,59 @@ it can never resolve.
 **To close it:** the domain, the release keystore, an `assetlinks.json` naming
 the fingerprint, and `android:autoVerify="true"`. One line in the manifest, and
 three things that are not this repository's to supply.
+
+### RUNTIME-005 · Most failures render nothing at all
+
+**Open. Found by Flow A, and it wasted an hour of this pass.**
+
+`UsernameScreen`'s notice handles `takenMessage`, `ApiFailure.Offline` and
+`ApiFailure.Server`. It handles **none** of `Unauthenticated`, `Restricted`,
+`Validation`, `RateLimited`, `Unavailable` or `Timeout`. So when
+`POST /me/username` answered 401, the screen showed no message, no error, no
+change — Continue simply did nothing, twice, with nothing on screen to say why.
+
+The 401 had a real cause (MOBILE-BACKEND-FIX-001) and is fixed. **The silence is
+a separate defect and is not.**
+
+Group 20 built `FailureState` to make exactly this exhaustive, over all eight
+`ApiFailure` variants, and the auth and setup screens predate it and were never
+migrated. The fix is mechanical; what makes it worth doing carefully is that
+several of those screens have never been runtime-verified, so a change to their
+failure rendering cannot yet be checked by running them.
+
+### RUNTIME-006 · An Urdu label clipped inside a 28dp button
+
+**Open. Found by Flow G, measured rather than eyeballed.**
+
+Home's empty-state body wraps to **three** lines in Urdu against two in English,
+and the primary action button beneath it is squeezed:
+
+| | Height |
+|---|---|
+| `MohallaButton` normally | 126–127px ≈ **48dp** |
+| The Urdu empty-state button | **74px ≈ 28dp**, label clipped |
+
+Group 22's 48dp minimum is real and honoured everywhere the component controls
+its own height. This instance is compressed by a parent that ran out of vertical
+space, which no source check can see — only a device, in Urdu.
+
+Not fixed: the screen's own two sub-screens (`UX-HOME-005`, `UX-HOME-006`) are
+unbuilt, and re-laying out around them blind would be guessing. The measurement
+is recorded so the fix can be verified against it.
+
+### OBS-001 · A live OTP is recoverable from its stored hash in under a second
+
+**An observation, not a Stage 7 defect, recorded because it was found here.**
+
+`hashOtpCode` is an **unsalted SHA-256 of a six-digit code**. Brute-forcing the
+whole space took under a second on this machine — which is legitimately how the
+development OTP was obtained for Flow A, from the local database.
+
+The mitigations are real and documented: five attempts, ten-minute expiry, single
+use, and the hash needs database read access to reach. But **anyone holding a
+database read holds every live OTP**, and `read_only_support` is one of the four
+roles. Whether that is acceptable is a Stage 6 security decision, not a mobile
+one.
 
 ### GAP-M-016 · Interests can be read and never written
 
