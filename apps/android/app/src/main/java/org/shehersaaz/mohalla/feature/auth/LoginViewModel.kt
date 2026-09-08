@@ -10,6 +10,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.network.ApiResult
+import org.shehersaaz.mohalla.feature.startup.SessionRepository
+import org.shehersaaz.mohalla.feature.startup.StartupDestination
+import org.shehersaaz.mohalla.feature.startup.destinationForSession
+import org.shehersaaz.mohalla.feature.startup.toSessionFacts
 
 /**
  * Log in — UX-AUTH-004 (AUTH-FR-005 · SEC-006/007).
@@ -29,6 +33,7 @@ import org.shehersaaz.mohalla.core.network.ApiResult
  */
 class LoginViewModel(
     private val auth: AuthRepository,
+    private val sessions: SessionRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LoginUiState())
@@ -66,14 +71,39 @@ class LoginViewModel(
         viewModelScope.launch {
             when (val result = auth.login(phone, current.password)) {
                 is ApiResult.Ok -> when (val outcome = result.value) {
-                    is LoginOutcome.Authenticated -> _state.update {
-                        it.copy(
-                            submitting = false,
-                            // Cleared on success so a correct password does not
-                            // linger in memory any longer than the request.
-                            password = "",
-                            authenticatedCapability = outcome.capability,
-                        )
+                    is LoginOutcome.Authenticated -> {
+                        // WHERE TO GO IS ASKED, NOT ASSUMED (RUNTIME-007).
+                        //
+                        // This used to hand the caller a capability and let it
+                        // navigate to the shell unconditionally, so somebody
+                        // who registered and verified but never claimed a
+                        // username logged back in and landed on Home with no
+                        // handle and no display name. PROFILE-FR-002 makes the
+                        // handle mandatory and BR-005 makes it permanent.
+                        //
+                        // The login response cannot answer it: `Authenticated`
+                        // carries a capability and nothing else. So `/me` is
+                        // read and `destinationForSession` decides — the same
+                        // function the splash uses, so the two paths cannot
+                        // disagree about what onboarding is outstanding.
+                        val resolved = sessions.me().toSessionFacts()
+                            ?.let { facts -> destinationForSession(facts) }
+
+                        _state.update {
+                            it.copy(
+                                submitting = false,
+                                // Cleared on success so a correct password does
+                                // not linger in memory any longer than the
+                                // request.
+                                password = "",
+                                authenticatedCapability = outcome.capability,
+                                // Null only if `/me` was unreachable straight
+                                // after a successful login. The caller treats
+                                // that as the shell: the session is real, and
+                                // the shell re-reads capability on resume.
+                                destination = resolved,
+                            )
+                        }
                     }
 
                     LoginOutcome.VerificationRequired -> _state.update {
@@ -101,9 +131,13 @@ class LoginViewModel(
         }
     }
 
-    class Factory(private val auth: AuthRepository) : ViewModelProvider.Factory {
+    class Factory(
+        private val auth: AuthRepository,
+        private val sessions: SessionRepository,
+    ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T = LoginViewModel(auth) as T
+        override fun <T : ViewModel> create(modelClass: Class<T>): T =
+            LoginViewModel(auth, sessions) as T
     }
 }
 
@@ -128,4 +162,13 @@ data class LoginUiState(
 
     /** Offline, rate limited, or a server error — not a credential problem. */
     val failure: ApiFailure? = null,
+
+    /**
+     * Where this account belongs, resolved after signing in.
+     *
+     * NOT ALWAYS THE SHELL, which is the whole point of RUNTIME-007: an account
+     * can be ACTIVE and still owe a username or a profile, and the caller has
+     * to send it there rather than to Home.
+     */
+    val destination: StartupDestination? = null,
 )

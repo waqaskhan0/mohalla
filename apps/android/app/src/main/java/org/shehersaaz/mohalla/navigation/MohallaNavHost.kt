@@ -1765,7 +1765,12 @@ private fun NavGraphBuilder.authGraph(
 
     composable(Routes.LOGIN) {
         val vm: LoginViewModel =
-            viewModel(factory = LoginViewModel.Factory(container.authRepository))
+            viewModel(
+                factory = LoginViewModel.Factory(
+                    auth = container.authRepository,
+                    sessions = container.sessionRepository,
+                ),
+            )
         val state by vm.state.collectAsState()
 
         LoginScreen(
@@ -1774,11 +1779,32 @@ private fun NavGraphBuilder.authGraph(
             onPasswordChanged = vm::onPasswordChanged,
             onSubmit = vm::submit,
             onForgotPassword = { navController.navigate(Routes.FORGOT_PASSWORD) },
-            // The capability is reported but not acted on here: a suspended
-            // account signs in and lands on Home with the banner (BR-034), so
-            // there is nothing to branch on. The shell reads the capability
-            // itself, which keeps one source of truth.
-            onAuthenticated = { navController.toShell() },
+            // ONBOARDING IS CHECKED, NOT ASSUMED (RUNTIME-007).
+            //
+            // This was `toShell()`, unconditionally, so an account that was
+            // ACTIVE but still owed a username or a profile logged in and
+            // landed on Home with no handle and no display name. The
+            // ViewModel now resolves the destination through the same
+            // `destinationForSession` the splash uses, and this sends the
+            // reader wherever that says.
+            //
+            // The capability is still not branched on here: a suspended
+            // account signs in and lands on Home with the banner (BR-034), and
+            // the shell reads the capability itself, which keeps one source of
+            // truth.
+            onAuthenticated = {
+                val route = state.destination?.startRoute() ?: Routes.SHELL
+                if (route == Routes.SHELL) {
+                    navController.toShell()
+                } else {
+                    navController.navigate(route) {
+                        // The auth graph must not stay under an onboarding
+                        // step: Back from the username screen belongs nowhere
+                        // near a password field.
+                        popUpTo(Routes.WELCOME) { inclusive = true }
+                    }
+                }
+            },
             onVerificationRequired = { navController.navigate(Routes.OTP) },
         )
     }

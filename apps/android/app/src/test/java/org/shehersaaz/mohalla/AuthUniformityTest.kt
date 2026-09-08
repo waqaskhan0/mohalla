@@ -81,6 +81,15 @@ class AuthUniformityTest {
                 // The one safe disclosure: reaching it PROVED the password.
                 "verificationRequired",
                 "authenticatedCapability",
+                // Where the account belongs, resolved AFTER a correct
+                // password (RUNTIME-007). Allowed on the same ground as
+                // `verificationRequired`: it is null on every rejected
+                // sign-in, so it cannot distinguish a wrong password from an
+                // unknown number, and the states it does distinguish -
+                // owing a username, owing a profile, pending deletion,
+                // suspended - are facts about an account whose password the
+                // caller has just proved they hold.
+                "destination",
                 // The transport-level failure (offline, 5xx), which says
                 // nothing about the account.
                 "failure",

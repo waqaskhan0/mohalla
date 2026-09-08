@@ -8,6 +8,7 @@ import org.shehersaaz.mohalla.feature.startup.SessionFacts
 import org.shehersaaz.mohalla.feature.startup.StartupDestination
 import org.shehersaaz.mohalla.feature.startup.StartupFacts
 import org.shehersaaz.mohalla.feature.startup.resolveDestination
+import org.shehersaaz.mohalla.feature.startup.destinationForSession
 
 /**
  * Startup routing (§9).
@@ -141,6 +142,109 @@ class StartupRoutingTest {
         assertEquals(
             StartupDestination.Welcome,
             resolveDestination(facts(state = "SOME_FUTURE_STATE")),
+        )
+    }
+
+    // ------------------------------------------ logging in is not a shortcut
+
+    @Test
+    fun `LOGGING IN DOES NOT SKIP ONBOARDING`() {
+        // RUNTIME-007, found on the emulator by Flow B's first step.
+        //
+        //     onAuthenticated = { navController.toShell() }
+        //
+        // Unconditional. So an account that had registered and verified but
+        // never claimed a username logged back in and landed on Home with
+        // `username` and `display_name` both null - reproduced, and read out of
+        // Postgres. PROFILE-FR-002 makes the handle mandatory and BR-005 makes
+        // it permanent, so that account could never be searched for or
+        // mentioned and its own profile rendered blank.
+        //
+        // The splash always got this right. What was missing was that the login
+        // path never asked. `destinationForSession` is now the one answer both
+        // paths use, and these are the cases that matter.
+        assertEquals(
+            StartupDestination.ChooseUsername,
+            destinationForSession(
+                SessionFacts(
+                    state = "ACTIVE",
+                    capability = "FULL",
+                    hasUsername = false,
+                    hasProfile = false,
+                ),
+            ),
+        )
+
+        assertEquals(
+            StartupDestination.CompleteProfile,
+            destinationForSession(
+                SessionFacts(
+                    state = "ACTIVE",
+                    capability = "FULL",
+                    hasUsername = true,
+                    hasProfile = false,
+                ),
+            ),
+        )
+
+        assertEquals(
+            "a finished account belongs on Home and nowhere else",
+            StartupDestination.Home,
+            destinationForSession(
+                SessionFacts(
+                    state = "ACTIVE",
+                    capability = "FULL",
+                    hasUsername = true,
+                    hasProfile = true,
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `A SUSPENDED ACCOUNT STILL OWES ITS ONBOARDING`() {
+        // BR-034 lets a suspended account read, but it does not excuse a
+        // missing handle - and the login path has to agree with the splash
+        // about that too.
+        assertEquals(
+            StartupDestination.ChooseUsername,
+            destinationForSession(
+                SessionFacts(
+                    state = "SUSPENDED",
+                    capability = "READ_ONLY",
+                    hasUsername = false,
+                    hasProfile = false,
+                ),
+            ),
+        )
+
+        assertEquals(
+            StartupDestination.HomeReadOnly,
+            destinationForSession(
+                SessionFacts(
+                    state = "SUSPENDED",
+                    capability = "READ_ONLY",
+                    hasUsername = true,
+                    hasProfile = true,
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `AN UNKNOWN ACCOUNT STATE IS NEVER TREATED AS USABLE`() {
+        // A client that guesses "probably fine" on a state it does not know is
+        // a client that grants access the server may have revoked.
+        assertEquals(
+            StartupDestination.Welcome,
+            destinationForSession(
+                SessionFacts(
+                    state = "SOMETHING_THIS_BUILD_HAS_NEVER_HEARD_OF",
+                    capability = "FULL",
+                    hasUsername = true,
+                    hasProfile = true,
+                ),
+            ),
         )
     }
 }

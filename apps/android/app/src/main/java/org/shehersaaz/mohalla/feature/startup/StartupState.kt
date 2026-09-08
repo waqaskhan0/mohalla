@@ -106,7 +106,27 @@ fun resolveDestination(facts: StartupFacts): StartupDestination {
     if (!facts.hasSessionToken) return StartupDestination.Welcome
     val session = facts.session ?: return StartupDestination.Welcome
 
-    return when (session.state) {
+    return destinationForSession(session)
+}
+
+/**
+ * Where an authenticated account belongs, from the account alone.
+ *
+ * EXTRACTED SO THE LOGIN PATH CANNOT DISAGREE WITH THE STARTUP PATH. It used
+ * to: `onAuthenticated` navigated straight to the shell, unconditionally, so
+ * somebody who registered and verified but never claimed a username logged
+ * back in and landed on Home with no handle and no display name (RUNTIME-007,
+ * reproduced on an emulator). PROFILE-FR-002 makes the handle mandatory and
+ * BR-005 makes it permanent, so that account could never be searched for or
+ * mentioned, and its own profile rendered blank.
+ *
+ * The login response cannot answer this on its own —
+ * `LoginOutcome.Authenticated` carries a capability and nothing else — so the
+ * login path reads `/me` and calls this, which is the same function the splash
+ * calls. One resolver, so a new account state is handled everywhere or nowhere.
+ */
+fun destinationForSession(session: SessionFacts): StartupDestination =
+    when (session.state) {
         "PENDING_DELETION" -> StartupDestination.RestoreAccount
 
         // Neutral. Indistinguishable from having no account at all.
@@ -131,4 +151,3 @@ fun resolveDestination(facts: StartupFacts): StartupDestination {
         // state is a client that grants access the server may have revoked.
         else -> StartupDestination.Welcome
     }
-}
