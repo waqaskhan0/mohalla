@@ -46,6 +46,7 @@ import retrofit2.Retrofit
 import org.shehersaaz.mohalla.core.storage.AndroidSecureStorage
 import org.shehersaaz.mohalla.core.storage.SecureStorage
 import java.util.concurrent.TimeUnit
+import org.shehersaaz.mohalla.core.util.formatLongDate
 
 /**
  * Manual dependency container.
@@ -298,14 +299,10 @@ class AppContainer private constructor(
      * would be worse than the indefinite wording the banner falls back to.
      */
     val formatDate: (String) -> String? = { iso ->
-        runCatching {
-            val instant = java.time.Instant.parse(iso)
-            java.time.format.DateTimeFormatter
-                .ofLocalizedDate(java.time.format.FormatStyle.LONG)
-                .withLocale(java.util.Locale.forLanguageTag(localeManager.locale.value.tag))
-                .withZone(java.time.ZoneId.systemDefault())
-                .format(instant)
-        }.getOrNull()
+        // The formatting itself moved to `formatLongDate` so a composable can
+        // use it too - see RUNTIME-010. This stays as the container's way of
+        // binding it to the reader's chosen language.
+        formatLongDate(iso, java.util.Locale.forLanguageTag(localeManager.locale.value.tag))
     }
 
     companion object {

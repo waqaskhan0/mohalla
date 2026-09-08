@@ -58,6 +58,7 @@ import org.shehersaaz.mohalla.core.network.PostResponse
 import org.shehersaaz.mohalla.core.state.Relation
 import org.shehersaaz.mohalla.core.ui.ContentUnavailable
 import org.shehersaaz.mohalla.core.ui.DELETED_USER_KEY
+import org.shehersaaz.mohalla.core.ui.InlineFailureNotice
 import org.shehersaaz.mohalla.core.ui.LoadingState
 import org.shehersaaz.mohalla.core.ui.MohallaAvatar
 import org.shehersaaz.mohalla.core.ui.MohallaBackHeader
@@ -212,6 +213,10 @@ fun PostDetailScreen(
                         onLoadMoreComments = onLoadMoreComments,
                     )
                 }
+
+                // RUNTIME-010. Directly above the composer, so a refusal sits
+                // next to the controls that were refused.
+                InlineFailureNotice(state.likeFailure)
 
                 CommentComposer(
                     state = state,

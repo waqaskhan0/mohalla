@@ -1,9 +1,20 @@
 package org.shehersaaz.mohalla.core.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import org.shehersaaz.mohalla.R
+import org.shehersaaz.mohalla.core.design.MohallaTheme
+import org.shehersaaz.mohalla.core.design.MohallaType
 import org.shehersaaz.mohalla.core.network.ApiFailure
+import org.shehersaaz.mohalla.core.util.formatLongDate
 
 /**
  * One line of explanation for any refusal, on a form that stays on screen.
@@ -89,10 +100,37 @@ fun noticeFor(failure: ApiFailure?): AuthNotice? {
         )
 
         // 403 carries a code and a reason the server chose to give.
-        is ApiFailure.Restricted -> AuthNotice(
-            failure.message ?: stringResource(R.string.state_unavailable_body),
-            AuthNoticeTone.ERROR,
-        )
+        is ApiFailure.Restricted -> if (failure.code == CODE_ACCOUNT_SUSPENDED) {
+            // RUNTIME-010. A SUSPENSION IS NOT AN ERROR AND NOT THE READER'S
+            // MISTAKE, and the server's own words for it are "Account is
+            // limited." - true, and no use to somebody who has just tried to
+            // like a post and wants to know what is going on and for how long.
+            //
+            // §17 asks for the APPROVED explanation, so this is the same copy
+            // the banner and the explainer use, with the end date the server
+            // already sends in `details`. Nothing new is written here; a
+            // second wording for one state is how two screens come to say
+            // different things about it.
+            //
+            // WARNING, NOT ERROR, matching the banner: the account is in a
+            // state, the write did not fail.
+            val until = failure.details["suspendedUntil"]
+                ?.let { formatLongDate(it, currentLocale()) }
+
+            AuthNotice(
+                if (until != null) {
+                    stringResource(R.string.suspension_duration_until, until)
+                } else {
+                    stringResource(R.string.suspension_duration_indefinite)
+                },
+                AuthNoticeTone.WARNING,
+            )
+        } else {
+            AuthNotice(
+                failure.message ?: stringResource(R.string.state_unavailable_body),
+                AuthNoticeTone.ERROR,
+            )
+        }
 
         // A real clash — a username taken between the check and the claim.
         is ApiFailure.Conflict -> AuthNotice(
@@ -106,4 +144,69 @@ fun noticeFor(failure: ApiFailure?): AuthNotice? {
             AuthNoticeTone.WARNING,
         )
     }
+}
+
+/**
+ * The server's code for a suspension, from `IdentityErrorCode`.
+ *
+ * A CONSTANT rather than the literal inline, because it is a contract with a
+ * separate deployable and the compiler cannot check it. If Stage 6 ever renames
+ * it, `SuspensionNoticeTest` fails on the value rather than the app quietly
+ * going back to saying "Account is limited." with no date.
+ */
+private const val CODE_ACCOUNT_SUSPENDED = "ACCOUNT_SUSPENDED"
+
+/**
+ * The language the reader chose, for formatting a date inside a composable.
+ *
+ * READ FROM THE CONFIGURATION rather than the DI container, because this file
+ * is used by every screen and threading the container into all of them to
+ * format one date would be the wrong trade. `MainActivity.attachBaseContext`
+ * has already resolved the configuration to the stored choice, so this is that
+ * choice and not the device default.
+ */
+@Composable
+private fun currentLocale(): java.util.Locale =
+    androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
+
+/**
+ * A failure, said out loud on a screen that is otherwise fine.
+ *
+ * WHY THIS EXISTS. The same rendering was buried inside `AuthScaffold`, which
+ * only the auth screens use, so a feed or a post detail had nowhere to put a
+ * refusal and the ViewModels reduced theirs to a boolean nobody read
+ * (RUNTIME-010). This is that rendering, reusable, and it takes the failure
+ * rather than a string so the suspension wording above is what a suspended
+ * reader gets here too.
+ *
+ * IT RENDERS NOTHING FOR NULL, so a caller can place it unconditionally.
+ */
+@Composable
+fun InlineFailureNotice(failure: ApiFailure?, modifier: Modifier = Modifier) {
+    val notice = noticeFor(failure) ?: return
+
+    Text(
+        text = notice.text,
+        style = MohallaTheme.text(MohallaType.BodySm),
+        color = when (notice.tone) {
+            AuthNoticeTone.ERROR -> MohallaTheme.colors.Error
+            AuthNoticeTone.WARNING -> MohallaTheme.colors.Warning
+            AuthNoticeTone.SUCCESS -> MohallaTheme.colors.Success
+        },
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MohallaTheme.colors.SurfacePrimary)
+            .padding(
+                horizontal = MohallaTheme.screenMargin,
+                vertical = MohallaTheme.spacing.Space2,
+            )
+            .semantics {
+                liveRegion = when (notice.tone) {
+                    // An error interrupts; a condition the reader is already in
+                    // does not.
+                    AuthNoticeTone.ERROR -> LiveRegionMode.Assertive
+                    else -> LiveRegionMode.Polite
+                }
+            },
+    )
 }

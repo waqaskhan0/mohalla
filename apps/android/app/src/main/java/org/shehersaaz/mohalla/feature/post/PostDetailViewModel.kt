@@ -203,7 +203,7 @@ class PostDetailViewModel(
         _state.update {
             it.copy(
                 likeInFlight = true,
-                likeReverted = false,
+                likeFailure = null,
                 post = post.copy(
                     viewerHasLiked = !wasLiked,
                     likeCount = (post.likeCount + if (wasLiked) -1 else 1).coerceAtLeast(0),
@@ -228,14 +228,14 @@ class PostDetailViewModel(
                             likeCount = (s.post.likeCount + if (wasLiked) 1 else -1)
                                 .coerceAtLeast(0),
                         ),
-                        likeReverted = true,
+                        likeFailure = result.failure,
                     )
                 }
             }
         }
     }
 
-    fun onLikeRevertAcknowledged() = _state.update { it.copy(likeReverted = false) }
+    fun onLikeRevertAcknowledged() = _state.update { it.copy(likeFailure = null) }
 
     // --------------------------------------------------------------- comments
     fun onDraftChanged(value: String) {
@@ -509,7 +509,8 @@ data class PostDetailUiState(
     val commentsFailure: ApiFailure? = null,
 
     val likeInFlight: Boolean = false,
-    val likeReverted: Boolean = false,
+    /** Why the last like did not take, or `null` — see `FeedUiState`. */
+    val likeFailure: ApiFailure? = null,
 
     val draft: String = "",
     val replyTarget: CommentResponse? = null,

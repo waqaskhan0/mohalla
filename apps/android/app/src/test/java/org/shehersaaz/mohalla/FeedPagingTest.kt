@@ -14,6 +14,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.junit.Assert.assertNotNull
 import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.network.ApiResult
 import org.shehersaaz.mohalla.core.network.FeaturedItemResponse
@@ -352,10 +353,10 @@ class FeedPagingTest {
         // something untrue about their own action.
         assertFalse(reverted.viewerHasLiked)
         assertEquals(4, reverted.likeCount)
-        assertTrue(vm.state.value.likeReverted)
+        assertNotNull(vm.state.value.likeFailure)
 
         vm.onLikeRevertAcknowledged()
-        assertFalse(vm.state.value.likeReverted)
+        assertNull(vm.state.value.likeFailure)
     }
 
     @Test

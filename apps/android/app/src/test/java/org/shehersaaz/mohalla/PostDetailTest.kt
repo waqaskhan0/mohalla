@@ -685,10 +685,10 @@ class PostDetailTest {
 
         assertEquals(4, vm.state.value.post?.likeCount)
         assertFalse(vm.state.value.post!!.viewerHasLiked)
-        assertTrue(vm.state.value.likeReverted)
+        assertNotNull(vm.state.value.likeFailure)
 
         vm.onLikeRevertAcknowledged()
-        assertFalse(vm.state.value.likeReverted)
+        assertNull(vm.state.value.likeFailure)
     }
 
     @Test

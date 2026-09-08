@@ -47,13 +47,14 @@ import org.shehersaaz.mohalla.core.design.MohallaType
 import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.network.FeaturedItemResponse
 import org.shehersaaz.mohalla.core.network.FeedItemResponse
+import org.shehersaaz.mohalla.core.network.displayName
 import org.shehersaaz.mohalla.core.ui.FailureState
+import org.shehersaaz.mohalla.core.ui.InlineFailureNotice
 import org.shehersaaz.mohalla.core.ui.MohallaButton
 import org.shehersaaz.mohalla.core.ui.MohallaSecondaryButton
 import org.shehersaaz.mohalla.core.ui.MohallaTopBar
 import org.shehersaaz.mohalla.core.ui.PostCard
 import org.shehersaaz.mohalla.core.ui.homeActions
-import org.shehersaaz.mohalla.core.network.displayName
 
 /**
  * Home — UX-HOME-001 (Following) · UX-HOME-002 (Discover).
@@ -150,6 +151,12 @@ fun HomeScreen(
         // "there are no posts". This names the category doing it and gives one
         // tap to undo — the whole difference between a narrowed list and an
         // apparently broken one.
+        // RUNTIME-010. Under the tabs, above the list: the refusal belongs
+        // next to the thing that was refused, and a suspended reader who taps
+        // a heart is told here that they can read everything and cannot post
+        // until a date.
+        InlineFailureNotice(state.likeFailure)
+
         state.category?.let { slug ->
             ActiveCategoryNotice(
                 label = state.categories.firstOrNull { it.slug == slug }

@@ -102,12 +102,24 @@ private fun DeleteForm(
     onPasswordChanged: (String) -> Unit,
     onDelete: () -> Unit,
 ) {
+    // THE EXPLANATION SCROLLS; THE ACTIONS DO NOT.
+    //
+    // All of this was one scrolling column, and RUNTIME-011 was the
+    // consequence: focusing the password field brings the FIELD into view,
+    // which Compose does, but it has no reason to bring a button BELOW the
+    // field into view. So the keyboard covered Cancel, hid "Delete my account"
+    // completely, and nothing on screen said to scroll — on the one screen in
+    // the product where somebody is trying to do something irreversible and
+    // deserves to see both ways out.
+    //
+    // Same shape the composer and post detail already use: the part that can
+    // grow scrolls, and the part you have to reach stays where it is.
+    Column(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .weight(1f)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = MohallaTheme.screenMargin)
-            .padding(bottom = MohallaTheme.spacing.Space8),
+            .padding(horizontal = MohallaTheme.screenMargin),
         verticalArrangement = Arrangement.spacedBy(MohallaTheme.spacing.Space4),
     ) {
         Spacer(Modifier.height(MohallaTheme.spacing.Space2))
@@ -176,9 +188,22 @@ private fun DeleteForm(
             )
         }
 
-        // §6.7 — Cancel is the primary path and sits ABOVE the destructive
-        // control, which is outlined rather than filled and is never
-        // pre-focused.
+        // The boundary between what scrolls and what does not.
+        Spacer(Modifier.height(MohallaTheme.spacing.Space4))
+    }
+
+    // §6.7 — Cancel is the primary path and sits ABOVE the destructive
+    // control, which is outlined rather than filled and is never pre-focused.
+    //
+    // OUTSIDE THE SCROLL, so the keyboard cannot hide either of them.
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MohallaTheme.colors.BgPrimary)
+            .padding(horizontal = MohallaTheme.screenMargin)
+            .padding(bottom = MohallaTheme.spacing.Space4),
+        verticalArrangement = Arrangement.spacedBy(MohallaTheme.spacing.Space3),
+    ) {
         MohallaButton(
             text = stringResource(R.string.action_cancel),
             onClick = onBack,
@@ -190,6 +215,7 @@ private fun DeleteForm(
             enabled = state.canSubmit,
             modifier = Modifier.fillMaxWidth(),
         )
+    }
     }
 }
 

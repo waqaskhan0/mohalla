@@ -245,13 +245,17 @@ class FeedViewModel(
                                     .coerceAtLeast(0),
                             )
                         },
-                    ).copy(likeReverted = true)
+                        // THE FAILURE, NOT A BOOLEAN. `likeReverted = true`
+                        // was what this said, and nothing anywhere read it -
+                        // so a suspended reader's like reverted its heart and
+                        // explained nothing (RUNTIME-010).
+                    ).copy(likeFailure = result.failure)
                 }
             }
         }
     }
 
-    fun onLikeRevertAcknowledged() = _state.update { it.copy(likeReverted = false) }
+    fun onLikeRevertAcknowledged() = _state.update { it.copy(likeFailure = null) }
 
     /**
      * A post became unavailable while being read (§15).
@@ -320,7 +324,14 @@ data class FeedUiState(
     val firstPageFailure: ApiFailure? = null,
 
     val pendingLikes: Set<String> = emptySet(),
-    val likeReverted: Boolean = false,
+    /**
+     * Why the last like did not take, or `null`.
+     *
+     * THE FAILURE RATHER THAN A FLAG, because the reason is the whole point: a
+     * suspended account, an offline device and a deleted post are three
+     * different things to be told, and `true` is none of them.
+     */
+    val likeFailure: ApiFailure? = null,
 ) {
     fun pageFor(tab: FeedTab) = when (tab) {
         FeedTab.FOLLOWING -> following

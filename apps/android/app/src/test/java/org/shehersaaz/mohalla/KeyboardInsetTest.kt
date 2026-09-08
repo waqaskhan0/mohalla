@@ -11,7 +11,7 @@ import org.junit.Test
  * RUNTIME-017, and it made the post detail screen unusable for any post with no
  * comments — which in a young Mohalla is most of them.
  *
- * WHAT HAPPENED. Ten screens apply `imePadding()`, which is the Compose way and
+ * WHAT HAPPENED. Eleven screens apply `imePadding()`, which is the Compose way and
  * what `ComposerScreen` documents in its own comment: it lifts the toolbar
  * above the keyboard rather than shrinking the text area. That comment assumes
  * the window keeps its height. It did not — `windowSoftInputMode` was not
@@ -72,7 +72,7 @@ class KeyboardInsetTest {
         assertTrue(
             "At least the screens that take text must apply imePadding(); " +
                 "found ${padded.size}: $padded",
-            padded.size >= 10,
+            padded.size >= 11,
         )
 
         // Named rather than counted, so a screen that quietly loses its
@@ -82,6 +82,7 @@ class KeyboardInsetTest {
             "ChangePasswordScreen.kt",
             "ComposerScreen.kt",
             "ConversationScreen.kt",
+            "DeleteAccountScreen.kt",
             "EditProfileScreen.kt",
             "LoginScreen.kt",
             "OtpScreen.kt",
