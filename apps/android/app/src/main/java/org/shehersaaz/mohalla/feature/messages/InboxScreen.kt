@@ -64,6 +64,7 @@ import org.shehersaaz.mohalla.core.ui.MohallaTopBar
 @Composable
 fun InboxScreen(
     state: InboxUiState,
+    viewerId: String?,
     onSelectTab: (InboxSection) -> Unit,
     onOpenConversation: (ConversationResponse) -> Unit,
     onAccept: (String) -> Unit,
@@ -112,6 +113,7 @@ fun InboxScreen(
             else -> ConversationList(
                 state = state,
                 list = list,
+                viewerId = viewerId,
                 onOpenConversation = onOpenConversation,
                 onAccept = onAccept,
                 onDecline = onDecline,
@@ -205,6 +207,7 @@ private fun SectionTabs(
 @Composable
 private fun ConversationList(
     state: InboxUiState,
+    viewerId: String?,
     list: InboxList,
     onOpenConversation: (ConversationResponse) -> Unit,
     onAccept: (String) -> Unit,
@@ -222,7 +225,20 @@ private fun ConversationList(
             ConversationRow(
                 conversation = conversation,
                 other = state.participants[conversation.otherUserId],
-                viewerId = state.participants.keys.firstOrNull(),
+                // THE VIEWER, NOT WHOEVER IS FIRST IN A MAP (RUNTIME-009).
+                //
+                // This used to be `state.participants.keys.firstOrNull()`,
+                // which is an arbitrary participant. So the "You:" prefix was
+                // decided by comparing the last sender against whichever id
+                // happened to come out of a HashMap first, and on a device it
+                // labelled the OTHER person's message as the reader's own -
+                // seen on a pending request, where the recipient's inbox
+                // credited her with a message a stranger had sent her.
+                //
+                // Same species as group 12's `isMine`: identity derived from
+                // something that is not identity. Every other screen in the
+                // app already asks `sessionRepository.cachedUserId()`.
+                viewerId = viewerId,
                 isRequest = state.section == InboxSection.REQUESTS,
                 acting = conversation.conversationId in state.acting,
                 onOpen = { onOpenConversation(conversation) },

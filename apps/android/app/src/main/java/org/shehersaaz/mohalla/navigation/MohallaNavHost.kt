@@ -1333,6 +1333,8 @@ private fun InboxRoute(
 
     InboxScreen(
         state = state,
+        // The real viewer, the same source every other screen uses.
+        viewerId = container.sessionRepository.cachedUserId(),
         onSelectTab = vm::selectTab,
         onOpenConversation = { onOpenConversation(it.conversationId) },
         onAccept = vm::accept,

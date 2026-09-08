@@ -410,4 +410,44 @@ class SourceInvariantTest {
             offenders,
         )
     }
+
+    @Test
+    fun `THE VIEWER IS ASKED FOR, NEVER GUESSED FROM A COLLECTION`() {
+        // RUNTIME-009, seen on a device the moment two accounts were used.
+        //
+        //     viewerId = state.participants.keys.firstOrNull()
+        //
+        // An arbitrary participant, out of a map. So the inbox's "You:" prefix
+        // was decided by comparing the last sender against whichever id came
+        // out of a HashMap first - and on the recipient's own screen it
+        // credited her with a message a stranger had just sent her.
+        //
+        // Same species as group 12's `isMine`: identity derived from something
+        // that is not identity. Every other screen already asks
+        // `sessionRepository.cachedUserId()`, which is the only thing that
+        // knows who is signed in.
+        //
+        // The rule looks for the SHAPE of the mistake rather than the one
+        // expression, because `.keys.first()`, `.values.first()` and
+        // `.entries.first()` are all the same error wearing different clothes.
+        val offenders = sources
+            .flatMap { src ->
+                src.codeLines()
+                    .filter { (_, line) ->
+                        line.contains("viewerId") &&
+                            Regex("""(keys|values|entries|participants)\s*\.\s*(first|firstOrNull|last|lastOrNull)""")
+                                .containsMatchIn(line)
+                    }
+                    .map { (n, _) -> "${src.path}:$n" }
+            }
+            .sorted()
+
+        assertEquals(
+            "A viewer identity taken from a collection is not a viewer " +
+                "identity. Ask sessionRepository.cachedUserId():\n" +
+                offenders.joinToString("\n") { "    $it" } + "\n",
+            emptyList<String>(),
+            offenders,
+        )
+    }
 }
