@@ -1,6 +1,6 @@
 # 17 — Mobile Screen Coverage
 
-**Stage 7 · Android** · 61 required screens · last updated after group 18–19 (Account state and deletion)
+**Stage 7 · Android** · 61 required screens · last updated after group 20 (Offline and error states)
 
 > **This table is the answer to "is Stage 7 feature-complete?"** It is not, and
 > the count below says by how much. A screen is `DONE` only when it is built,
@@ -1332,6 +1332,86 @@ deleted at 2am and is deciding at breakfast whether to deal with this now or
 later needs the date, not a reassurance. A failed read is silent: the offer
 stands either way, and a screen that refused to load over a missing date would
 strand somebody inside a grace period that is running out.
+
+## Group 20 · Offline and error states
+
+No new screens. UX-STATE-001…004 were built as components in group 01 and are
+counted there; this group is about whether the app actually reaches them, and it
+turned out that mostly it did not.
+
+### Three defects, all of them a branch nobody looked at
+
+**The session-revocation hook was a comment.** `apiCall` has taken an
+`onUnauthenticated` callback since group 01. `ApiFailure.Unauthenticated`'s own
+documentation says "revocation is server-driven and takes effect on the NEXT
+request, so this is the app's only signal. The shell intercepts it globally,
+signs out and clears the cache (SET-FR-006)." **No caller ever passed one**, so
+nothing intercepted anything: a revoked session showed a generic error on every
+screen, indefinitely, until somebody force-quit the app.
+
+That is not hypothetical. SET-FR-002 exists so that changing a password signs out
+every other device — "GIVEN a password change on device A, WHEN device B makes
+its next request, THEN device B is signed out" — and device B is this app.
+Somebody who changed their password because they believed another person was
+inside their account would have watched that person's phone go on showing the
+feed.
+
+It is now raised in the **auth interceptor**, which is the one place that knows a
+token was attached: a 401 on a request that carried none is a login being
+refused, not a session being revoked, and signing out of nothing would be noise
+on the one screen where it would confuse somebody most. A repository could not
+tell those apart without being told, and there are ten of them. The flag latches,
+so four requests in flight when a session dies sign out once.
+
+**The failure mapping was twelve copies, and most of them were wrong.** §21
+specifies four states with four different promises. The shape that spread across
+groups 11 to 19 was two branches:
+
+```
+when (failure) {
+    ApiFailure.Offline -> OfflineState(onRetry)
+    else -> ServerErrorState(...)          // ← everything else
+}
+```
+
+Which sent a **rate limit** to a screen that apologises for the server. A 429 is
+the reader's own recent behaviour with a stated cool-down (SAFETY-FR-009,
+UX-STATE-004), and "something went wrong on our end" is both untrue and useless
+— it invites a retry that will be refused again. `RateLimitedState` existed from
+group 01 and two screens out of fourteen reached it.
+
+It also sent a **neutral 404** to an error page with a Try again button. BR-025's
+refusal is not a failure: the content is not available and there is nothing to
+retry. An error screen there teaches the reader that the app is broken rather
+than that the post is gone.
+
+There is now one `FailureState` with an **exhaustive** `when` over all eight
+variants, so a ninth is a compile error in one file in front of whoever added it
+— which is precisely how these two defects spread in the first place. Fourteen
+call sites now route through it, and the unused imports left behind were removed.
+
+**The offline banner covered five destinations out of forty.** §43 wants it above
+the content, and it was inside `MohallaShell` — so somebody who followed a
+notification into a conversation, or opened a profile from search, saw no banner
+at all while every request they made failed. It moved to the navigation graph,
+above the whole `NavHost`, where it appears exactly once for every destination.
+
+### What did not change, deliberately
+
+**Nothing is disabled because the app is offline.** §43: a hint, never a gate.
+Requests are still attempted and their own failure is authoritative — a
+connectivity check that refused to try would fail requests that were going to
+succeed on a flaky connection, which is most connections this product will meet.
+
+**There is still no offline write queue.** A report made offline is refused with
+its text kept rather than queued (GAP-M-014), and the same applies to every other
+write: the app has no persisted outbox, and one that lost work after telling
+somebody it was saved would be worse than a refusal they can act on.
+
+**A `null` failure renders nothing.** The event detail screen's failure helper
+took a nullable and fell through to the generic error, so a screen that had not
+finished loading could show "something went wrong" for a request still in flight.
+Now the loading branch owns that frame.
 
 ## What must be true before this table can say "feature-complete"
 

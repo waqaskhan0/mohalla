@@ -24,12 +24,11 @@ import org.shehersaaz.mohalla.R
 import org.shehersaaz.mohalla.core.design.MohallaTheme
 import org.shehersaaz.mohalla.core.design.MohallaType
 import org.shehersaaz.mohalla.core.network.ApiFailure
+import org.shehersaaz.mohalla.core.ui.FailureState
 import org.shehersaaz.mohalla.core.ui.MohallaBackHeader
 import org.shehersaaz.mohalla.core.ui.MohallaButton
 import org.shehersaaz.mohalla.core.ui.MohallaSecondaryButton
 import org.shehersaaz.mohalla.core.ui.MohallaTextField
-import org.shehersaaz.mohalla.core.ui.OfflineState
-import org.shehersaaz.mohalla.core.ui.ServerErrorState
 
 /**
  * Delete account — UX-SET-009 (SET-FR-004 · PRIV-006 · BR-008/009).
@@ -225,13 +224,7 @@ private fun Consequence(key: String) {
 
 @Composable
 private fun LoadFailure(failure: ApiFailure, onRetry: () -> Unit) {
-    when (failure) {
-        ApiFailure.Offline -> OfflineState(onRetry = onRetry)
-        else -> ServerErrorState(
-            correlationId = (failure as? ApiFailure.Server)?.correlationId,
-            onRetry = onRetry,
-        )
-    }
+    FailureState(failure = failure, onRetry = onRetry)
 }
 
 @Composable

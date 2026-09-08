@@ -25,10 +25,9 @@ import org.shehersaaz.mohalla.R
 import org.shehersaaz.mohalla.core.design.MohallaTheme
 import org.shehersaaz.mohalla.core.design.MohallaType
 import org.shehersaaz.mohalla.core.network.ApiFailure
+import org.shehersaaz.mohalla.core.ui.FailureState
 import org.shehersaaz.mohalla.core.ui.MohallaBackHeader
-import org.shehersaaz.mohalla.core.ui.OfflineState
 import org.shehersaaz.mohalla.core.ui.PostCard
-import org.shehersaaz.mohalla.core.ui.ServerErrorState
 
 /**
  * Saved posts — UX-PROFILE-006 (FEED-FR-007).
@@ -169,13 +168,7 @@ private fun EmptySaved() {
 
 @Composable
 private fun SavedFailure(failure: ApiFailure, onRetry: () -> Unit) {
-    when (failure) {
-        ApiFailure.Offline -> OfflineState(onRetry = onRetry)
-        else -> ServerErrorState(
-            correlationId = (failure as? ApiFailure.Server)?.correlationId,
-            onRetry = onRetry,
-        )
-    }
+    FailureState(failure = failure, onRetry = onRetry)
 }
 
 @Composable

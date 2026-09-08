@@ -30,9 +30,8 @@ import org.shehersaaz.mohalla.core.design.MohallaTheme
 import org.shehersaaz.mohalla.core.design.MohallaType
 import org.shehersaaz.mohalla.core.format.EventTimes
 import org.shehersaaz.mohalla.core.network.ApiFailure
+import org.shehersaaz.mohalla.core.ui.FailureState
 import org.shehersaaz.mohalla.core.ui.MohallaBackHeader
-import org.shehersaaz.mohalla.core.ui.OfflineState
-import org.shehersaaz.mohalla.core.ui.ServerErrorState
 
 /**
  * Blocked accounts — UX-SET-005 (SET-FR-003 · SAFETY-FR-006/007).
@@ -208,13 +207,7 @@ private fun EmptyBlocked() {
 
 @Composable
 private fun BlockedFailure(failure: ApiFailure, onRetry: () -> Unit) {
-    when (failure) {
-        ApiFailure.Offline -> OfflineState(onRetry = onRetry)
-        else -> ServerErrorState(
-            correlationId = (failure as? ApiFailure.Server)?.correlationId,
-            onRetry = onRetry,
-        )
-    }
+    FailureState(failure = failure, onRetry = onRetry)
 }
 
 @Composable

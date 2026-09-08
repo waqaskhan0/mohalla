@@ -46,12 +46,11 @@ import org.shehersaaz.mohalla.core.network.PublicProfileResponse
 import org.shehersaaz.mohalla.core.network.RsvpResponse
 import org.shehersaaz.mohalla.core.ui.ContentUnavailable
 import org.shehersaaz.mohalla.core.ui.EventRsvpRow
+import org.shehersaaz.mohalla.core.ui.FailureState
 import org.shehersaaz.mohalla.core.ui.LoadingState
 import org.shehersaaz.mohalla.core.ui.MohallaBackHeader
 import org.shehersaaz.mohalla.core.ui.MohallaButton
 import org.shehersaaz.mohalla.core.ui.MohallaSecondaryButton
-import org.shehersaaz.mohalla.core.ui.OfflineState
-import org.shehersaaz.mohalla.core.ui.ServerErrorState
 import org.shehersaaz.mohalla.core.ui.TopBarAction
 
 /**
@@ -515,16 +514,16 @@ private fun RsvpRefusalNotice(refusal: RsvpRefusal) {
     )
 }
 
+/**
+ * A null failure means the request has not come back yet, and there is nothing
+ * to render — the caller's own loading branch owns that frame. Previously this
+ * fell through to the generic error screen, so a detail screen that had not
+ * finished loading could show "something went wrong" for a request still in
+ * flight.
+ */
 @Composable
 private fun DetailFailure(failure: ApiFailure?, onRetry: () -> Unit) {
-    when (failure) {
-        ApiFailure.Offline -> OfflineState(onRetry = onRetry)
-        is ApiFailure.Server -> ServerErrorState(
-            correlationId = failure.correlationId,
-            onRetry = onRetry,
-        )
-        else -> ServerErrorState(onRetry = onRetry)
-    }
+    if (failure != null) FailureState(failure = failure, onRetry = onRetry)
 }
 
 /**

@@ -41,11 +41,9 @@ import org.shehersaaz.mohalla.core.network.EventStatus
 import org.shehersaaz.mohalla.core.network.RsvpResponse
 import org.shehersaaz.mohalla.core.ui.EventCard
 import org.shehersaaz.mohalla.core.ui.EventRsvpRow
+import org.shehersaaz.mohalla.core.ui.FailureState
 import org.shehersaaz.mohalla.core.ui.MohallaButton
 import org.shehersaaz.mohalla.core.ui.MohallaSecondaryButton
-import org.shehersaaz.mohalla.core.ui.OfflineState
-import org.shehersaaz.mohalla.core.ui.RateLimitedState
-import org.shehersaaz.mohalla.core.ui.ServerErrorState
 
 /**
  * The Events tab — UX-EVENT-001 (Upcoming) · UX-EVENT-002 (Mine).
@@ -307,15 +305,7 @@ private fun EmptyEvents(
 
 @Composable
 private fun FirstPageFailure(failure: ApiFailure, onRetry: () -> Unit) {
-    when (failure) {
-        ApiFailure.Offline -> OfflineState(onRetry = onRetry)
-        is ApiFailure.RateLimited -> RateLimitedState(onRetry = onRetry)
-        is ApiFailure.Server -> ServerErrorState(
-            correlationId = failure.correlationId,
-            onRetry = onRetry,
-        )
-        else -> ServerErrorState(onRetry = onRetry)
-    }
+    FailureState(failure = failure, onRetry = onRetry)
 }
 
 @Composable

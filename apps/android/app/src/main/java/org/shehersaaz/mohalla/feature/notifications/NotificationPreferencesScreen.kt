@@ -27,9 +27,8 @@ import org.shehersaaz.mohalla.R
 import org.shehersaaz.mohalla.core.design.MohallaTheme
 import org.shehersaaz.mohalla.core.design.MohallaType
 import org.shehersaaz.mohalla.core.network.ApiFailure
+import org.shehersaaz.mohalla.core.ui.FailureState
 import org.shehersaaz.mohalla.core.ui.MohallaBackHeader
-import org.shehersaaz.mohalla.core.ui.OfflineState
-import org.shehersaaz.mohalla.core.ui.ServerErrorState
 
 /**
  * Push preferences — UX-SET-003 (NOTIF-FR-007 · SET-FR-007).
@@ -197,13 +196,7 @@ private fun PreferenceRow(
 
 @Composable
 private fun PreferencesFailure(failure: ApiFailure, onRetry: () -> Unit) {
-    when (failure) {
-        ApiFailure.Offline -> OfflineState(onRetry = onRetry)
-        else -> ServerErrorState(
-            correlationId = (failure as? ApiFailure.Server)?.correlationId,
-            onRetry = onRetry,
-        )
-    }
+    FailureState(failure = failure, onRetry = onRetry)
 }
 
 @Composable

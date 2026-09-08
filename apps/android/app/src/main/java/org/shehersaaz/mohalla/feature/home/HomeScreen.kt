@@ -38,14 +38,12 @@ import org.shehersaaz.mohalla.core.design.MohallaType
 import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.network.FeaturedItemResponse
 import org.shehersaaz.mohalla.core.network.FeedItemResponse
+import org.shehersaaz.mohalla.core.ui.FailureState
 import org.shehersaaz.mohalla.core.ui.MohallaButton
 import org.shehersaaz.mohalla.core.ui.MohallaSecondaryButton
 import org.shehersaaz.mohalla.core.ui.MohallaTopBar
 import org.shehersaaz.mohalla.core.ui.homeActions
-import org.shehersaaz.mohalla.core.ui.OfflineState
 import org.shehersaaz.mohalla.core.ui.PostCard
-import org.shehersaaz.mohalla.core.ui.RateLimitedState
-import org.shehersaaz.mohalla.core.ui.ServerErrorState
 
 /**
  * Home — UX-HOME-001 (Following) · UX-HOME-002 (Discover).
@@ -395,19 +393,7 @@ private fun EmptyFeed(
  */
 @Composable
 private fun FirstPageFailure(failure: ApiFailure, onRetry: () -> Unit) {
-    when (failure) {
-        ApiFailure.Offline -> OfflineState(onRetry = onRetry)
-        is ApiFailure.RateLimited -> RateLimitedState(onRetry = onRetry)
-        is ApiFailure.Server -> ServerErrorState(
-            correlationId = failure.correlationId,
-            onRetry = onRetry,
-        )
-        // Validation, Unauthenticated, Restricted, Conflict and Unavailable
-        // cannot describe a feed request in any way the reader could act on, so
-        // they get the generic recoverable error rather than five variations of
-        // "something went wrong".
-        else -> ServerErrorState(onRetry = onRetry)
-    }
+    FailureState(failure = failure, onRetry = onRetry)
 }
 
 @Composable

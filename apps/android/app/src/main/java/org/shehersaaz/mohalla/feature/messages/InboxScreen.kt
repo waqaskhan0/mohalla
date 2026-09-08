@@ -33,12 +33,11 @@ import org.shehersaaz.mohalla.core.design.MohallaType
 import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.network.ConversationResponse
 import org.shehersaaz.mohalla.core.network.PublicProfileResponse
+import org.shehersaaz.mohalla.core.ui.FailureState
 import org.shehersaaz.mohalla.core.ui.MohallaAvatar
 import org.shehersaaz.mohalla.core.ui.MohallaButton
 import org.shehersaaz.mohalla.core.ui.MohallaSecondaryButton
 import org.shehersaaz.mohalla.core.ui.MohallaTopBar
-import org.shehersaaz.mohalla.core.ui.OfflineState
-import org.shehersaaz.mohalla.core.ui.ServerErrorState
 
 /**
  * The inbox and the request list — UX-MSG-001 · UX-MSG-002
@@ -446,14 +445,7 @@ private fun EmptyInbox(
 
 @Composable
 private fun InboxFailure(failure: ApiFailure, onRetry: () -> Unit) {
-    when (failure) {
-        ApiFailure.Offline -> OfflineState(onRetry = onRetry)
-        is ApiFailure.Server -> ServerErrorState(
-            correlationId = failure.correlationId,
-            onRetry = onRetry,
-        )
-        else -> ServerErrorState(onRetry = onRetry)
-    }
+    FailureState(failure = failure, onRetry = onRetry)
 }
 
 @Composable

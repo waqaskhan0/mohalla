@@ -35,14 +35,24 @@ search's failed-versus-empty rule, messaging's send idempotency and duplicate
 reconciliation, the notification centre's day boundary in the reader's own
 timezone, the encoded shape of a PATCH body that has to distinguish absent from
 null, the ordering of the deletion consequences PRIV-006 requires a user to read,
-and the exact field shape of every type that enforces a privacy rule
-structurally. **432 tests, all passing.** |
+which of the eight API failures each of §21's four states answers for, and the
+exact field shape of every type that enforces a privacy rule structurally. **442 tests, all passing.** |
 | **What that does not prove** | That pixels mirror. The tests prove Create sits at index 2 of 5 and that the list is never pre-reversed; they cannot prove the row renders right-to-left. §36 makes RTL release-critical, so this gap is the largest single verification debt in Stage 7. |
 
 The manifest defect found in group 05–06 is the argument for closing it:
 `INTERNET` was missing for four groups of screens, and every API call would have
 thrown a `SecurityException` on the first request. Nothing caught it because
 nothing had ever run against a backend on a device.
+
+**A third argument, from group 20: a callback nothing passes looks exactly like
+a callback that works.** `apiCall` grew an `onUnauthenticated` parameter in group
+01 and `ApiFailure.Unauthenticated`'s documentation described the shell
+intercepting it globally. Nothing ever passed one, for nineteen groups. The suite
+was green throughout, because every test that could have noticed was testing a
+repository that did not supply it either. A revoked session — the thing
+SET-FR-002 exists to cause on every other device — showed a generic error
+forever. Reading the code found it; running the code would have found it in the
+first minute.
 
 **A second argument, from group 11: a green suite is not proof.** Several of this
 product's privacy rules are enforced by the SHAPE of a type — SEC-006 gives the

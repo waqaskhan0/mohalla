@@ -24,13 +24,12 @@ import org.shehersaaz.mohalla.core.design.MohallaTheme
 import org.shehersaaz.mohalla.core.design.MohallaType
 import org.shehersaaz.mohalla.core.format.ltr
 import org.shehersaaz.mohalla.core.network.ApiFailure
+import org.shehersaaz.mohalla.core.ui.FailureState
 import org.shehersaaz.mohalla.core.ui.MohallaAvatar
 import org.shehersaaz.mohalla.core.ui.MohallaBackHeader
 import org.shehersaaz.mohalla.core.ui.MohallaButton
 import org.shehersaaz.mohalla.core.ui.MohallaSecondaryButton
 import org.shehersaaz.mohalla.core.ui.MohallaTextField
-import org.shehersaaz.mohalla.core.ui.OfflineState
-import org.shehersaaz.mohalla.core.ui.ServerErrorState
 import org.shehersaaz.mohalla.feature.setup.BIO_MAX
 
 /**
@@ -284,13 +283,7 @@ private fun PhotoRow(
 
 @Composable
 private fun LoadFailure(failure: ApiFailure, onRetry: () -> Unit) {
-    when (failure) {
-        ApiFailure.Offline -> OfflineState(onRetry = onRetry)
-        else -> ServerErrorState(
-            correlationId = (failure as? ApiFailure.Server)?.correlationId,
-            onRetry = onRetry,
-        )
-    }
+    FailureState(failure = failure, onRetry = onRetry)
 }
 
 @Composable

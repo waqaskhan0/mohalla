@@ -33,6 +33,7 @@ import org.shehersaaz.mohalla.feature.search.RecentSearches
 import org.shehersaaz.mohalla.feature.search.SearchRepository
 import org.shehersaaz.mohalla.feature.home.FeedRepository
 import org.shehersaaz.mohalla.feature.messages.MessagingRepository
+import org.shehersaaz.mohalla.core.state.SessionRevocation
 import org.shehersaaz.mohalla.core.state.ViewerRelations
 import org.shehersaaz.mohalla.feature.notifications.NotificationRepository
 import org.shehersaaz.mohalla.feature.profile.ProfileRepository
@@ -86,6 +87,29 @@ class AppContainer private constructor(
     val json: Json = MohallaJson
 
     /**
+     * EDGE-010 — raised by the auth interceptor, observed by the navigation
+     * graph.
+     *
+     * Declared BEFORE `httpClient` because the interceptor closes over it. The
+     * clearing happens here rather than in the interceptor so that a revocation
+     * and a deliberate sign-out remove exactly the same things - the token, the
+     * cached identity, and every session-scoped relationship - and cannot drift
+     * apart.
+     */
+    val sessionRevocation: SessionRevocation = SessionRevocation()
+
+    /**
+     * What this viewer's relationship to a person or a post is.
+     *
+     * ON THE CONTAINER RATHER THAN IN A VIEWMODEL, because it has to outlive
+     * every screen that reads it: following somebody from their profile must
+     * still read as "Following" when the same person is opened from search two
+     * taps later. Session-scoped and never persisted - see the class comment
+     * for why a stale answer on disk would be worse than an honest `Unknown`.
+     */
+    val viewerRelations: ViewerRelations = ViewerRelations()
+
+    /**
      * The three interceptors `04-mobile-architecture.md` §2 names.
      *
      * NO LOGGING INTERCEPTOR, in any build. A request body on this product
@@ -95,7 +119,16 @@ class AppContainer private constructor(
      * gate it behind `BuildConfig.DEBUG`.
      */
     val httpClient: OkHttpClient = OkHttpClient.Builder()
-        .addInterceptor(AuthInterceptor(secureStorage))
+        .addInterceptor(
+            AuthInterceptor(secureStorage) {
+                // EDGE-010. Everything an account owns goes at once, and then
+                // the graph is told - the same removal a deliberate sign-out
+                // performs, so the two cannot drift apart.
+                secureStorage.clear()
+                viewerRelations.clear()
+                sessionRevocation.raise()
+            },
+        )
         .addInterceptor(CorrelationInterceptor())
         .addInterceptor(LanguageInterceptor { localeManager.locale.value })
         // Generous but bounded. Pakistani mobile data is slow and expensive
@@ -147,16 +180,6 @@ class AppContainer private constructor(
 
     val safetyRepository: SafetyRepository = SafetyRepository(api)
 
-    /**
-     * What this viewer's relationship to a person or a post is.
-     *
-     * ON THE CONTAINER RATHER THAN IN A VIEWMODEL, because it has to outlive
-     * every screen that reads it: following somebody from their profile must
-     * still read as "Following" when the same person is opened from search two
-     * taps later. Session-scoped and never persisted - see the class comment
-     * for why a stale answer on disk would be worse than an honest `Unknown`.
-     */
-    val viewerRelations: ViewerRelations = ViewerRelations()
 
     /**
      * One person's public profile, as a function.

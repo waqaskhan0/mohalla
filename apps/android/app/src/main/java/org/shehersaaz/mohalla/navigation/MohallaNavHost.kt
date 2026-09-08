@@ -3,7 +3,13 @@ package org.shehersaaz.mohalla.navigation
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -30,6 +36,7 @@ import org.shehersaaz.mohalla.core.di.AppContainer
 import org.shehersaaz.mohalla.core.media.rememberImagePickerLauncher
 import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.network.ApiResult
+import org.shehersaaz.mohalla.core.ui.OfflineBanner
 import org.shehersaaz.mohalla.core.ui.ContentUnavailable
 import org.shehersaaz.mohalla.core.ui.LoadingState
 import org.shehersaaz.mohalla.core.ui.MohallaDateTimePicker
@@ -134,312 +141,344 @@ fun MohallaNavHost(
     onRequestLanguageChange: () -> Unit,
     navController: NavHostController = rememberNavController(),
 ) {
-    NavHost(navController = navController, startDestination = startRoute) {
-        authGraph(navController, container)
-        setupGraph(navController, container)
+    // §43 — a hint, never a gate. It sits ABOVE the whole graph rather than
+    // inside the shell, because the shell is five destinations out of forty:
+    // somebody who followed a notification into a conversation, or opened a
+    // profile from search, was seeing no banner at all while every request they
+    // made failed. Nothing below is disabled by it; requests are still
+    // attempted and their own failure is authoritative.
+    val online by container.connectivity.isOnline()
+        .collectAsState(initial = container.connectivity.isOnlineNow())
 
-        composable(Routes.SHELL) {
-            ShellRoute(
-                container = container,
-                navController = navController,
-                onOpenSettings = onRequestLanguageChange,
-            )
-        }
-
-        // UX-EVENT-003. Deep-linkable (§42): reachable from the events list, a
-        // feed card, search and a notification, so it takes its id from the
-        // route rather than from a shared object.
-        composable(Routes.EVENT_PATTERN) { entry ->
-            val eventId = entry.arguments?.getString("eventId")
-
-            // A route with no id cannot be a real event. The neutral state,
-            // not a crash and not an error — a malformed deep link and a
-            // deleted event are indistinguishable to the person who tapped it.
-            if (eventId == null) {
-                ContentUnavailable()
-            } else {
-                EventDetailRoute(
-                    container = container,
-                    eventId = eventId,
-                    onBack = { navController.popBackStack() },
-                    onEdit = { navController.navigate(Routes.eventEdit(eventId)) },
-                    onOpenCreator = { navController.navigate(Routes.profile(it)) },
-                )
+    // EDGE-010 — the session died while the app was open. The interceptor has
+    // already cleared everything; this is the part that must happen on the main
+    // thread, and it happens ONCE however many requests were in flight.
+    val revoked by container.sessionRevocation.revoked.collectAsState()
+    LaunchedEffect(revoked) {
+        if (revoked) {
+            container.sessionRevocation.acknowledge()
+            navController.navigate(Routes.WELCOME) {
+                // The whole graph goes. Back must not return to a screen
+                // rendering cached content for a session that no longer exists.
+                popUpTo(0) { inclusive = true }
             }
         }
+    }
 
-        // UX-CREATE-001. A destination rather than a tab, so returning from
-        // it leaves the previously selected tab intact.
-        composable(Routes.COMPOSER) {
-            ComposerRoute(
-                container = container,
-                onDone = { navController.popBackStack() },
+    Column(modifier = Modifier.fillMaxSize()) {
+        if (!online) {
+            OfflineBanner(
+                modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
             )
         }
 
-        // UX-EVENT-004 and UX-EVENT-005 — one screen, two entry points.
-        composable(Routes.EVENT_CREATE) {
-            EventComposerRoute(
-                container = container,
-                editingEventId = null,
-                onDone = { navController.popBackStack() },
-            )
-        }
+        NavHost(navController = navController, startDestination = startRoute) {
+            authGraph(navController, container)
+            setupGraph(navController, container)
 
-        composable(Routes.EVENT_EDIT_PATTERN) { entry ->
-            val eventId = entry.arguments?.getString("eventId")
-            if (eventId == null) {
-                ContentUnavailable()
-            } else {
-                EventComposerRoute(
-                    container = container,
-                    editingEventId = eventId,
-                    // Cancelling or saving returns past the DETAIL screen too
-                    // when the event was deleted, because a detail screen for a
-                    // deleted event would then load the neutral unavailable
-                    // state — technically correct and alarming after the
-                    // creator just chose to remove it themselves.
-                    onDone = { navController.popBackStack() },
-                    onDeleted = {
-                        navController.popBackStack(Routes.SHELL, inclusive = false)
-                    },
-                )
-            }
-        }
-
-        // UX-HOME-003. Deep-linkable (§42): reachable from a card, a
-        // notification, search and a profile.
-        composable(Routes.POST_PATTERN) { entry ->
-            val postId = entry.arguments?.getString("postId")
-
-            if (postId == null) {
-                ContentUnavailable()
-            } else {
-                PostDetailRoute(
-                    container = container,
-                    postId = postId,
-                    onBack = { navController.popBackStack() },
-                    onOpenAuthor = { navController.navigate(Routes.profile(it)) },
-                    onOpenMedia = { ids, index ->
-                        navController.navigate(Routes.imageViewer(ids, index))
-                    },
-                )
-            }
-        }
-
-        // UX-SEARCH-001..003. Reached from the Home top bar, and from the
-        // empty Following feed's "find people to follow" (RSK-001's screen).
-        composable(Routes.SEARCH) {
-            SearchRoute(
-                container = container,
-                onBack = { navController.popBackStack() },
-                onOpenPerson = { navController.navigate(Routes.profile(it)) },
-                onOpenPost = { navController.navigate(Routes.post(it)) },
-                onOpenEvent = { navController.navigate(Routes.event(it)) },
-            )
-        }
-
-        // UX-HOME-004 — the full-screen viewer.
-        composable(Routes.IMAGE_VIEWER_PATTERN) { entry ->
-            val ids = entry.arguments?.getString("mediaIds")
-                ?.split(Routes.MEDIA_ID_SEPARATOR)
-                ?.filter { it.isNotBlank() }
-                .orEmpty()
-            val index = entry.arguments?.getString("index")?.toIntOrNull() ?: 0
-
-            ImageViewerScreen(
-                mediaIds = ids,
-                initialIndex = index,
-                onClose = { navController.popBackStack() },
-            )
-        }
-
-        // UX-MSG-003. Deep-linkable (§42): reachable from the inbox and from a
-        // notification.
-        composable(Routes.CONVERSATION_PATTERN) { entry ->
-            val conversationId = entry.arguments?.getString("conversationId")
-
-            if (conversationId == null) {
-                ContentUnavailable()
-            } else {
-                ConversationRoute(
-                    container = container,
-                    conversationId = conversationId,
-                    onBack = { navController.popBackStack() },
-                    onOpenProfile = { navController.navigate(Routes.profile(it)) },
-                )
-            }
-        }
-
-        // MSG-FR-001 — opening a conversation from a PROFILE, where the caller
-        // has a user id and no conversation id. BR-024 resolves the one thread
-        // that exists for the pair, so this asks the server rather than
-        // inventing an id.
-        composable(Routes.CONVERSATION_WITH_PATTERN) { entry ->
-            val userId = entry.arguments?.getString("userId")
-
-            if (userId == null) {
-                ContentUnavailable()
-            } else {
-                OpenConversationRoute(
-                    container = container,
-                    userId = userId,
-                    onOpened = { conversationId ->
-                        navController.navigate(Routes.conversation(conversationId)) {
-                            // The resolving screen is not somewhere to come back
-                            // to: pressing Back from the conversation should
-                            // return to the profile, not to a spinner that would
-                            // immediately resolve forward again.
-                            popUpTo(Routes.CONVERSATION_WITH_PATTERN) { inclusive = true }
-                        }
-                    },
-                    onFailed = { navController.popBackStack() },
-                )
-            }
-        }
-
-        // UX-HOME-007 - the notification centre.
-        composable(Routes.NOTIFICATIONS) {
-            NotificationsRoute(
-                container = container,
-                onBack = { navController.popBackStack() },
-                navController = navController,
-            )
-        }
-
-        // UX-SET-003. Reachable by route before the settings index that will
-        // link to it (group 16) exists.
-        composable(Routes.NOTIFICATION_PREFERENCES) {
-            NotificationPreferencesRoute(
-                container = container,
-                onBack = { navController.popBackStack() },
-            )
-        }
-
-        // Deep-linkable content (§42). The screen arrives with its own group;
-        // until then the route renders the neutral unavailable state rather
-        // than a stub that would claim the content is missing — UX-STATE-001 is
-        // the one state that is honest about "not available here", and it says
-        // nothing about why.
-        // UX-PROFILE-002. Deep-linkable (§42), and reached from a post author
-        // row, a search result, a follower list and a FOLLOW notification.
-        composable(Routes.PROFILE_PATTERN) { entry ->
-            val handle = entry.arguments?.getString("handle")
-
-            if (handle == null) {
-                ContentUnavailable()
-            } else {
-                ProfileRoute(
+            composable(Routes.SHELL) {
+                ShellRoute(
                     container = container,
                     navController = navController,
-                    userId = handle,
+                    onOpenSettings = onRequestLanguageChange,
+                )
+            }
+
+            // UX-EVENT-003. Deep-linkable (§42): reachable from the events list, a
+            // feed card, search and a notification, so it takes its id from the
+            // route rather than from a shared object.
+            composable(Routes.EVENT_PATTERN) { entry ->
+                val eventId = entry.arguments?.getString("eventId")
+
+                // A route with no id cannot be a real event. The neutral state,
+                // not a crash and not an error — a malformed deep link and a
+                // deleted event are indistinguishable to the person who tapped it.
+                if (eventId == null) {
+                    ContentUnavailable()
+                } else {
+                    EventDetailRoute(
+                        container = container,
+                        eventId = eventId,
+                        onBack = { navController.popBackStack() },
+                        onEdit = { navController.navigate(Routes.eventEdit(eventId)) },
+                        onOpenCreator = { navController.navigate(Routes.profile(it)) },
+                    )
+                }
+            }
+
+            // UX-CREATE-001. A destination rather than a tab, so returning from
+            // it leaves the previously selected tab intact.
+            composable(Routes.COMPOSER) {
+                ComposerRoute(
+                    container = container,
+                    onDone = { navController.popBackStack() },
+                )
+            }
+
+            // UX-EVENT-004 and UX-EVENT-005 — one screen, two entry points.
+            composable(Routes.EVENT_CREATE) {
+                EventComposerRoute(
+                    container = container,
+                    editingEventId = null,
+                    onDone = { navController.popBackStack() },
+                )
+            }
+
+            composable(Routes.EVENT_EDIT_PATTERN) { entry ->
+                val eventId = entry.arguments?.getString("eventId")
+                if (eventId == null) {
+                    ContentUnavailable()
+                } else {
+                    EventComposerRoute(
+                        container = container,
+                        editingEventId = eventId,
+                        // Cancelling or saving returns past the DETAIL screen too
+                        // when the event was deleted, because a detail screen for a
+                        // deleted event would then load the neutral unavailable
+                        // state — technically correct and alarming after the
+                        // creator just chose to remove it themselves.
+                        onDone = { navController.popBackStack() },
+                        onDeleted = {
+                            navController.popBackStack(Routes.SHELL, inclusive = false)
+                        },
+                    )
+                }
+            }
+
+            // UX-HOME-003. Deep-linkable (§42): reachable from a card, a
+            // notification, search and a profile.
+            composable(Routes.POST_PATTERN) { entry ->
+                val postId = entry.arguments?.getString("postId")
+
+                if (postId == null) {
+                    ContentUnavailable()
+                } else {
+                    PostDetailRoute(
+                        container = container,
+                        postId = postId,
+                        onBack = { navController.popBackStack() },
+                        onOpenAuthor = { navController.navigate(Routes.profile(it)) },
+                        onOpenMedia = { ids, index ->
+                            navController.navigate(Routes.imageViewer(ids, index))
+                        },
+                    )
+                }
+            }
+
+            // UX-SEARCH-001..003. Reached from the Home top bar, and from the
+            // empty Following feed's "find people to follow" (RSK-001's screen).
+            composable(Routes.SEARCH) {
+                SearchRoute(
+                    container = container,
+                    onBack = { navController.popBackStack() },
+                    onOpenPerson = { navController.navigate(Routes.profile(it)) },
+                    onOpenPost = { navController.navigate(Routes.post(it)) },
+                    onOpenEvent = { navController.navigate(Routes.event(it)) },
+                )
+            }
+
+            // UX-HOME-004 — the full-screen viewer.
+            composable(Routes.IMAGE_VIEWER_PATTERN) { entry ->
+                val ids = entry.arguments?.getString("mediaIds")
+                    ?.split(Routes.MEDIA_ID_SEPARATOR)
+                    ?.filter { it.isNotBlank() }
+                    .orEmpty()
+                val index = entry.arguments?.getString("index")?.toIntOrNull() ?: 0
+
+                ImageViewerScreen(
+                    mediaIds = ids,
+                    initialIndex = index,
+                    onClose = { navController.popBackStack() },
+                )
+            }
+
+            // UX-MSG-003. Deep-linkable (§42): reachable from the inbox and from a
+            // notification.
+            composable(Routes.CONVERSATION_PATTERN) { entry ->
+                val conversationId = entry.arguments?.getString("conversationId")
+
+                if (conversationId == null) {
+                    ContentUnavailable()
+                } else {
+                    ConversationRoute(
+                        container = container,
+                        conversationId = conversationId,
+                        onBack = { navController.popBackStack() },
+                        onOpenProfile = { navController.navigate(Routes.profile(it)) },
+                    )
+                }
+            }
+
+            // MSG-FR-001 — opening a conversation from a PROFILE, where the caller
+            // has a user id and no conversation id. BR-024 resolves the one thread
+            // that exists for the pair, so this asks the server rather than
+            // inventing an id.
+            composable(Routes.CONVERSATION_WITH_PATTERN) { entry ->
+                val userId = entry.arguments?.getString("userId")
+
+                if (userId == null) {
+                    ContentUnavailable()
+                } else {
+                    OpenConversationRoute(
+                        container = container,
+                        userId = userId,
+                        onOpened = { conversationId ->
+                            navController.navigate(Routes.conversation(conversationId)) {
+                                // The resolving screen is not somewhere to come back
+                                // to: pressing Back from the conversation should
+                                // return to the profile, not to a spinner that would
+                                // immediately resolve forward again.
+                                popUpTo(Routes.CONVERSATION_WITH_PATTERN) { inclusive = true }
+                            }
+                        },
+                        onFailed = { navController.popBackStack() },
+                    )
+                }
+            }
+
+            // UX-HOME-007 - the notification centre.
+            composable(Routes.NOTIFICATIONS) {
+                NotificationsRoute(
+                    container = container,
+                    onBack = { navController.popBackStack() },
+                    navController = navController,
+                )
+            }
+
+            // UX-SET-003. Reachable by route before the settings index that will
+            // link to it (group 16) exists.
+            composable(Routes.NOTIFICATION_PREFERENCES) {
+                NotificationPreferencesRoute(
+                    container = container,
                     onBack = { navController.popBackStack() },
                 )
             }
-        }
 
-        // UX-SET-001 — the index, and everything under it.
-        composable(Routes.SETTINGS) {
-            SettingsRoute(container = container, navController = navController)
-        }
+            // Deep-linkable content (§42). The screen arrives with its own group;
+            // until then the route renders the neutral unavailable state rather
+            // than a stub that would claim the content is missing — UX-STATE-001 is
+            // the one state that is honest about "not available here", and it says
+            // nothing about why.
+            // UX-PROFILE-002. Deep-linkable (§42), and reached from a post author
+            // row, a search result, a follower list and a FOLLOW notification.
+            composable(Routes.PROFILE_PATTERN) { entry ->
+                val handle = entry.arguments?.getString("handle")
 
-        composable(Routes.SETTINGS_LANGUAGE) {
-            LanguageSettingsRoute(
-                container = container,
-                onBack = { navController.popBackStack() },
-            )
-        }
+                if (handle == null) {
+                    ContentUnavailable()
+                } else {
+                    ProfileRoute(
+                        container = container,
+                        navController = navController,
+                        userId = handle,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+            }
 
-        composable(Routes.SETTINGS_PASSWORD) {
-            ChangePasswordRoute(
-                container = container,
-                onBack = { navController.popBackStack() },
-            )
-        }
+            // UX-SET-001 — the index, and everything under it.
+            composable(Routes.SETTINGS) {
+                SettingsRoute(container = container, navController = navController)
+            }
 
-        composable(Routes.SETTINGS_BLOCKED) {
-            BlockedUsersRoute(
-                container = container,
-                onBack = { navController.popBackStack() },
-            )
-        }
+            composable(Routes.SETTINGS_LANGUAGE) {
+                LanguageSettingsRoute(
+                    container = container,
+                    onBack = { navController.popBackStack() },
+                )
+            }
 
-        composable(Routes.SETTINGS_HELP) {
-            val context = LocalContext.current
-            HelpScreen(
-                onBack = { navController.popBackStack() },
-                onEmail = { address -> sendSupportEmail(context, address) },
-            )
-        }
+            composable(Routes.SETTINGS_PASSWORD) {
+                ChangePasswordRoute(
+                    container = container,
+                    onBack = { navController.popBackStack() },
+                )
+            }
 
-        composable(Routes.SETTINGS_ABOUT) {
-            AboutScreen(onBack = { navController.popBackStack() })
-        }
+            composable(Routes.SETTINGS_BLOCKED) {
+                BlockedUsersRoute(
+                    container = container,
+                    onBack = { navController.popBackStack() },
+                )
+            }
 
-        // UX-SET-009.
-        composable(Routes.DELETE_ACCOUNT) {
-            DeleteAccountRoute(
-                container = container,
-                onBack = { navController.popBackStack() },
-                onDeleted = {
-                    // Every session was revoked server-side, so this device is
-                    // holding a token that no longer answers. The whole graph
-                    // goes with it — Back must not return to a shell rendering
-                    // cached content for an account that is gone.
-                    navController.navigate(Routes.WELCOME) {
-                        popUpTo(0) { inclusive = true }
-                    }
-                },
-            )
-        }
+            composable(Routes.SETTINGS_HELP) {
+                val context = LocalContext.current
+                HelpScreen(
+                    onBack = { navController.popBackStack() },
+                    onEmail = { address -> sendSupportEmail(context, address) },
+                )
+            }
 
-        // UX-SET-006 — one screen, three documents, none of which exists.
-        composable(Routes.LEGAL_PATTERN) { entry ->
-            LegalDocumentScreen(
-                titleRes = when (entry.arguments?.getString("kind")) {
-                    Routes.LEGAL_GUIDELINES ->
-                        org.shehersaaz.mohalla.R.string.settings_guidelines
-                    Routes.LEGAL_PRIVACY -> org.shehersaaz.mohalla.R.string.settings_privacy
-                    else -> org.shehersaaz.mohalla.R.string.settings_terms
-                },
-                onBack = { navController.popBackStack() },
-            )
-        }
+            composable(Routes.SETTINGS_ABOUT) {
+                AboutScreen(onBack = { navController.popBackStack() })
+            }
 
-        // UX-PROFILE-003.
-        composable(Routes.EDIT_PROFILE) {
-            EditProfileRoute(
-                container = container,
-                onBack = { navController.popBackStack() },
-            )
-        }
+            // UX-SET-009.
+            composable(Routes.DELETE_ACCOUNT) {
+                DeleteAccountRoute(
+                    container = container,
+                    onBack = { navController.popBackStack() },
+                    onDeleted = {
+                        // Every session was revoked server-side, so this device is
+                        // holding a token that no longer answers. The whole graph
+                        // goes with it — Back must not return to a shell rendering
+                        // cached content for an account that is gone.
+                        navController.navigate(Routes.WELCOME) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    },
+                )
+            }
 
-        // UX-PROFILE-006.
-        composable(Routes.SAVED_POSTS) {
-            SavedPostsRoute(
-                container = container,
-                navController = navController,
-                onBack = { navController.popBackStack() },
-            )
-        }
+            // UX-SET-006 — one screen, three documents, none of which exists.
+            composable(Routes.LEGAL_PATTERN) { entry ->
+                LegalDocumentScreen(
+                    titleRes = when (entry.arguments?.getString("kind")) {
+                        Routes.LEGAL_GUIDELINES ->
+                            org.shehersaaz.mohalla.R.string.settings_guidelines
+                        Routes.LEGAL_PRIVACY -> org.shehersaaz.mohalla.R.string.settings_privacy
+                        else -> org.shehersaaz.mohalla.R.string.settings_terms
+                    },
+                    onBack = { navController.popBackStack() },
+                )
+            }
 
-        // UX-PROFILE-004 and UX-PROFILE-005.
-        composable(Routes.FOLLOWERS_PATTERN) { entry ->
-            UserListRoute(
-                container = container,
-                navController = navController,
-                userId = entry.arguments?.getString("userId"),
-                kind = UserListKind.FOLLOWERS,
-            )
-        }
+            // UX-PROFILE-003.
+            composable(Routes.EDIT_PROFILE) {
+                EditProfileRoute(
+                    container = container,
+                    onBack = { navController.popBackStack() },
+                )
+            }
 
-        composable(Routes.FOLLOWING_PATTERN) { entry ->
-            UserListRoute(
-                container = container,
-                navController = navController,
-                userId = entry.arguments?.getString("userId"),
-                kind = UserListKind.FOLLOWING,
-            )
+            // UX-PROFILE-006.
+            composable(Routes.SAVED_POSTS) {
+                SavedPostsRoute(
+                    container = container,
+                    navController = navController,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            // UX-PROFILE-004 and UX-PROFILE-005.
+            composable(Routes.FOLLOWERS_PATTERN) { entry ->
+                UserListRoute(
+                    container = container,
+                    navController = navController,
+                    userId = entry.arguments?.getString("userId"),
+                    kind = UserListKind.FOLLOWERS,
+                )
+            }
+
+            composable(Routes.FOLLOWING_PATTERN) { entry ->
+                UserListRoute(
+                    container = container,
+                    navController = navController,
+                    userId = entry.arguments?.getString("userId"),
+                    kind = UserListKind.FOLLOWING,
+                )
+            }
         }
     }
 }

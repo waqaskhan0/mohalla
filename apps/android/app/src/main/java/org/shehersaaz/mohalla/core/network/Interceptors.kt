@@ -45,17 +45,45 @@ const val PHOTO_KEY = "session.photoMediaId"
  * anonymous call into a 401 — and `/register`, `/login` and `/health` are all
  * legitimately anonymous.
  */
-class AuthInterceptor(private val storage: SecureStorage) : Interceptor {
+class AuthInterceptor(
+    private val storage: SecureStorage,
+    /**
+     * EDGE-010 — the session was revoked while the app was open.
+     *
+     * RAISED HERE BECAUSE THIS IS THE ONE PLACE THAT KNOWS A TOKEN WAS SENT. A
+     * 401 on a request that carried no token is a LOGIN being refused, not a
+     * session being revoked, and signing out of nothing would be noise on the
+     * one screen where it would confuse somebody most. A repository could not
+     * tell the two apart without being told, and there are ten of them.
+     */
+    private val onSessionRevoked: () -> Unit = {},
+) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val token = storage.getString(SESSION_TOKEN_KEY)
-        val request = if (token.isNullOrBlank()) {
+        val authenticated = !token.isNullOrBlank()
+
+        val request = if (!authenticated) {
             chain.request()
         } else {
             chain.request().newBuilder()
                 .header("Authorization", "Bearer $token")
                 .build()
         }
-        return chain.proceed(request)
+
+        val response = chain.proceed(request)
+
+        // SET-FR-002's other half made real: "GIVEN a password change on device
+        // A, WHEN device B makes its next request, THEN device B is signed
+        // out." This app is device B, and this is the only signal it gets.
+        if (authenticated && response.code == HTTP_UNAUTHORIZED) {
+            onSessionRevoked()
+        }
+
+        return response
+    }
+
+    private companion object {
+        const val HTTP_UNAUTHORIZED = 401
     }
 }
 

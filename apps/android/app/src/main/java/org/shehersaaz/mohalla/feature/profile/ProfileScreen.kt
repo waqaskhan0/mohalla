@@ -37,14 +37,13 @@ import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.network.FeedItemResponse
 import org.shehersaaz.mohalla.core.state.Relation
 import org.shehersaaz.mohalla.core.ui.ContentUnavailable
+import org.shehersaaz.mohalla.core.ui.FailureState
 import org.shehersaaz.mohalla.core.ui.MohallaAvatar
 import org.shehersaaz.mohalla.core.ui.MohallaBackHeader
 import org.shehersaaz.mohalla.core.ui.MohallaButton
 import org.shehersaaz.mohalla.core.ui.MohallaSecondaryButton
 import org.shehersaaz.mohalla.core.ui.MohallaTopBar
-import org.shehersaaz.mohalla.core.ui.OfflineState
 import org.shehersaaz.mohalla.core.ui.PostCard
-import org.shehersaaz.mohalla.core.ui.ServerErrorState
 import org.shehersaaz.mohalla.core.ui.TopBarAction
 import org.shehersaaz.mohalla.core.ui.VerifiedBadge
 
@@ -521,13 +520,7 @@ private fun ActionRow(
 
 @Composable
 private fun ProfileFailure(failure: ApiFailure, onRetry: () -> Unit) {
-    when (failure) {
-        ApiFailure.Offline -> OfflineState(onRetry = onRetry)
-        else -> ServerErrorState(
-            correlationId = (failure as? ApiFailure.Server)?.correlationId,
-            onRetry = onRetry,
-        )
-    }
+    FailureState(failure = failure, onRetry = onRetry)
 }
 
 @Composable

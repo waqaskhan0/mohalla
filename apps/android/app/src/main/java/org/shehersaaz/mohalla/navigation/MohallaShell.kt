@@ -15,7 +15,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import org.shehersaaz.mohalla.core.design.MohallaTheme
 import org.shehersaaz.mohalla.core.ui.MohallaBottomNav
-import org.shehersaaz.mohalla.core.ui.OfflineBanner
 import org.shehersaaz.mohalla.feature.safety.SuspensionBanner
 
 /**
@@ -66,11 +65,11 @@ fun MohallaShell(
             )
         }
 
-        // §43 — a hint, never a gate. Nothing below is disabled because of it;
-        // requests are still attempted and their own failure is authoritative.
-        if (!state.isOnline) {
-            OfflineBanner()
-        }
+        // THE OFFLINE BANNER IS NOT HERE ANY MORE. §43 wants it above the
+        // content, and the shell is five destinations out of forty — somebody
+        // who followed a notification into a conversation saw no banner while
+        // every request they made failed. It moved to the navigation graph,
+        // which is above all of them.
 
         Box(modifier = Modifier.weight(1f)) {
             content(state.selectedTab)

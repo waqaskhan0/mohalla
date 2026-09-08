@@ -28,12 +28,11 @@ import org.shehersaaz.mohalla.core.format.Ago
 import org.shehersaaz.mohalla.core.format.NotificationDay
 import org.shehersaaz.mohalla.core.format.RelativeTime
 import org.shehersaaz.mohalla.core.network.ApiFailure
+import org.shehersaaz.mohalla.core.ui.FailureState
 import org.shehersaaz.mohalla.core.ui.MohallaBackHeader
 import org.shehersaaz.mohalla.core.ui.MohallaButton
 import org.shehersaaz.mohalla.core.ui.NotificationMark
 import org.shehersaaz.mohalla.core.ui.NotificationRow
-import org.shehersaaz.mohalla.core.ui.OfflineState
-import org.shehersaaz.mohalla.core.ui.ServerErrorState
 import java.time.ZoneId
 
 /**
@@ -236,17 +235,7 @@ private fun EmptyNotifications(onFindPeople: () -> Unit) {
 
 @Composable
 private fun NotificationsFailure(failure: ApiFailure, onRetry: () -> Unit) {
-    when (failure) {
-        // §32 — offline is a different screen with a different promise, because
-        // a retry is likely to work. There is no on-disk cache of the centre, so
-        // a cold offline open has nothing to show; within a session the list
-        // that is already loaded stays put and only the next page fails.
-        ApiFailure.Offline -> OfflineState(onRetry = onRetry)
-        else -> ServerErrorState(
-            correlationId = (failure as? ApiFailure.Server)?.correlationId,
-            onRetry = onRetry,
-        )
-    }
+    FailureState(failure = failure, onRetry = onRetry)
 }
 
 @Composable
