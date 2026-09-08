@@ -219,6 +219,11 @@ fun homeActions(
     onSearch: () -> Unit,
     onNotifications: () -> Unit,
     unreadNotifications: Int,
+    // NO THIRD ACTION HERE. §18.5 draws this bar as `Shehersaaz · search · bell`
+    // and both slots are spent; a filter action made it three and `MohallaTopBar`
+    // rejected it at runtime (RUNTIME-013). UX-HOME-005's control sits on the
+    // tab row instead — the spec's other stated entry, and next to the tabs it
+    // actually narrows.
 ): List<TopBarAction> = listOf(
     TopBarAction(
         icon = Icons.Filled.Search,
