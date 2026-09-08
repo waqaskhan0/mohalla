@@ -41,4 +41,18 @@ object BuildEnvironment {
     val versionName: String get() = BuildConfig.VERSION_NAME
 
     val versionCode: Int get() = BuildConfig.VERSION_CODE
+
+    /**
+     * The host this build claims links for (§42), and shares links to.
+     *
+     * ONE VALUE FOR BOTH, so the link the app hands to WhatsApp and the link it
+     * agrees to open cannot disagree - a share pointing at a host the intent
+     * filter does not match is a link that opens the browser instead of the app,
+     * and the two drifting apart is the ordinary way that happens.
+     *
+     * EMPTY IN A RELEASE BUILD until DEP-007 provisions a domain. The resolver
+     * refuses every link when this is blank, and the share sheet says so rather
+     * than sending somebody a URL that cannot resolve.
+     */
+    val appHost: String get() = BuildConfig.APP_HOST
 }

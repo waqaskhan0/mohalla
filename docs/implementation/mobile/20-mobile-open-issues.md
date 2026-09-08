@@ -35,8 +35,9 @@ search's failed-versus-empty rule, messaging's send idempotency and duplicate
 reconciliation, the notification centre's day boundary in the reader's own
 timezone, the encoded shape of a PATCH body that has to distinguish absent from
 null, the ordering of the deletion consequences PRIV-006 requires a user to read,
-which of the eight API failures each of §21's four states answers for, and the
-exact field shape of every type that enforces a privacy rule structurally. **442 tests, all passing.** |
+which of the eight API failures each of §21's four states answers for, every
+link shape §42 accepts and the many more it refuses, and the exact field shape
+of every type that enforces a privacy rule structurally. **459 tests, all passing.** |
 | **What that does not prove** | That pixels mirror. The tests prove Create sits at index 2 of 5 and that the list is never pre-reversed; they cannot prove the row renders right-to-left. §36 makes RTL release-critical, so this gap is the largest single verification debt in Stage 7. |
 
 The manifest defect found in group 05–06 is the argument for closing it:
@@ -212,8 +213,14 @@ neither of which the sender can edit afterwards.
 The requirement's other rules are already met: the link requires login to open,
 because it lands on the post route behind the startup resolver.
 
-**To close it:** the real share host, then one line adding the first ~140
-graphemes of the post body to the intent's `EXTRA_TEXT`.
+**Half of this closed in group 21.** The share URL is now built from the same
+constant the intent filter and the resolver use, so the link the app hands to
+WhatsApp is one the app agrees to open — it was not, and every shared post would
+have opened a browser. What is still missing is the excerpt.
+
+**To close the rest:** the real share host (DEP-007, with GAP-M-015), then one
+line adding the first ~140 graphemes of the post body to the intent's
+`EXTRA_TEXT`.
 
 ### GAP-M-008 · Realtime delivery is polled, not socketed
 
@@ -428,6 +435,39 @@ was lost. A retry is one tap.
 a flush on the connectivity signal `ConnectivityObserver` already provides, or
 `WorkManager` with a network constraint. The copy then changes from "try again"
 to "we'll send this when you're back", and only then.
+
+### GAP-M-015 · Deep links cannot be verified, so they open a chooser
+
+**§42's links work. They just do not open the app directly.**
+
+Android App Links verify by fetching `/.well-known/assetlinks.json` from the host
+and matching it against the app's signing certificate. That needs two things
+neither of which exists: **DEP-007**'s domain, and **DEP-006**'s Play-managed
+release keystore whose SHA-256 fingerprint the file has to name.
+
+**What ships.** The intent filter is declared for `https`, the app's host and the
+four path prefixes the server publishes — without `android:autoVerify`. Android
+therefore treats them as unverified web links and shows the disambiguation
+dialog: the reader taps a shared post, picks Mohalla from a list, and lands on
+the post. Setting `autoVerify="true"` now would fail verification on every
+install and produce exactly the same dialog, so leaving it off is the same
+behaviour, honestly declared.
+
+**A custom scheme was rejected rather than overlooked.** `mohalla://posts/{id}`
+would open without a chooser, and any other app on the device could declare the
+same scheme and intercept it. For a link to a private conversation that is not a
+trade worth making, and PRIV-003's whole premise is that this product is where
+neighbours talk without handing over contact details.
+
+**The release build claims no host at all.** `APP_HOST` is empty until DEP-007
+resolves, and the resolver refuses every link when it is blank — so a release
+build cannot be induced to open a link belonging to whoever registered a
+plausible name. The debug build uses `mohalla.invalid`, reserved by RFC 2606 so
+it can never resolve.
+
+**To close it:** the domain, the release keystore, an `assetlinks.json` naming
+the fingerprint, and `android:autoVerify="true"`. One line in the manifest, and
+three things that are not this repository's to supply.
 
 ### GAP-M-003 · The prototype's attendee stack contradicts the SRS
 

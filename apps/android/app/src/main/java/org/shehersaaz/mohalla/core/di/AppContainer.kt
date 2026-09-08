@@ -34,6 +34,7 @@ import org.shehersaaz.mohalla.feature.search.SearchRepository
 import org.shehersaaz.mohalla.feature.home.FeedRepository
 import org.shehersaaz.mohalla.feature.messages.MessagingRepository
 import org.shehersaaz.mohalla.core.state.SessionRevocation
+import org.shehersaaz.mohalla.navigation.PendingDeepLink
 import org.shehersaaz.mohalla.core.state.ViewerRelations
 import org.shehersaaz.mohalla.feature.notifications.NotificationRepository
 import org.shehersaaz.mohalla.feature.profile.ProfileRepository
@@ -99,6 +100,37 @@ class AppContainer private constructor(
     val sessionRevocation: SessionRevocation = SessionRevocation()
 
     /**
+     * §42 - a link that arrived before the reader was allowed to follow it.
+     *
+     * ON THE CONTAINER because the activity receives it and the graph honours
+     * it, and those are two different lifetimes: a link tapped while signed out
+     * has to survive the whole login flow. In memory only - see the class
+     * comment for why a link on disk would eventually open one account's
+     * content inside another's session.
+     */
+    val pendingDeepLink: PendingDeepLink = PendingDeepLink()
+
+    /**
+     * Everything an account owns, removed at once.
+     *
+     * FOUR PATHS REACH A SIGN-OUT — the Settings row, account deletion, the
+     * restore screen's "not now", and EDGE-010's revocation — and each of them
+     * was clearing a different subset. That is how a name from the previous
+     * account greets the next one on a shared phone, which is a common
+     * arrangement in this market.
+     *
+     * WHAT GOES: the token and cached identity (SET-FR-006's "no cached personal
+     * content is visible"), every session-scoped relationship
+     * ([ViewerRelations]), and any deep link that was waiting - it belonged to
+     * the session that received it.
+     */
+    fun clearSession() {
+        sessionRepository.signOut()
+        viewerRelations.clear()
+        pendingDeepLink.clear()
+    }
+
+    /**
      * What this viewer's relationship to a person or a post is.
      *
      * ON THE CONTAINER RATHER THAN IN A VIEWMODEL, because it has to outlive
@@ -124,8 +156,7 @@ class AppContainer private constructor(
                 // EDGE-010. Everything an account owns goes at once, and then
                 // the graph is told - the same removal a deliberate sign-out
                 // performs, so the two cannot drift apart.
-                secureStorage.clear()
-                viewerRelations.clear()
+                clearSession()
                 sessionRevocation.raise()
             },
         )

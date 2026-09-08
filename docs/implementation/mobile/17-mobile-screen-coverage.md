@@ -1,6 +1,6 @@
 # 17 — Mobile Screen Coverage
 
-**Stage 7 · Android** · 61 required screens · last updated after group 20 (Offline and error states)
+**Stage 7 · Android** · 61 required screens · last updated after group 21 (Deep links)
 
 > **This table is the answer to "is Stage 7 feature-complete?"** It is not, and
 > the count below says by how much. A screen is `DONE` only when it is built,
@@ -1412,6 +1412,93 @@ somebody it was saved would be worse than a refusal they can act on.
 took a nullable and fell through to the generic error, so a screen that had not
 finished loading could show "something went wrong" for a request still in flight.
 Now the loading branch owns that frame.
+
+## Group 21 · Deep links
+
+No new screens. §42 makes four kinds of content deep-linkable, and every one of
+those screens already existed — what did not exist was anything that turned a
+link into a destination.
+
+### The defect a test found before a device could
+
+**The link the app shared was a link the app could not open.** `Routes.post(id)`
+is `post/{id}` — singular, because it is a navigation destination. The public URL
+the server publishes and the manifest claims is `/posts/{id}` — plural, because
+it is a REST collection. The share sheet was building
+`https://host/${'$'}{Routes.post(id)}`, which produced `/post/p1`: a path matching
+no intent filter and no server link. **Every shared post would have opened a
+browser rather than the app.**
+
+Both now come from one constant in `DeepLinks`, and the round trip is asserted —
+the share builder's output is fed back through the resolver in the same test.
+This is the second time this stage that two vocabularies for the same idea have
+produced a silent defect; the first was the three spellings of a keyset cursor in
+group 12.
+
+### What deep linking decided, and why it is written down
+
+**The resolver parses a `String` by hand rather than using `Uri`.** This is the
+one piece of routing driven by input from OUTSIDE the app, and `Uri.parse` needs
+an instrumentation runner to assert — with no device in this project (§2), the
+highest-risk router would have been the one nothing checked. Fifteen tests now
+run on the JVM, and most of them are about refusal.
+
+**A link is never authorisation.** It names a destination and nothing else.
+Where the reader lands is the startup resolver's decision: a link tapped by
+somebody signed out is **held, not honoured**, and consumed only once the
+resolver has put them somewhere they are entitled to be. §9's rule that an
+unauthorised screen must never flash is not something a URL gets to override,
+and treating a link as a capability is how apps end up rendering somebody else's
+content to whoever has the address.
+
+**And losing the link is not the alternative.** Somebody who taps a shared post
+while signed out reaches login, signs in, and arrives at the post — rather than
+landing on the feed wondering what they were sent, which is what an app gets by
+doing nothing.
+
+**The held link lives in memory and never on disk.** One that survived a process
+death would open a post somebody tapped last Tuesday; one that survived a
+sign-out would open one account's content inside another's session on a shared
+phone. It is cleared by the same `clearSession()` the sign-out, the deletion and
+EDGE-010's revocation all call — which is itself new: those four paths were each
+clearing a different subset, which is how a name from the previous account greets
+the next one.
+
+**What is accepted is enumerated, not pattern-matched.** Exactly two path
+segments, a known collection, `https` only, and the app's own host. An extra
+segment, a traversal segment, an `http` downgrade, an unknown collection, a
+missing id and a host that merely *ends* with ours are all refused — a
+deep-link parser that guesses is one that eventually routes
+`/posts/../../admin` somewhere. The host check exists because an intent filter
+can be matched by a URL somebody else published, and honouring it would let a
+third party choose which of the reader's screens opens, including a
+conversation.
+
+**The comment fragment is dropped deliberately.** The server appends
+`#{commentId}` to a comment notification's link; there is no route to a comment
+(GAP-M-009) and the post it belongs to is the right place to land, so the link
+resolves rather than failing.
+
+**An announcement link resolves to nothing, on purpose.** NOTIF-FR-005's
+broadcast points at one and UX-HOME-006 is not built. Returning nothing lands the
+reader on their normal start destination rather than on a screen claiming the
+announcement was unavailable — which would be a lie about the announcement rather
+than about the app.
+
+**`autoVerify` is absent, and that is the one thing here that is not finished.**
+Android App Links verify by fetching `/.well-known/assetlinks.json` from the host
+and matching the signing certificate, which needs DEP-007's domain and DEP-006's
+release keystore. Setting it now would fail verification on every install and
+leave the app in the disambiguation dialog anyway. So these links open a chooser
+rather than the app directly — worse than App Links, and better than a custom
+scheme: `mohalla://` would open without a chooser and could be claimed by any
+other app on the device, which for a link to a private conversation is not a
+trade worth making. **GAP-M-015.**
+
+**The filter claims four path prefixes rather than the whole host.** A bare
+`android:host` would claim every URL on the domain, including the Privacy Policy
+that PRIV-017 requires to be readable in a *browser* before Google Play will
+accept the app.
 
 ## What must be true before this table can say "feature-complete"
 

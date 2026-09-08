@@ -32,6 +32,7 @@ import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import org.shehersaaz.mohalla.MainActivity
+import org.shehersaaz.mohalla.core.config.BuildEnvironment
 import org.shehersaaz.mohalla.core.di.AppContainer
 import org.shehersaaz.mohalla.core.media.rememberImagePickerLauncher
 import org.shehersaaz.mohalla.core.network.ApiFailure
@@ -162,6 +163,17 @@ fun MohallaNavHost(
                 // rendering cached content for a session that no longer exists.
                 popUpTo(0) { inclusive = true }
             }
+        }
+    }
+
+    // §42 — a link is honoured once, and only from a destination the reader is
+    // entitled to be on. `startRoute` is the startup resolver's answer, so
+    // checking it is checking whether authentication has already happened: a
+    // link tapped while signed out waits through the whole login flow rather
+    // than being dropped, and never renders before §9 allows it.
+    LaunchedEffect(startRoute) {
+        if (startRoute == Routes.SHELL) {
+            container.pendingDeepLink.take()?.let { navController.navigate(it) }
         }
     }
 
@@ -958,8 +970,7 @@ private fun SettingsRoute(
             // SET-FR-006's criterion is about what THIS device shows afterwards,
             // so the local clear is what satisfies it — see the ViewModel.
             signOutLocally = {
-                container.sessionRepository.signOut()
-                container.viewerRelations.clear()
+                container.clearSession()
             },
             signOutRemotely = { container.authRepository.logout() },
         ),
@@ -1047,8 +1058,7 @@ private fun DeleteAccountRoute(
         onPasswordChanged = vm::onPasswordChanged,
         onDelete = {
             vm.submit {
-                container.sessionRepository.signOut()
-                container.viewerRelations.clear()
+                container.clearSession()
                 onDeleted()
             }
         },
@@ -1534,7 +1544,7 @@ private fun sendSupportEmail(context: android.content.Context, address: String) 
 private fun sharePost(context: android.content.Context, postId: String) {
     val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
         type = "text/plain"
-        putExtra(android.content.Intent.EXTRA_TEXT, "$SHARE_BASE/${Routes.post(postId)}")
+        putExtra(android.content.Intent.EXTRA_TEXT, shareUrl(postId))
         putExtra(
             android.content.Intent.EXTRA_SUBJECT,
             context.getString(org.shehersaaz.mohalla.R.string.share_post_subject),
@@ -1562,7 +1572,30 @@ private fun sharePost(context: android.content.Context, postId: String) {
  * links and the canonical public URL are group 22's work; until then this is a
  * value that will fail visibly rather than a domain somebody might register.
  */
-private const val SHARE_BASE = "https://mohalla.invalid"
+/**
+ * The public URL for a post (ENGAGE-FR-007 · §42).
+ *
+ * ONE SOURCE FOR THE HOST, shared with the manifest's intent filter through the
+ * build config — a share pointing at a host the filter does not claim is a link
+ * that opens the browser instead of the app, and the two drifting apart is the
+ * ordinary way that happens.
+ *
+ * `mohalla.invalid` UNTIL DEP-007 PROVISIONS A DOMAIN. RFC 2606 reserves
+ * `.invalid` so it can never resolve, which is the point: a link that fails
+ * visibly is better than one pointing at a plausible name somebody else
+ * registered. GAP-M-007 tracks the excerpt this link still does not carry.
+ */
+private fun shareUrl(postId: String): String {
+    val host = BuildEnvironment.appHost.takeIf { it.isNotBlank() } ?: SHARE_FALLBACK_HOST
+    // `DeepLinks.postUrl`, NOT `Routes.post`. The internal route is `post/{id}`
+    // and the public path is `/posts/{id}`; building the share link from the
+    // route produced a URL that matched no intent filter and no server link, so
+    // every shared post opened a browser instead of the app.
+    return DeepLinks.postUrl(host, postId)
+}
+
+/** Reserved by RFC 2606, so it cannot resolve. See [shareUrl]. */
+private const val SHARE_FALLBACK_HOST = "mohalla.invalid"
 
 /** UX-EVENT-001 · UX-EVENT-002 — the Events tab. */
 @Composable

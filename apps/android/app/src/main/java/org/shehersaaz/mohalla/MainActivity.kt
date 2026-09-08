@@ -1,6 +1,9 @@
 package org.shehersaaz.mohalla
 
 import android.os.Bundle
+import org.shehersaaz.mohalla.navigation.DeepLinks
+import org.shehersaaz.mohalla.core.config.BuildEnvironment
+import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -45,6 +48,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         container = AppContainer.create(applicationContext)
+
+        // §42 - read before `setContent`, so the graph's first composition
+        // already knows whether a link is waiting. Read on EVERY launch path:
+        // a cold start from a browser chooser and a warm one both arrive here.
+        holdDeepLink(intent)
 
         // BR-040 — `null` is a real answer, and the direction of the very first
         // frame depends on this value.
@@ -108,6 +116,40 @@ class MainActivity : ComponentActivity() {
             }
             }
         }
+    }
+
+    /**
+     * The app was already running when the link was tapped.
+     *
+     * `launchMode` is the default, so Android delivers a second VIEW intent
+     * here rather than recreating the activity. Without this override the link
+     * would be silently dropped — which is the common case, because somebody
+     * following a shared post usually has the app open behind their messaging
+     * app.
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        holdDeepLink(intent)
+    }
+
+    /**
+     * Hold what the link names, if anything.
+     *
+     * NOTHING IS NAVIGATED FROM HERE. §9 forbids an unauthorised screen
+     * flashing, and the startup resolver — not a URL — decides where anybody
+     * lands. The graph consumes this once the reader is somewhere they are
+     * entitled to be.
+     */
+    private fun holdDeepLink(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_VIEW) return
+
+        val route = DeepLinks.resolve(
+            url = intent.dataString,
+            host = BuildEnvironment.appHost,
+        ) ?: return
+
+        container.pendingDeepLink.hold(route)
     }
 
     /** Settings uses the same path, so there is one way to change language. */

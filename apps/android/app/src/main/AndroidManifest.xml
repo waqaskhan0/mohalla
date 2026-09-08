@@ -47,6 +47,62 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!--
+              §42 - deep links to content.
+
+              ONE ACTIVITY, NOT A SECOND ONE. `MainActivity` already owns the
+              startup resolver that decides where anybody is allowed to land, and
+              a second entry activity would either duplicate that decision or
+              skip it. The link is read in `onNewIntent` and `onCreate`, held,
+              and honoured only once the resolver has put the reader somewhere
+              they are entitled to be.
+
+              `android:autoVerify` IS DELIBERATELY ABSENT, and this is the one
+              thing about this filter that is not finished. Android App Links
+              verify by fetching `/.well-known/assetlinks.json` from the host and
+              matching the signing certificate - which needs DEP-007's domain and
+              DEP-006's release keystore, neither of which exists. Setting
+              `autoVerify="true"` now would fail verification on every install
+              and leave the app in the disambiguation dialog anyway; leaving it
+              off is the same behaviour, honestly declared. GAP-M-015.
+
+              WHICH ALSO MEANS THESE LINKS OPEN A CHOOSER RATHER THAN THE APP
+              directly. Unverified filters make Android ask. That is worse than
+              App Links and better than a custom scheme: `mohalla://` would open
+              without a chooser and could be claimed by ANY other app on the
+              device, which for a link to a private conversation is not a trade
+              worth making.
+
+              The host is a manifest placeholder so the filter and the share
+              link cannot drift apart - both come from the build config.
+            -->
+            <intent-filter android:label="@string/app_name">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <!--
+                  HTTPS ONLY. An `http` filter would accept a downgraded link
+                  arranged on a shared network, and the resolver refuses one
+                  anyway - so declaring it would only add an entry to the
+                  chooser for a link the app then declines to route.
+                -->
+                <data android:scheme="https" />
+                <data android:host="${appHost}" />
+
+                <!--
+                  FOUR PATH PREFIXES, MATCHING THE FOUR THE SERVER PUBLISHES in
+                  its push deep links. A bare `android:host` with no path would
+                  claim every URL on the domain, including the Privacy Policy
+                  that PRIV-017 requires to be readable in a BROWSER before
+                  Google Play will accept the app.
+                -->
+                <data android:pathPrefix="/posts/" />
+                <data android:pathPrefix="/users/" />
+                <data android:pathPrefix="/events/" />
+                <data android:pathPrefix="/conversations/" />
+            </intent-filter>
         </activity>
     </application>
 

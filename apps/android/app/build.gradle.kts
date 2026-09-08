@@ -51,6 +51,14 @@ android {
             // string that would imply a document existed. The release gate
             // below refuses to build without a real one.
             buildConfigField("String", "TERMS_VERSION", "\"unpublished-od-015\"")
+            // §42 - the host this app claims links for. `mohalla.invalid`
+            // is reserved by RFC 2606 and can never resolve, so a debug
+            // build cannot accidentally open a link belonging to somebody
+            // who registered a plausible name. DEP-007 supplies the real
+            // one; until then the resolver works and the filters match
+            // nothing anybody can send.
+            buildConfigField("String", "APP_HOST", "\"mohalla.invalid\"")
+            manifestPlaceholders["appHost"] = "mohalla.invalid"
             buildConfigField("String", "SUPPORT_EMAIL", "\"\"")
         }
         release {
@@ -66,6 +74,13 @@ android {
             // empty version, so a release APK cannot record an acceptance of a
             // document that does not exist (OD-015).
             buildConfigField("String", "TERMS_VERSION", "\"\"")
+            // §42 - DEP-007's domain has not been provisioned, so there is no
+            // host this build can claim. Empty rather than a guess: the
+            // resolver refuses every link when the host is blank, and an
+            // `autoVerify` filter for a domain we do not control would either
+            // fail verification or, worse, succeed for somebody else's.
+            buildConfigField("String", "APP_HOST", "\"\"")
+            manifestPlaceholders["appHost"] = "mohalla.invalid"
             // SET-FR-009 asks for "a working support contact". None has
             // been published, so this is empty and the Help screen says so
             // rather than mailing an address nobody reads - which matters
