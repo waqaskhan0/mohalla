@@ -16,8 +16,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,8 +44,8 @@ import org.shehersaaz.mohalla.core.ui.FailureState
 import org.shehersaaz.mohalla.core.ui.MohallaButton
 import org.shehersaaz.mohalla.core.ui.MohallaSecondaryButton
 import org.shehersaaz.mohalla.core.ui.MohallaTopBar
-import org.shehersaaz.mohalla.core.ui.homeActions
 import org.shehersaaz.mohalla.core.ui.PostCard
+import org.shehersaaz.mohalla.core.ui.homeActions
 
 /**
  * Home — UX-HOME-001 (Following) · UX-HOME-002 (Discover).
@@ -357,11 +359,28 @@ private fun EmptyFeed(
     onOpenAnnouncement: (String) -> Unit,
     actions: @Composable (() -> Unit)? = null,
 ) {
+    // IT SCROLLS, AND IT HAS TO (RUNTIME-006).
+    //
+    // This was a plain `Column(fillMaxSize())`, so anything taller than the
+    // viewport was simply unreachable - and on an empty Home the content below
+    // the announcements is the ONLY thing a new reader can act on.
+    //
+    // Two runtime reproductions, one root cause. In Urdu the body wraps to a
+    // third line and the primary button was squeezed to 74px, about 28dp,
+    // against the 48dp minimum, with its label clipped. At the system font
+    // scale of 130% - persona MI's setting, and the one §26 asks about - the
+    // body and BOTH action buttons fell off the bottom entirely, and scrolling
+    // bounced back to the top because nothing here scrolled.
+    //
+    // `FeaturedStrip` is a plain `Column`, not a lazy list, so this is safe:
+    // a lazy list inside a vertical scroll is the crash RUNTIME-003 was.
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = MohallaTheme.screenMargin)
-            .padding(top = MohallaTheme.spacing.Space3),
+            .padding(top = MohallaTheme.spacing.Space3)
+            .padding(bottom = MohallaTheme.spacing.Space10),
         verticalArrangement = Arrangement.spacedBy(MohallaTheme.spacing.Space3),
     ) {
         if (featured.isNotEmpty()) FeaturedStrip(featured, onOpenAnnouncement)

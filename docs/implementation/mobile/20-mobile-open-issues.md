@@ -24,7 +24,8 @@ after Flow A and Flow G were executed and six defects were fixed.
 | ~~MOBILE-BACKEND-GAP-003~~ — `profiles.post_count` never maintained | **FIXED** as MOBILE-BACKEND-FIX-002: `0023_post_count_trigger`, backfilled, five database tests |
 | **RUNTIME-010** — a suspended account's blocked writes explain nothing. The server refuses them (verified), but only the Create tab has an explainer | **IMPLEMENTABLE NOW** |
 | **RUNTIME-011** — the delete-account confirm button sits behind the keyboard, and the screen does not scroll to it | **IMPLEMENTABLE NOW** |
-| **RUNTIME-006** — Home's Urdu empty-state button compressed to ≈28dp with a clipped label | **IMPLEMENTABLE NOW** |
+| ~~RUNTIME-006~~ | **FIXED and verified at Urdu × 130%.** `EmptyFeed` had no `verticalScroll`, so at 130% both action buttons fell off the bottom and a swipe bounced back. Found by §26’s large-font run |
+| ~~RUNTIME-006 (original note)~~ — Home's Urdu empty-state button compressed to ≈28dp with a clipped label | **IMPLEMENTABLE NOW** |
 | **GAP-M-016** · **GAP-M-017** · **GAP-M-018** — interests, post editing, mark-all-read | **IMPLEMENTABLE NOW**, and deliberately not built: each is a Could with no designed screen, and §49 forbids adding one |
 | `UX-HOME-005` category filter · `UX-HOME-006` announcement detail | **IMPLEMENTABLE NOW** — the only two unbuilt screens of 61 |
 | Compose UI tests (none exist) | **IMPLEMENTABLE NOW** — the emulator exists |

@@ -115,11 +115,11 @@ which is §13's rule.
 
 ---
 
-## 3. Flow G — RTL · **PASS** (one defect open)
+## 3. Flow G — RTL · **PASS**
 
 | | |
 |---|---|
-| **Runtime result** | **PASS for mirroring and translation · one clipped control** |
+| **Runtime result** | **PASS** — mirroring, translation and, after the RUNTIME-006 fix, no clipped control |
 
 Switched English → اردو **at runtime, without reinstalling**, from Settings →
 Language.
@@ -151,9 +151,9 @@ mirrored by layout direction rather than reversed in code.
 | Start/end spacing works | **PASS** |
 | Mixed Urdu/English content | **PASS** — `Masjid Ittehad Welfare` and `@masjid_ittehad` stay LTR inside an RTL screen |
 | No untranslated required strings | **PASS** — after RUNTIME-004 |
-| **No clipped controls** | **FAIL** — RUNTIME-006, open |
+| **No clipped controls** | **PASS** after the RUNTIME-006 fix — verified at Urdu × 130% |
 
-### RUNTIME-006 · a primary button squeezed to 28dp in Urdu, open
+### RUNTIME-006 · the empty Home did not scroll — **FIXED**
 
 Home's empty-state body needs **three** lines in Urdu against two in English, and
 the primary action button below it is compressed:
@@ -163,12 +163,29 @@ the primary action button below it is compressed:
 | A `MohallaButton` normally | 126–127px | **≈48dp** ✅ |
 | The Urdu empty-state button | **74px** | **≈28dp**, label clipped ❌ |
 
-So the 48dp minimum group 22 enforced in code is real and honoured — and this
-one instance is squeezed by a parent that ran out of vertical space, which a
-source check cannot see. **Not fixed**: it needs a layout change on a screen
-whose two remaining sub-screens (UX-HOME-005/006) are also unbuilt, and doing it
-blind would be guessing. Recorded with the measurement so it can be fixed and
-re-measured.
+The 48dp minimum group 22 enforced in code is real and honoured everywhere the
+component owns its own height. This instance was squeezed by a parent that had
+run out of vertical space — which no source check can see.
+
+**§26's large-font run found the root cause.** `EmptyFeed` was a plain
+`Column(fillMaxSize())` with **no vertical scroll**, so anything taller than the
+viewport was simply unreachable. At the system font scale of **130%** — persona
+MI's setting, and the one §26 asks about — the body text and **both** action
+buttons fell off the bottom entirely, and a swipe bounced back to the top. On an
+empty Home those two buttons are the only thing a new reader can act on.
+
+One root cause, two reproductions: Urdu wraps the body to a third line, and
+130% wraps it further. Both are "the content is taller than the space".
+
+**Fixed** by giving `EmptyFeed` a `verticalScroll` and bottom padding.
+`FeaturedStrip` is a plain `Column`, not a lazy list, so this is safe — a lazy
+list inside a vertical scroll is the crash RUNTIME-003 was.
+
+Verified under **both stressors at once**, which is the hardest combination the
+app will meet: Urdu at 130%. The body wraps to 273px and is reachable,
+فالو کرنے کے لیٔ لوگ ڈھونڈیں and دریافت دیکھیں both scroll into view,
+every button measures **129px ≈ 49dp**, and the navigation is still mirrored with
+Create centred.
 
 ---
 
@@ -337,7 +354,7 @@ Stage 7 can act on it.
 | **D — Social** | **PASS** — found RUNTIME-009 |
 | **E — Message request** | **PASS** for accept, with all three privacy checks. Decline and block variants NOT EXECUTED |
 | **F — Events** | **PASS**, including §14's attendee-privacy check |
-| **G — RTL** | **PASS** for mirroring and translation · RUNTIME-006 open |
+| **G — RTL** | **PASS** — RUNTIME-006 found and now fixed |
 | **H — Block privacy** | **PASS** — every neutrality check held |
 | **I — Suspension** | **PASS** for reading and the Create lock · found RUNTIME-010 |
 | **J — Offline** | **PASS** end to end, including reconnect and retry |
@@ -607,7 +624,7 @@ keyboard first.
 | Keyboard | **PARTIAL** — text entry worked on every field reached; `KeyboardType.Phone` chosen for the date field because `Number` offers no hyphen |
 | Image picker | **NOT EXECUTED** |
 | Camera / gallery | **NOT EXECUTED** |
-| Large font | **NOT EXECUTED** |
+| **Large font** | **EXECUTED at 130%** — §26’s check. It found RUNTIME-006’s root cause and the fix is verified under Urdu **and** 130% together |
 | Slow network simulation | **NOT EXECUTED** |
 | Offline / reconnect | **NOT EXECUTED** |
 | Push permission UX | **BLOCKED EXTERNAL** — DEP-003 |

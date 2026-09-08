@@ -137,7 +137,7 @@ Full step-by-step evidence in [`19-mobile-test-report.md`](19-mobile-test-report
 | **LTR** | **PASS** — 15 screens rendered and driven in English |
 | **Runtime RTL** | **PASS** — switched without reinstall; nav mirrored, Create centred to within 2px; Urdu strings render |
 | **Accessibility** | **PARTIAL** — ten source invariants hold; no device audit, no TalkBack, no focus-order check |
-| **Large font** | **NOT EXECUTED** |
+| **Large font** | **PASS at 130%** — found RUNTIME-006’s root cause; fix verified at Urdu × 130%, all buttons ≥48dp |
 | **Offline / reconnect** | **NOT EXECUTED** |
 | **Messaging realtime** | **NOT EXECUTED** on device. Socket.IO verified up by smoke; the client polls by design (GAP-M-008) |
 | **Media / upload** | **NOT EXECUTED** — the image picker is a system Activity and has no unit coverage either |
@@ -262,8 +262,8 @@ Then the rest, in rough order of value:
    The server refuses them correctly; §17 asks for an explanation and only the
    Create tab has one. It is a design choice across several screens: gate every
    write affordance on capability, or route a 403 to the Create tab's explainer.
-4. **Fix RUNTIME-006** (the clipped Urdu button) and **RUNTIME-011** (the
-   delete-account button behind the keyboard), then re-measure both.
+4. **Fix RUNTIME-011** (the delete-account button behind the keyboard), then
+   re-measure it. RUNTIME-006 is done.
 5. **Execute Flow C's image path** and **Flow E's decline and block variants** —
    the two steps still unexecuted inside otherwise-passing flows.
 6. **MOBILE-BACKEND-GAP-002**, now that Flow H has shown what the blocked-users
