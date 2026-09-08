@@ -242,26 +242,49 @@ of what §25 and §26 have **not** audited.
 
 ## 11. What to do next, in order
 
-1. **Build the §8 fixtures** — two users, an organization, a suspended account, a
-   pending-deletion account, an event, posts and comments, a block relationship.
-   Every remaining flow needs them and none exists.
-2. **Execute flows B, C, D, E, F, H, I, J, K.** On this pass's evidence, expect
-   them to find defects: two flows found six, three of them in requirements
-   already documented as implemented.
-3. **Fix RUNTIME-006**, then re-execute Home in Urdu and re-measure the button.
-5. **MOBILE-BACKEND-GAP-002**, once Flow H has shown what the screen needs.
-6. **§25 device accessibility audit, §26 large-font run, §27 measurements** — all
-   now possible.
-7. **Write Compose UI tests.** The emulator exists; there are none.
-9. **Build `UX-HOME-005` and `UX-HOME-006`.**
+Two items stand between this and feature-complete. Both are ordinary work and
+neither waits on anybody outside this repository.
 
-Everything in that list is doable with what is now on this machine. Nothing in it
-waits on an external dependency.
+1. **The accessibility audit on a device (§25), and the large-font run (§26).**
+   Ten invariants hold across the source tree and Flow G measured the mirroring,
+   but nothing has been heard through TalkBack, no focus order has been walked,
+   and no screen has been seen at 130%. RUNTIME-006 — a primary button squeezed
+   to 28dp because Urdu needed a third line — is a strong hint that font scaling
+   will find more of the same.
+2. **Build `UX-HOME-005` (category filter) and `UX-HOME-006` (announcement
+   detail).** The only two of 61 screens that are not started. `selectCategory`
+   already exists in the ViewModel and reaches the API; there is no picker to
+   drive it, and an ANNOUNCEMENT notification currently renders and goes nowhere.
+
+Then the rest, in rough order of value:
+
+3. **Fix RUNTIME-010** — a suspended account's blocked writes explain nothing.
+   The server refuses them correctly; §17 asks for an explanation and only the
+   Create tab has one. It is a design choice across several screens: gate every
+   write affordance on capability, or route a 403 to the Create tab's explainer.
+4. **Fix RUNTIME-006** (the clipped Urdu button) and **RUNTIME-011** (the
+   delete-account button behind the keyboard), then re-measure both.
+5. **Execute Flow C's image path** and **Flow E's decline and block variants** —
+   the two steps still unexecuted inside otherwise-passing flows.
+6. **MOBILE-BACKEND-GAP-002**, now that Flow H has shown what the blocked-users
+   screen actually needs: a name, on a screen that already explains its absence.
+7. **Write Compose UI tests.** The emulator exists and there are none. Every
+   defect this pass found was a defect no JVM test could see.
+8. **§27 performance measurements** on hardware. Nothing measured here describes
+   a phone, and the report says so rather than claiming a number.
 
 ---
 
-**Do not read this document as a refusal to finish.** It records that the hard
-part — a working runtime environment, and the discipline of believing it over the
-documentation — is now in place, and that the work it exposed is larger than one
-pass. The nine unexecuted flows are the remaining risk, and they are now cheap
-to run.
+**The most useful sentence in this document is in section 3.** Three
+requirements were recorded `IMPLEMENTED` and did not work on a device: OTP
+verification issued no session, the date-of-birth field could not be typed into,
+and "switch language" changed the layout direction and left every string in
+English. A fourth, PROFILE-FR-006, had never been implemented at all.
+
+None of that was visible from 469 passing tests, a clean lint, or a
+traceability matrix built carefully from the specification. It became visible in
+the first ninety seconds of running the app.
+
+So the two items left in section 11 are worth doing properly rather than
+declaring done: on this stage's own evidence, the parts nobody has watched a
+person use are the parts that do not work.

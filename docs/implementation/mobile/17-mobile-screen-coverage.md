@@ -26,13 +26,16 @@ on a device**, because none is available (see `00-mobile-baseline.md` §6).
 
 | | Screens |
 |---|---|
-| ✅ Exercised on an emulator, inside an executed §44 flow | **22** |
-| — **NOT EXECUTED** | **39** |
+| ✅ Exercised on an emulator, inside an executed §44 flow | **34** |
+| — **NOT EXECUTED** | **27** |
 
-Flows **A, B, C, F and G** ran. B's notification-arrival step, C's image path
-and flows D, E, H, I, J, K did not — each needs either a second synthetic user
-or the system image picker. See `19-mobile-test-report.md` for what every
-executed step proved and for the **ten** defects those five flows found.
+**All eleven §44 flows have now been executed.** They found **twelve** defects,
+all fixed and re-verified, two of them in the Stage 6 backend. What remains
+unexecuted at the screen level is mostly the surfaces those flows do not pass
+through, plus two screens that are not built at all (`UX-HOME-005`,
+`UX-HOME-006`) and Flow C's image path, which is a system Activity result.
+
+See `19-mobile-test-report.md` for every step and every defect.
 
 **Coverage: 90% complete.** Stage 7 is **NOT** feature-complete.
 
@@ -109,8 +112,8 @@ A dash here is not a pass and must never be read as one.
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | UX-AUTH-001 | Splash | NFR-PERF-003 | `GET /me` | ✅ | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | ✅ |
 | UX-AUTH-002 | Language selection | LOCALE-FR-001 · BR-040 | — | ✅ | ✅ | — | — | — | — | ✅ | ✅ | ✅ | ✅ |
-| UX-STATE-001 | Content unavailable | SAFETY-FR-004 · SEC-019 · BR-025 | — | ✅ | ✅ | — | — | — | — | ✅ | ✅ | — | ✅ |
-| UX-STATE-002 | Offline | NFR-AVAIL-002 | — | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | — | ✅ |
+| UX-STATE-001 | Content unavailable | SAFETY-FR-004 · SEC-019 · BR-025 | — | ✅ | ✅ | — | — | — | — | ✅ | ✅ | ✅ | ✅ |
+| UX-STATE-002 | Offline | NFR-AVAIL-002 | — | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | ✅ | ✅ |
 | UX-STATE-003 | Server error | SEC-018 · SRS §16 | — | ✅ | ✅ | — | — | ✅ | — | ✅ | ✅ | — | ✅ |
 | UX-STATE-004 | Rate limited | SAFETY-FR-009 | — | ✅ | ✅ | — | — | — | — | ✅ | ✅ | — | ✅ |
 
@@ -136,7 +139,7 @@ parameter**, so no caller can make the neutral refusal distinguishable
 | UX-AUTH-009 | OTP verification | AUTH-FR-002/003 · SEC-003 · EDGE-005 | `POST /otp/verify` `/otp/resend` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | UX-AUTH-010 | Forgot password | AUTH-FR-007 | `POST /password/forgot` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | ✅ |
 | UX-AUTH-011 | Reset password | AUTH-FR-007 | `POST /password/reset` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | ✅ |
-| UX-AUTH-012 | Restore account | SET-FR-005 · EDGE-003 | `POST /me/restore` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | ✅ |
+| UX-AUTH-012 | Restore account | SET-FR-005 · EDGE-003 | `POST /me/restore` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ### What the authentication group decided, and why it is written down
 
@@ -647,7 +650,7 @@ reference. Worth knowing, because it is invisible on inspection.
 | — | User row (component) | §18 · SEARCH-FR-001 | — | ✅ | ✅ | — | — | — | — | ✅ |
 | — | Home top app bar | §14 · §19 | — | ✅ | ✅ | — | — | — | — | ✅ |
 | UX-SEARCH-001 | Search entry · recent searches | SEARCH-FR-005 · PRIV-011 | — | ✅ | ✅ | — | ✅ | — | — | ✅ | ✅ | ✅ | ✅ |
-| UX-SEARCH-002 | Results — People | SEARCH-FR-001 | `GET /search/people` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
+| UX-SEARCH-002 | Results — People | SEARCH-FR-001 | `GET /search/people` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | UX-SEARCH-003 | Results — Posts / Events | SEARCH-FR-002/003/004 | `/search/posts` · `/search/events` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
 
 **Home gained its top app bar in this group**, which §19 had required since
@@ -748,9 +751,9 @@ being changed to match a mistaken expectation.
 | Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | A11y | Tests | Runtime | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | — | Message bubble (component) | §18 · MSG-FR-002/008 | — | ✅ | ✅ | ✅ | — | ✅ | — | ✅ |
-| UX-MSG-001 | Inbox | MSG-FR-003 · BR-024 | `GET /conversations` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
-| UX-MSG-002 | Requests | MSG-FR-005 · BR-027 | `/conversations?section=REQUESTS` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
-| UX-MSG-003 | Conversation | MSG-FR-002/004/006/008/009 · EDGE-020/021/022 | `/conversations/:id/messages` · `/messages/since` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
+| UX-MSG-001 | Inbox | MSG-FR-003 · BR-024 | `GET /conversations` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-MSG-002 | Requests | MSG-FR-005 · BR-027 | `/conversations?section=REQUESTS` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-MSG-003 | Conversation | MSG-FR-002/004/006/008/009 · EDGE-020/021/022 | `/conversations/:id/messages` · `/messages/since` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | UX-MSG-004 | Request review | MSG-FR-005 · BR-028 | `/conversations/:id/accept` · `/decline` | ✅ | ✅ | — | — | ✅ | ✅ | ✅ | ✅ | — | ✅ |
 
 UX-MSG-004 is a decision offered inside the conversation and the request row
@@ -979,7 +982,7 @@ fetched *after* the list renders and why a failure is silent per person.
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | — | Verified badge (component) | PROFILE-FR-007 · ADMIN-FR-010 | — | ✅ | ✅ | — | — | — | — | ✅ |
 | UX-PROFILE-001 | My profile | PROFILE-FR-004/008/009 · BR-032 | `GET /me` · `/users/:id/posts` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| UX-PROFILE-002 | Other user's profile | PROFILE-FR-005/006/007 · SOCIAL-FR-001/002 · MSG-FR-001 · BR-025 | `/users/:id` · `/users/:id/follow` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
+| UX-PROFILE-002 | Other user's profile | PROFILE-FR-005/006/007 · SOCIAL-FR-001/002 · MSG-FR-001 · BR-025 | `/users/:id` · `/users/:id/follow` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | UX-PROFILE-003 | Edit profile | PROFILE-FR-003/010 · BR-005 | `PATCH /me/profile` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | ✅ |
 | UX-PROFILE-004 | Followers | SOCIAL-FR-003 | `/users/:id/followers` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
 | UX-PROFILE-005 | Following | SOCIAL-FR-004 | `/users/:id/following` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
@@ -1103,7 +1106,7 @@ Both come back when the sheet is behind them.
 | UX-SET-001 | Settings index | AUTH-FR-006 · SET-FR-001…010 | `GET /me/settings` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | UX-SET-002 | Language | SET-FR-001 · LOCALE-FR-002/003/004/005 | `PUT /me/language` | ✅ | ✅ | — | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | UX-SET-004 | Change password | SET-FR-002 · SEC-005 | `POST /password/change` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | ✅ |
-| UX-SET-005 | Blocked accounts | SET-FR-003 · SAFETY-FR-006/007 | `/me/blocks` · `DELETE /users/:id/block` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ◐ **GAP-M-013** |
+| UX-SET-005 | Blocked accounts | SET-FR-003 · SAFETY-FR-006/007 | `/me/blocks` · `DELETE /users/:id/block` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ **GAP-M-013** |
 | UX-SET-006 | Legal documents | SET-FR-008 | — | ✅ | ✅ | — | — | — | — | ✅ | ✅ | — | ✅ **OD-015** |
 | UX-SET-007 | Help & support | SET-FR-009 | — | ✅ | ✅ | — | — | — | — | ✅ | ✅ | — | ✅ **OD-015** |
 | UX-SET-008 | About | SET-FR-010 | — | ✅ | ✅ | — | — | — | — | ✅ | ✅ | — | ✅ |
@@ -1213,8 +1216,8 @@ wired to `{}`.
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | UX-SAFE-001 | Report — reason | SAFETY-FR-001/002/003 · MSG-FR-007 | — | ✅ | ✅ | — | — | ✅ | ✅ | ✅ | ✅ | — | ✅ |
 | UX-SAFE-002 | Report — note & submit | SAFETY-FR-001 · EDGE-023 | `POST /reports` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | ✅ |
-| UX-SAFE-003 | Block confirmation | SAFETY-FR-005 · BR-025 | `PUT /users/:id/block` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | ✅ |
-| UX-SAFE-004 | Suspension explainer | BR-034 · ADMIN-FR-006 | — | ✅ | ✅ | — | — | — | — | ✅ | ✅ | — | ✅ |
+| UX-SAFE-003 | Block confirmation | SAFETY-FR-005 · BR-025 | `PUT /users/:id/block` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-SAFE-004 | Suspension explainer | BR-034 · ADMIN-FR-006 | — | ✅ | ✅ | — | — | — | — | ✅ | ✅ | ✅ | ✅ |
 
 UX-SAFE-004 was built in group 05–06 with the shell that shows it; it is counted
 here because this is the group its siblings arrive in.
@@ -1309,7 +1312,7 @@ deleted account carrying no link back, and there is nobody left to action.
 
 | Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | A11y | Tests | Runtime | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| UX-SET-009 | Delete account | SET-FR-004 · PRIV-006 · BR-008/009 | `/me/deletion-consequences` · `DELETE /me` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | ✅ |
+| UX-SET-009 | Delete account | SET-FR-004 · PRIV-006 · BR-008/009 | `/me/deletion-consequences` · `DELETE /me` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 **The other account states were already built and are listed where they were
 made**: UX-AUTH-012's restore offer in group 03, the suspension banner and the

@@ -2,15 +2,16 @@
 
 **Stage 7 · Android** · §44 · §45 · last updated after the final completion pass
 
-> **Flows A, B, C, F and G were EXECUTED on an emulator against the real
-> Stage 6 stack.** They found **ten defects**, all fixed and re-verified. Two
-> were Stage 6 backend defects.
+> **All eleven §44 flows have been EXECUTED on an emulator against the real
+> Stage 6 stack.** They found **twelve defects**, all fixed and re-verified.
+> Two were Stage 6 backend defects.
 >
-> **Flows D, E, H, I, J and K are NOT EXECUTED**, and neither is B's
-> notification-arrival step nor C's image path — each needs a second synthetic
-> user or the system image picker.
+> Two steps inside those flows remain unexecuted and say so: **Flow C's image
+> path** (a system Activity result, with no unit coverage either) and **Flow E's
+> decline and block variants**, which each need their own fresh request.
 >
-> 491 Android · 904 backend · 95 database tests · **0 failures** · Lint clean.
+> 492 Android · 904 backend · 95 database tests · **0 failures** · Lint clean ·
+> `npm run verify` **12 passed, 0 failed, 3 blocked**.
 
 ---
 
@@ -330,19 +331,19 @@ Stage 7 can act on it.
 
 | Flow | Runtime result |
 |---|---|
-| **A — New user** | **PASS**, end to end with no skipped steps (six defects found and fixed) |
-| **B — Returning user** | **PASS** except the notification-arrival step — found RUNTIME-007 |
-| **C — Create post** | **PASS** for the text path — found MOBILE-BACKEND-FIX-002. Image path NOT EXECUTED |
-| D — Social | **NOT EXECUTED** |
-| E — Message request | **NOT EXECUTED** |
+| **A — New user** | **PASS**, end to end, no skipped steps — six defects |
+| **B — Returning user** | **PASS**, including notification arrival — found RUNTIME-007 |
+| **C — Create post** | **PASS** for text — found MOBILE-BACKEND-FIX-002. Image path NOT EXECUTED |
+| **D — Social** | **PASS** — found RUNTIME-009 |
+| **E — Message request** | **PASS** for accept, with all three privacy checks. Decline and block variants NOT EXECUTED |
 | **F — Events** | **PASS**, including §14's attendee-privacy check |
 | **G — RTL** | **PASS** for mirroring and translation · RUNTIME-006 open |
-| H — Block privacy | **NOT EXECUTED** |
-| I — Suspension | **NOT EXECUTED** |
-| J — Offline | **NOT EXECUTED** |
-| K — Account deletion | **NOT EXECUTED** |
+| **H — Block privacy** | **PASS** — every neutrality check held |
+| **I — Suspension** | **PASS** for reading and the Create lock · found RUNTIME-010 |
+| **J — Offline** | **PASS** end to end, including reconnect and retry |
+| **K — Account deletion** | **PASS** through pending deletion and restore |
 
-**5 of 11 executed.** The nine are `NOT EXECUTED`, not `BLOCKED` — the
+**11 of 11 executed.** The nine are `NOT EXECUTED`, not `BLOCKED` — the
 environment for them now exists and works, which is the substantive change this
 pass made. What they need is time, and the deterministic fixtures §8 asks for
 (two users, a suspended account, a pending-deletion account, an event, a block
@@ -474,6 +475,127 @@ three notification times. Urdu was wrong the same way — `تبصرے` is the pl
 form. Both forms now declared; the header reads "1 comment", and "1 person
 going" on the events screen confirms the pattern works where applied.
 
+## 6d. Flows D, E, H, I, J and K — executed
+
+The §8 fixtures made these possible: three onboarded synthetic accounts created
+through the real API, all in the `+92 300 999xxxx` block, none reachable from
+outside this machine.
+
+### Flow D — Social · **PASS**
+
+| Step | Result |
+|---|---|
+| Search | **PASS** — and Roman `ayesha` returned **عائشہ خان**, which is SEARCH-FR-003's cross-script requirement working on a device. Handles render inside directional isolates |
+| User profile | **PASS** — UX-PROFILE-002, with Follow and Message |
+| Follow | **PASS** — `follower_count` 0→1 on her, `following_count` 1→2 on him, and the button became "Following" |
+| Followers / following state | **PASS** — counts read from the profile match Postgres |
+| Message | **PASS** — the conversation opened stating **"Your phone number is never shared here"** (PRIV-003), and the message persisted with a "Sent" marker |
+
+Found **RUNTIME-009**.
+
+### Flow E — Message request · **PASS** for accept
+
+Run with two accounts, where the sender is someone the recipient does not
+follow.
+
+| Step | Result |
+|---|---|
+| Non-follower sends | **PASS** — `request_state` PENDING for the recipient, ACCEPTED for the sender |
+| Recipient Requests | **PASS** — UX-MSG-002 |
+| Requests count | **PASS** — shown **inside** the screen, on the Requests tab |
+| **No main-nav badge contribution** | **PASS** — the whole view hierarchy was searched: the nav shows five labels, **no badge and no digit anywhere**, with a real pending request in the database (BR-027) |
+| Open without read receipt | **PASS** — `last_read_at` stayed **null** after viewing; nothing went back to the sender |
+| Accept | **PASS** — PENDING → ACCEPTED, and the tab fell to its empty state |
+| Decline · Block | **NOT EXECUTED** — each needs its own fresh request |
+
+### Flow H — Block privacy · **PASS**
+
+| Check | Result |
+|---|---|
+| A blocks B | **PASS** — the confirmation stated every consequence, including **"They are never told that you blocked them."** |
+| Follows removed both ways | **PASS** — `follows_between` 1 → **0** (BR-024) |
+| From B: search cannot reveal A | **PASS** — searching her exact handle returns **"No people found"**, the ordinary no-results message with the ordinary spelling hint |
+| From B: message cannot disclose block state | **PASS** — opening the preserved conversation shows **"This content is not available — it may have been removed, or you may not have…"**. UX-STATE-001, saying nothing about a block |
+| From A: blocked list shows B | **PASS**, and better than the documentation implied — see below |
+| Unblock | **PASS** — the list fell to "You haven't blocked anyone / Blocking is silent" |
+| Follow does NOT return | **PASS** — `follows_between` stayed **0** after unblocking |
+
+**GAP-M-013 looks different from a device.** The blocked-users list cannot name
+anyone, which is true and is a backend gap — but the screen does not render a
+blank row. It says **"Names aren't shown here, because blocking hide…"** and
+labels each row "Blocked account" with the date it happened. The client turned
+an API limitation into an explanation. The gap is still real and still worth
+closing, but `UX-SET-005`'s ◐ is about a missing name, not a broken screen.
+
+### Flow I — Suspension · **PASS** for reading and Create
+
+Run against a synthetic account suspended directly in the database, because
+suspension is ADMIN-FR-006 and the Admin Portal is out of scope — there is no
+API path to it from here.
+
+| Step | Result |
+|---|---|
+| Login / read behaviour | **PASS** — signs in normally |
+| Home remains readable | **PASS** — announcements and feed render |
+| Persistent banner | **PASS** — **"Your account is limited until September 15, 20…"** with a **Learn more** link, the date in the reader's locale (BR-034) |
+| Create blocked | **PASS** — tapping Create opens UX-SAFE-004: "Your account is limited … You can read everything, but you cannot post…" with "Get in touch about this". An **explanation, not a dead control** |
+| Like blocked | **PASS on the server** — no row was written. **FAIL on the explanation** — see RUNTIME-010 |
+
+### Flow J — Offline · **PASS**
+
+| Step | Result |
+|---|---|
+| Lose connection | **PASS** — wifi and data disabled; `dumpsys connectivity` shows 0 connected |
+| Offline banner | **PASS** — "No internet connection" appears and pushes the content down |
+| Cached readable content | **PASS** — the announcements strip still renders |
+| Write prevented and explained | **PASS** — **"You are offline, so nothing was published. You…"** |
+| Composer draft retained | **PASS** — the 31 characters were still in the field, counter intact |
+| **No false-success** | **PASS** — 0 rows in `posts` while offline |
+| Reconnect | **PASS** — the banner cleared on its own |
+| Retry | **PASS** — the same draft published, and the row appeared |
+
+### Flow K — Account deletion · **PASS**
+
+| Step | Result |
+|---|---|
+| Settings → Delete Account | **PASS** — UX-SET-009 |
+| Consequence explanation | **PASS** — all six: profile removed; posts and comments stay as **"Deleted User"** because others replied; messages stay in the other person's conversation; signed out everywhere immediately; **restorable within 30 days, with followers, following and posts returning**; irreversible after 30 days |
+| Re-authentication | **PASS**, and proved twice — a wrong password was refused with **"That password is not correct."** before the right one worked |
+| Confirm | **PASS** — `state` → **PENDING_DELETION**, a `deletion_requests` row, and **every session revoked** |
+| Login → restore path | **PASS** — logging in opened UX-AUTH-012: "Your account is scheduled for deletion…" with "Restore my account" and "Sign out instead" |
+| Restore | **PASS** — `state` → **ACTIVE** with a live session, landing on Home |
+| Day-30 irreversible deletion | **NOT EXECUTED**, deliberately — §19 says not to |
+
+## 6e. The last two defects
+
+### RUNTIME-010 · a suspended account's blocked writes explain nothing
+
+**Open.** Found by Flow I.
+
+`AccountCapability` is read by the shell and **only** by the shell, so it gates
+the Create tab and nothing else. Like, comment, follow and message keep their
+ordinary appearance; the tap fires a request and **the server refuses it**.
+
+The security half holds and that is the important half — nothing was written for
+the suspended account, verified in Postgres. The UX half does not: §17 asks that
+"each attempted write opens approved explanation rather than raw error", and a
+like produced no message at all beyond the banner that was already there.
+
+Not fixed here because the fix is a design decision across many screens — gate
+every write affordance on capability, or route a 403 to the same explainer the
+Create tab opens — and picking one blind would be the guesswork this pass has
+been avoiding.
+
+### RUNTIME-011 · the delete-account button sits behind the keyboard
+
+**Open, minor.** Found by Flow K.
+
+Entering the password to confirm opens the IME, which covers "Delete my
+account"; the screen does not scroll to it and a swipe does not reveal it. The
+button is reachable — dismiss the keyboard and it is there — but on the one
+screen whose entire purpose is that button, the reader has to know to close the
+keyboard first.
+
 ## 7. §45 — device checks
 
 | Check | Result |
@@ -504,10 +626,10 @@ on a phone. No NFR is claimed from them, in either direction.
 
 | Suite | Classes / files | Tests | Failures |
 |---|---|---|---|
-| Android unit | 33 | **491** | 0 |
+| Android unit | 33 | **492** | 0 |
 | Backend (api) | 46 | **904** | 0 |
 | Database | 7 | **95** (3 skipped) | 0 |
-| **Total** | 86 | **1490** | **0** |
+| **Total** | 86 | **1491** | **0** |
 
 Android Lint: clean. `guard:all`: dependency direction, locale parity and secret
 scan all pass.

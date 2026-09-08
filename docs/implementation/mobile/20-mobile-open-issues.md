@@ -22,11 +22,13 @@ after Flow A and Flow G were executed and six defects were fixed.
 | ~~RUNTIME-007~~ — logging in skipped onboarding, landing an account with no username on Home | **FIXED and runtime-verified.** `destinationForSession` extracted so the login and splash paths share one resolver |
 | ~~RUNTIME-008~~ — "1 comments" | **FIXED.** `comment_count` is a `<plurals>` in both languages |
 | ~~MOBILE-BACKEND-GAP-003~~ — `profiles.post_count` never maintained | **FIXED** as MOBILE-BACKEND-FIX-002: `0023_post_count_trigger`, backfilled, five database tests |
+| **RUNTIME-010** — a suspended account's blocked writes explain nothing. The server refuses them (verified), but only the Create tab has an explainer | **IMPLEMENTABLE NOW** |
+| **RUNTIME-011** — the delete-account confirm button sits behind the keyboard, and the screen does not scroll to it | **IMPLEMENTABLE NOW** |
 | **RUNTIME-006** — Home's Urdu empty-state button compressed to ≈28dp with a clipped label | **IMPLEMENTABLE NOW** |
 | **GAP-M-016** · **GAP-M-017** · **GAP-M-018** — interests, post editing, mark-all-read | **IMPLEMENTABLE NOW**, and deliberately not built: each is a Could with no designed screen, and §49 forbids adding one |
 | `UX-HOME-005` category filter · `UX-HOME-006` announcement detail | **IMPLEMENTABLE NOW** — the only two unbuilt screens of 61 |
 | Compose UI tests (none exist) | **IMPLEMENTABLE NOW** — the emulator exists |
-| §44 flows **D, E, H, I, J, K**, plus B’s notification arrival and C’s image path | **RUNTIME VERIFICATION REQUIRED** — B, C and F now pass; what the rest need is a **second synthetic user** (§8) and the system image picker, not a device |
+| ~~§44 flows~~ | **ALL ELEVEN EXECUTED.** What remains inside them is Flow C’s image path (a system Activity result) and Flow E’s decline and block variants, each needing its own fresh request |
 | ~~`UX-SETUP-003` re-render~~ | **VERIFIED.** The suggestions screen renders after the crash fix, reached by completing onboarding |
 | §45 image picker · camera · large font · slow network · offline/reconnect · chat · scrolling | **RUNTIME VERIFICATION REQUIRED** |
 | **GAP-M-013** — `/me/blocks` returns no display name or handle | **BACKEND GAP** — see §0.1 |
@@ -45,6 +47,14 @@ after Flow A and Flow G were executed and six defects were fixed.
 
 ### 0.1 · GAP-M-013 re-evaluated as a backend gap
 
+**Seen on a device, it is narrower than this register implied.** The
+blocked-users screen does not render a blank row: it says **"Names aren't shown
+here, because blocking hide…"** and labels each row "Blocked account" with the
+date. The client turned the API limitation into an explanation, so the screen
+works and is honest. What is missing is the name — which still matters, because
+somebody who has blocked several people cannot tell which row is which.
+
+
 §22D asks for this specifically. **SET-FR-003 and SAFETY-FR-007 are Musts**, the
 screen is built, and `GET /me/blocks` returns no `displayName` and no `username` —
 so a row cannot name the person it is about. That is not an external dependency;
@@ -59,6 +69,16 @@ run would be exactly the guesswork the earlier fix avoided. Recorded as
 **MOBILE-BACKEND-GAP-002**, with the shape of the fix stated: add the same
 public-profile projection `/users/{id}` already returns, for blocked users only,
 visible only to the blocking user.
+
+### 0.2 · One flake worth naming
+
+`npm run verify`'s api-smoke lane failed once and passed on the next run, with
+the same tree. Run standalone immediately afterwards it reported **413 passed,
+0 failed**. The cause is the smoke suite itself: it registers real numbers
+against the running API, and three runs inside a few minutes trip a rate limit
+it is designed to enforce. **Not a defect in the app and not a defect in the
+suite** — but it means a red api-smoke lane should be re-run once before
+anybody goes looking for a cause.
 
 ## 1 · Governance — not the implementation's to clear
 
@@ -87,7 +107,7 @@ null, the ordering of the deletion consequences PRIV-006 requires a user to read
 which of the eight API failures each of §21's four states answers for, every
 link shape §42 accepts and the many more it refuses, eight accessibility and RTL
 invariants asserted over the whole source tree, and the exact field shape of
-every type that enforces a privacy rule structurally. **491 Android, 904 backend and 95 database tests, all passing.** |
+every type that enforces a privacy rule structurally. **492 Android, 904 backend and 95 database tests, all passing.** |
 | **What group 22 added** | Eight source-level invariants: no absolute alignment, no left/right padding or text alignment, every directional icon mirrored, the tab list never reversed, `text-tertiary` never colouring informational text, no bare 40dp `TextButton`, no hardcoded user-visible string, every lazy item keyed. Each an allowlist, so a new permitted use has to be argued for in the test. The RTL rules were all already satisfied; the contrast ones were violated on 55 sites. |
 | **What group 23 added** | Two integration tests over the seams a unit test cannot see. `ApiContractTest`: all 75 client routes exist in Stage 6's generated contract, 0 missing, and each of the 29 uncalled server routes carries a stated reason so a new one fails the build. `IntegrationWiringTest`: every function on every `*Source` interface reaches a caller, with the orphan set pinned at exactly three. Between them they found a **Must** requirement that had never been implemented and three declarations nothing called. |
 | **What that does not prove** | That pixels mirror. The tests prove Create sits at index 2 of 5 and that the list is never pre-reversed; they cannot prove the row renders right-to-left. §36 makes RTL release-critical, so this gap is the largest single verification debt in Stage 7. |
