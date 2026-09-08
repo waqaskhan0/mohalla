@@ -71,6 +71,10 @@
 
     <string name="register_phone_title">What is your mobile number?</string>
     <string name="register_phone_body">We will send you a code to confirm it.</string>
+    <string name="register_account_type">Account type</string>
+    <string name="account_type_individual">Individual</string>
+    <string name="account_type_organization">Organization</string>
+    <string name="register_account_type_permanent">This cannot be changed later. Choosing Organization does not add a verified badge.</string>
     <string name="register_dob_title">When were you born?</string>
     <string name="register_dob_body">You need to be at least 13 to use Mohalla.</string>
     <string name="register_dob_underage">You need to be at least 13 to use Mohalla.</string>

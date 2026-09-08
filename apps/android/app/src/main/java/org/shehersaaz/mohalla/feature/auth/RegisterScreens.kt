@@ -1,25 +1,36 @@
 package org.shehersaaz.mohalla.feature.auth
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import org.shehersaaz.mohalla.R
 import org.shehersaaz.mohalla.core.design.MohallaTheme
 import org.shehersaaz.mohalla.core.design.MohallaType
 import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.ui.AuthNotice
-import org.shehersaaz.mohalla.core.ui.MohallaTextButton
 import org.shehersaaz.mohalla.core.ui.AuthNoticeTone
 import org.shehersaaz.mohalla.core.ui.AuthScaffold
 import org.shehersaaz.mohalla.core.ui.MohallaButton
 import org.shehersaaz.mohalla.core.ui.MohallaCheckbox
 import org.shehersaaz.mohalla.core.ui.MohallaPasswordField
 import org.shehersaaz.mohalla.core.ui.MohallaPhoneField
+import org.shehersaaz.mohalla.core.ui.MohallaTextButton
 import org.shehersaaz.mohalla.core.ui.MohallaTextField
 
 /**
@@ -43,6 +54,7 @@ import org.shehersaaz.mohalla.core.ui.MohallaTextField
 fun RegisterPhoneScreen(
     state: RegisterUiState,
     onPhoneChanged: (String) -> Unit,
+    onAccountTypeChanged: (AccountType) -> Unit,
     onContinue: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -76,6 +88,87 @@ fun RegisterPhoneScreen(
                 null
             },
             imeAction = ImeAction.Next,
+        )
+
+        AccountTypeSelector(
+            selected = state.accountType,
+            onSelect = onAccountTypeChanged,
+        )
+    }
+}
+
+/**
+ * PROFILE-FR-006 - Individual or Organization.
+ *
+ * ON THE FIRST REGISTRATION SCREEN, not a screen of its own. The UI/UX
+ * inventory is 61 screens and this requirement was never given one; adding a
+ * sixty-second would put a whole step in front of every new user for a choice
+ * that is one tap. So it sits under the phone field, on the step where somebody
+ * is already deciding what they are signing up as.
+ *
+ * THE CAPTION IS NOT DECORATION. BR-011 makes this permanent and OD-020 means
+ * there is no administrator to correct it, so the one moment this can be got
+ * right is this one - and §13's rule that Organization
+ * *"does not automatically show a verified badge"* has to be said here too,
+ * or the label reads like a claim to standing.
+ */
+@Composable
+private fun AccountTypeSelector(
+    selected: AccountType,
+    onSelect: (AccountType) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(MohallaTheme.spacing.Space2)) {
+        Text(
+            text = stringResource(R.string.register_account_type),
+            style = MohallaTheme.text(MohallaType.Label),
+            color = MohallaTheme.colors.TextSecondary,
+            modifier = Modifier.semantics { heading() },
+        )
+
+        Row(horizontalArrangement = Arrangement.spacedBy(MohallaTheme.spacing.Space2)) {
+            AccountType.entries.forEach { type ->
+                val isSelected = type == selected
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .defaultMinSize(minHeight = MohallaTheme.spacing.Space12)
+                        .background(
+                            color = if (isSelected) {
+                                MohallaTheme.colors.BrandPrimary
+                            } else {
+                                MohallaTheme.colors.SurfacePrimary
+                            },
+                            shape = MohallaTheme.radius.ShapeMd,
+                        )
+                        .selectable(
+                            selected = isSelected,
+                            role = Role.RadioButton,
+                            onClick = { onSelect(type) },
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(
+                            when (type) {
+                                AccountType.INDIVIDUAL -> R.string.account_type_individual
+                                AccountType.ORGANIZATION -> R.string.account_type_organization
+                            },
+                        ),
+                        style = MohallaTheme.text(MohallaType.Button),
+                        color = if (isSelected) {
+                            MohallaTheme.colors.TextInverse
+                        } else {
+                            MohallaTheme.colors.TextPrimary
+                        },
+                    )
+                }
+            }
+        }
+
+        Text(
+            text = stringResource(R.string.register_account_type_permanent),
+            style = MohallaTheme.text(MohallaType.Caption),
+            color = MohallaTheme.colors.TextSecondary,
         )
     }
 }

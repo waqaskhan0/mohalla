@@ -1,6 +1,6 @@
 # 17 — Mobile Screen Coverage
 
-**Stage 7 · Android** · 61 required screens · last updated after group 22 (Accessibility, RTL and performance)
+**Stage 7 · Android** · 61 required screens · last updated after group 23 (Integration validation)
 
 > **This table is the answer to "is Stage 7 feature-complete?"** It is not, and
 > the count below says by how much. A screen is `DONE` only when it is built,
@@ -16,7 +16,7 @@ on a device**, because none is available (see `00-mobile-baseline.md` §6).
 ## Progress
 
 | | Screens |
-|---|---|
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | ✅ Complete in both directions | **55** |
 | ◐ Partial | **4** (UX-AUTH-008 · UX-CREATE-003 · UX-EVENT-002 · UX-SET-005) |
 | ✗ Not started | **2** (UX-HOME-005 · UX-HOME-006) |
@@ -60,10 +60,10 @@ which compiles, runs, and silently saves nothing. Both now take theirs from
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | UX-AUTH-001 | Splash | NFR-PERF-003 | `GET /me` | ✅ | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ |
 | UX-AUTH-002 | Language selection | LOCALE-FR-001 · BR-040 | — | ✅ | ✅ | — | — | — | — | ✅ | ✅ | ✅ |
-| UX-STATE-001 | Content unavailable | SEC-019 · BR-025 | — | ✅ | ✅ | — | — | — | — | ✅ | ✅ | ✅ |
+| UX-STATE-001 | Content unavailable | SAFETY-FR-004 · SEC-019 · BR-025 | — | ✅ | ✅ | — | — | — | — | ✅ | ✅ | ✅ |
 | UX-STATE-002 | Offline | NFR-AVAIL-002 | — | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | ✅ |
 | UX-STATE-003 | Server error | SEC-018 · SRS §16 | — | ✅ | ✅ | — | — | ✅ | — | ✅ | ✅ | ✅ |
-| UX-STATE-004 | Rate limited | — | — | ✅ | ✅ | — | — | — | — | ✅ | ✅ | ✅ |
+| UX-STATE-004 | Rate limited | SAFETY-FR-009 | — | ✅ | ✅ | — | — | — | — | ✅ | ✅ | ✅ |
 
 `UX-AUTH-001` is the splash: it is the `Resolving` state of the startup router
 rather than a screen with content, and §9's rule — *"do not flash unauthorized
@@ -76,18 +76,18 @@ parameter**, so no caller can make the neutral refusal distinguishable
 
 ## Group 03 · Authentication
 
-| Screen | Name | Requirements | APIs | LTR | RTL | Status |
-|---|---|---|---|---|---|---|
-| UX-AUTH-003 | Welcome | AUTH-FR-001 · SEC-006 | — | ✅ | ✅ | ✅ |
-| UX-AUTH-004 | Log in | AUTH-FR-005 · SEC-006/007 | `POST /login` | ✅ | ✅ | ✅ |
-| UX-AUTH-005 | Register — phone | AUTH-FR-001/002 · BR-001 | `POST /register` | ✅ | ✅ | ✅ |
-| UX-AUTH-006 | Register — date of birth | BR-002 | — | ✅ | ✅ | ✅ |
-| UX-AUTH-007 | Register — password | SRS §12 | — | ✅ | ✅ | ✅ |
-| UX-AUTH-008 | Terms & Guidelines | BR-004 · PRIV-014 | `POST /register` | ✅ | ✅ | ◐ **OD-015** |
-| UX-AUTH-009 | OTP verification | AUTH-FR-003 · SEC-003 · EDGE-005 | `POST /otp/verify` `/otp/resend` | ✅ | ✅ | ✅ |
-| UX-AUTH-010 | Forgot password | AUTH-FR-006 | `POST /password/forgot` | ✅ | ✅ | ✅ |
-| UX-AUTH-011 | Reset password | AUTH-FR-006 | `POST /password/reset` | ✅ | ✅ | ✅ |
-| UX-AUTH-012 | Restore account | SET-FR-005 · EDGE-003 | `POST /me/restore` | ✅ | ✅ | ✅ |
+| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | A11y | Tests | Status |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| UX-AUTH-003 | Welcome | AUTH-FR-001 · SEC-006 | — | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | ✅ |
+| UX-AUTH-004 | Log in | AUTH-FR-005 · SEC-006/007 | `POST /login` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-AUTH-005 | Register — phone | AUTH-FR-001 · PROFILE-FR-006 · BR-001 | `POST /register` | ✅ | ✅ | — | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-AUTH-006 | Register — date of birth | AUTH-FR-008 · BR-002 | — | ✅ | ✅ | — | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-AUTH-007 | Register — password | AUTH-FR-001 · SRS §12 | — | ✅ | ✅ | — | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-AUTH-008 | Terms & Guidelines | AUTH-FR-009 · SAFETY-FR-008 · BR-004 · PRIV-014 | `POST /register` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ◐ **OD-015** |
+| UX-AUTH-009 | OTP verification | AUTH-FR-002/003 · SEC-003 · EDGE-005 | `POST /otp/verify` `/otp/resend` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-AUTH-010 | Forgot password | AUTH-FR-007 | `POST /password/forgot` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-AUTH-011 | Reset password | AUTH-FR-007 | `POST /password/reset` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-AUTH-012 | Restore account | SET-FR-005 · EDGE-003 | `POST /me/restore` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ### What the authentication group decided, and why it is written down
 
@@ -106,7 +106,7 @@ pass.
 already proved the account is theirs:
 
 | Disclosure | Why it is safe |
-|---|---|
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | `VERIFICATION_REQUIRED` on login | Required the correct password |
 | `PROFILE_NOT_CREATED` on `/me` | The caller's own account |
 | Wrong vs expired OTP code | Required possession of the number |
@@ -121,11 +121,11 @@ placeholder that looks like a real policy.
 
 ## Group 04 · Profile onboarding
 
-| Screen | Name | Requirements | APIs | LTR | RTL | Status |
-|---|---|---|---|---|---|---|
-| UX-SETUP-001 | Username selection | PROFILE-FR-001 · EDGE-007 | `/me/username` `/username/available` | ✅ | ✅ | ✅ |
-| UX-SETUP-002 | Profile setup | PROFILE-FR-002/003 · MEDIA-FR-001 | `POST /me/profile` · `/media/*` | ✅ | ✅ | ✅ |
-| UX-SETUP-003 | Suggested accounts | SOCIAL-FR-004 · RSK-001 | `GET /suggestions` · `/users/:id/follow` | ✅ | ✅ | ✅ |
+| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | A11y | Tests | Status |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| UX-SETUP-001 | Username selection | PROFILE-FR-002 · EDGE-007 | `/me/username` `/username/available` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-SETUP-002 | Profile setup | PROFILE-FR-001/003 · MEDIA-FR-001 | `POST /me/profile` · `/media/*` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-SETUP-003 | Suggested accounts | SOCIAL-FR-005 · RSK-001 | `GET /suggestions` · `/users/:id/follow` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ### What onboarding decided
 
@@ -179,16 +179,16 @@ deliberately chronological.
 
 ## Group 05–06 · Navigation shell and Home
 
-| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | Status |
-|---|---|---|---|---|---|---|---|---|---|---|
+| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | A11y | Tests | Status |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | — | Bottom navigation (component) | UI/UX §14 | — | ✅ | ✅ | — | — | — | — | ✅ |
 | — | Top app bar · back header (components) | UI/UX §18.5 | — | ✅ | ✅ | — | — | — | — | ✅ |
 | — | Navigation graph | UI/UX §12 | — | ✅ | ✅ | ✅ | — | — | — | ✅ |
 | — | Suspension banner + explainer | UX-SAFE-004 · BR-034 | `GET /me` | ✅ | ✅ | — | — | — | — | ✅ |
-| UX-HOME-001 | Home — Following | FEED-FR-001/003 | `/feed/following` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| UX-HOME-002 | Home — Discover | FEED-FR-004 | `/feed/discover` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| UX-HOME-005 | Category filter | FEED-FR-005 | `/categories` | — | — | — | — | — | — | ✗ |
-| UX-HOME-006 | Announcement detail | NOTIF-FR-005 | `/announcements/:id` | — | — | — | — | — | — | ✗ |
+| UX-HOME-001 | Home — Following | FEED-FR-001/002 · FEED-FR-004/005 | `/feed/following` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-HOME-002 | Home — Discover | FEED-FR-003 · FEED-FR-004 | `/feed/discover` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-HOME-005 | Category filter | FEED-FR-006 | `/categories` | — | — | — | — | — | — | — | — | ✗ |
+| UX-HOME-006 | Announcement detail | NOTIF-FR-005 | `/announcements/:id` | — | — | — | — | — | — | — | — | ✗ |
 
 `UX-HOME-005` and `UX-HOME-006` are **not** started. The ViewModel already
 carries `selectCategory`, and the filter reaching the API rather than being
@@ -262,14 +262,14 @@ of a document nobody has written. The debug build carries the literal
 
 ## Group 07 · Events
 
-| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | Status |
-|---|---|---|---|---|---|---|---|---|---|---|
+| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | A11y | Tests | Status |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | — | Event card · date block · RSVP row | UI/UX §18 | — | ✅ | ✅ | ✅ | — | — | — | ✅ |
-| UX-EVENT-001 | Events — Upcoming | EVENT-FR-005 | `GET /events` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| UX-EVENT-002 | Events — Mine | EVENT-FR-004/007 | `GET /users/:id/events` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ |
-| UX-EVENT-003 | Event detail | EVENT-FR-003/004/006 · BR-045 | `/events/:id` · `/rsvp` · `/join` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
-| UX-EVENT-004 | Create event | EVENT-FR-001/002 · BR-043 | `POST /events` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
-| UX-EVENT-005 | Edit / cancel event | EVENT-FR-007 | `PATCH`/`DELETE /events/:id` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
+| UX-EVENT-001 | Events — Upcoming | EVENT-FR-005 | `GET /events` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-EVENT-002 | Events — Mine | EVENT-FR-004/007 | `GET /users/:id/events` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ |
+| UX-EVENT-003 | Event detail | EVENT-FR-003/004/006 · BR-045 | `/events/:id` · `/rsvp` · `/join` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-EVENT-004 | Create event | EVENT-FR-001/002 · BR-043 | `POST /events` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-EVENT-005 | Edit / cancel event | EVENT-FR-007 | `PATCH`/`DELETE /events/:id` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 **The privacy correction was applied, and the API turned out to agree.** The
 prototype draws an attendee avatar stack — three faces and a "+15" beside "18
@@ -379,15 +379,15 @@ JDK's own `ur-PK` data, which renders `14` beside the Urdu month name `ستمب�
 
 ## Group 08 · Create and media
 
-| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | Status |
-|---|---|---|---|---|---|---|---|---|---|---|
+| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | A11y | Tests | Status |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | — | Media rendering · avatar · strip | MEDIA-FR-001 · §34 | `GET /media/:id` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | — | Upload tile ×5 states | §19 · §34 · EDGE-013 | `/media/*` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
 | — | Date and time picker | §18 | — | ✅ | ✅ | — | — | — | — | ✅ |
-| UX-CREATE-001 | Composer | POST-FR-001/003/006 · BR-012/013 · EDGE-011/013 | `POST /posts` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| UX-CREATE-002 | Image picker & compress | MEDIA-FR-001 · NFR-PERF-005 | `/media/upload-slot` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
-| UX-CREATE-003 | Attachment sheet | POST-FR-002/004/005 | — | ✅ | ✅ | — | — | — | — | ◐ |
-| UX-CREATE-004 | Category picker | POST-FR-006 · BR-017 | `GET /categories` | ✅ | ✅ | ✅ | ✅ | — | — | ✅ |
+| UX-CREATE-001 | Composer | POST-FR-001/003/006 · BR-012/013 · EDGE-011/013 | `POST /posts` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-CREATE-002 | Image picker & compress | MEDIA-FR-001/005 · NFR-PERF-005 | `/media/upload-slot` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-CREATE-003 | Attachment sheet | POST-FR-002/004/005 | — | ✅ | ✅ | — | — | — | — | ✅ | ✅ | ◐ |
+| UX-CREATE-004 | Category picker | POST-FR-006 · BR-017 | `GET /categories` | ✅ | ✅ | ✅ | ✅ | — | — | ✅ | ✅ | ✅ |
 
 **UX-CREATE-002 has no crop step, and is still `✅`.** The screen's title in §19
 names "select up to 4 images, crop, and compress on the device". Selection and
@@ -499,11 +499,11 @@ is what closes UX-EVENT-004 and UX-EVENT-005.
 
 ## Group 09–10 · Post detail and engagement
 
-| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | Status |
-|---|---|---|---|---|---|---|---|---|---|---|
+| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | A11y | Tests | Status |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | — | Comment item · reply item | ENGAGE-FR-002/003 · BR-033 | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| UX-HOME-003 | Post detail | POST-FR-007/009 · ENGAGE-FR-001…006 | `/posts/:id` · `/comments` · `/like` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| UX-HOME-004 | Image viewer | MEDIA-FR-002 | `GET /media/:id` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
+| UX-HOME-003 | Post detail | POST-FR-007/009/010 · ENGAGE-FR-001…007 | `/posts/:id` · `/comments` · `/like` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-HOME-004 | Image viewer | MEDIA-FR-002 | `GET /media/:id` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ### What post detail and engagement decided, and why it is written down
 
@@ -593,13 +593,13 @@ reference. Worth knowing, because it is invisible on inspection.
 
 ## Group 11 · Search
 
-| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | Status |
-|---|---|---|---|---|---|---|---|---|---|---|
+| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | A11y | Tests | Status |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | — | User row (component) | §18 · SEARCH-FR-001 | — | ✅ | ✅ | — | — | — | — | ✅ |
 | — | Home top app bar | §14 · §19 | — | ✅ | ✅ | — | — | — | — | ✅ |
-| UX-SEARCH-001 | Search entry · recent searches | SEARCH-FR-005 · PRIV-011 | — | ✅ | ✅ | — | ✅ | — | — | ✅ |
-| UX-SEARCH-002 | Results — People | SEARCH-FR-001 | `GET /search/people` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| UX-SEARCH-003 | Results — Posts / Events | SEARCH-FR-002/003/004 | `/search/posts` · `/search/events` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-SEARCH-001 | Search entry · recent searches | SEARCH-FR-005 · PRIV-011 | — | ✅ | ✅ | — | ✅ | — | — | ✅ | ✅ | ✅ |
+| UX-SEARCH-002 | Results — People | SEARCH-FR-001 | `GET /search/people` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-SEARCH-003 | Results — Posts / Events | SEARCH-FR-002/003/004 | `/search/posts` · `/search/events` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 **Home gained its top app bar in this group**, which §19 had required since
 group 05–06 and which had been missed: `homeActions()` existed in
@@ -696,13 +696,13 @@ being changed to match a mistaken expectation.
 
 ## Group 12 · Messaging
 
-| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | Status |
-|---|---|---|---|---|---|---|---|---|---|---|
+| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | A11y | Tests | Status |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | — | Message bubble (component) | §18 · MSG-FR-002/008 | — | ✅ | ✅ | ✅ | — | ✅ | — | ✅ |
-| UX-MSG-001 | Inbox | MSG-FR-003 · BR-024 | `GET /conversations` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| UX-MSG-002 | Requests | MSG-FR-005 · BR-027 | `/conversations?section=REQUESTS` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| UX-MSG-003 | Conversation | MSG-FR-002/004/006/008/009 · EDGE-020/021/022 | `/conversations/:id/messages` · `/messages/since` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| UX-MSG-004 | Request review | MSG-FR-005 · BR-028 | `/conversations/:id/accept` · `/decline` | ✅ | ✅ | — | — | ✅ | ✅ | ✅ |
+| UX-MSG-001 | Inbox | MSG-FR-003 · BR-024 | `GET /conversations` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-MSG-002 | Requests | MSG-FR-005 · BR-027 | `/conversations?section=REQUESTS` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-MSG-003 | Conversation | MSG-FR-002/004/006/008/009 · EDGE-020/021/022 | `/conversations/:id/messages` · `/messages/since` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-MSG-004 | Request review | MSG-FR-005 · BR-028 | `/conversations/:id/accept` · `/decline` | ✅ | ✅ | — | — | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 UX-MSG-004 is a decision offered inside the conversation and the request row
 rather than a screen of its own: replying **is** accepting, so a reader who must
@@ -814,11 +814,11 @@ sets, and a field added under any name fails with the requirement quoted.
 
 ## Group 13 · Notifications
 
-| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | Status |
-|---|---|---|---|---|---|---|---|---|---|---|
+| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | A11y | Tests | Status |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | — | Notification row (component) | §18 · NOTIF-FR-002/003 | — | ✅ | ✅ | ✅ | — | — | — | ✅ |
-| UX-HOME-007 | Notification centre | NOTIF-FR-002/003/004/005 | `/notifications` · `/notifications/read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| UX-SET-003 | Notification preferences | NOTIF-FR-007 · SET-FR-007 | `/notifications/preferences` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
+| UX-HOME-007 | Notification centre | NOTIF-FR-002/003/004/005 · LOCALE-FR-006 | `/notifications` · `/notifications/read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-SET-003 | Notification preferences | NOTIF-FR-007 · SET-FR-007 | `/notifications/preferences` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 **The Home bell is no longer inert**, and neither is the Messages tab's badge.
 Both were declared in group 05–06 and group 12 respectively and neither was fed
@@ -926,15 +926,15 @@ fetched *after* the list renders and why a failure is silent per person.
 
 ## Group 14–15 · Profiles and the social graph
 
-| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | Status |
-|---|---|---|---|---|---|---|---|---|---|---|
+| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | A11y | Tests | Status |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | — | Verified badge (component) | PROFILE-FR-007 · ADMIN-FR-010 | — | ✅ | ✅ | — | — | — | — | ✅ |
-| UX-PROFILE-001 | My profile | PROFILE-FR-004/008/009 · BR-032 | `GET /me` · `/users/:id/posts` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| UX-PROFILE-002 | Other user's profile | PROFILE-FR-005/007 · SOCIAL-FR-001 · BR-025 | `/users/:id` · `/users/:id/follow` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| UX-PROFILE-003 | Edit profile | PROFILE-FR-003/010 · BR-005 | `PATCH /me/profile` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
-| UX-PROFILE-004 | Followers | SOCIAL-FR-003 | `/users/:id/followers` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| UX-PROFILE-005 | Following | SOCIAL-FR-004 | `/users/:id/following` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| UX-PROFILE-006 | Saved posts | FEED-FR-007 | `/me/saved` · `/posts/:id/save` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-PROFILE-001 | My profile | PROFILE-FR-004/008/009 · BR-032 | `GET /me` · `/users/:id/posts` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-PROFILE-002 | Other user's profile | PROFILE-FR-005/006/007 · SOCIAL-FR-001/002 · MSG-FR-001 · BR-025 | `/users/:id` · `/users/:id/follow` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-PROFILE-003 | Edit profile | PROFILE-FR-003/010 · BR-005 | `PATCH /me/profile` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-PROFILE-004 | Followers | SOCIAL-FR-003 | `/users/:id/followers` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-PROFILE-005 | Following | SOCIAL-FR-004 | `/users/:id/following` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-PROFILE-006 | Saved posts | FEED-FR-007 | `/me/saved` · `/posts/:id/save` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 **The Profile tab is no longer a placeholder**, and neither is the Message
 button that group 12 built a route for and nothing called: `conversationWith`
@@ -1049,15 +1049,15 @@ Both come back when the sheet is behind them.
 
 ## Group 16 · Settings
 
-| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | Status |
-|---|---|---|---|---|---|---|---|---|---|---|
-| UX-SET-001 | Settings index | SET-FR-001…010 | `GET /me/settings` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
-| UX-SET-002 | Language | SET-FR-001 · LOCALE-FR-002 | `PUT /me/language` | ✅ | ✅ | — | — | ✅ | ✅ | ✅ |
-| UX-SET-004 | Change password | SET-FR-002 · SEC-005 | `POST /password/change` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
-| UX-SET-005 | Blocked accounts | SET-FR-003 · SAFETY-FR-006/007 | `/me/blocks` · `DELETE /users/:id/block` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ **GAP-M-013** |
-| UX-SET-006 | Legal documents | SET-FR-008 | — | ✅ | ✅ | — | — | — | — | ✅ **OD-015** |
-| UX-SET-007 | Help & support | SET-FR-009 | — | ✅ | ✅ | — | — | — | — | ✅ **OD-015** |
-| UX-SET-008 | About | SET-FR-010 | — | ✅ | ✅ | — | — | — | — | ✅ |
+| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | A11y | Tests | Status |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| UX-SET-001 | Settings index | AUTH-FR-006 · SET-FR-001…010 | `GET /me/settings` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-SET-002 | Language | SET-FR-001 · LOCALE-FR-002/003/004/005 | `PUT /me/language` | ✅ | ✅ | — | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-SET-004 | Change password | SET-FR-002 · SEC-005 | `POST /password/change` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-SET-005 | Blocked accounts | SET-FR-003 · SAFETY-FR-006/007 | `/me/blocks` · `DELETE /users/:id/block` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ **GAP-M-013** |
+| UX-SET-006 | Legal documents | SET-FR-008 | — | ✅ | ✅ | — | — | — | — | ✅ | ✅ | ✅ **OD-015** |
+| UX-SET-007 | Help & support | SET-FR-009 | — | ✅ | ✅ | — | — | — | — | ✅ | ✅ | ✅ **OD-015** |
+| UX-SET-008 | About | SET-FR-010 | — | ✅ | ✅ | — | — | — | — | ✅ | ✅ | ✅ |
 
 UX-SET-005 is `◐` because the rows carry no names — see below. UX-SET-006 and
 UX-SET-007 are `✅` because the screens are complete and correct: what they show
@@ -1160,12 +1160,12 @@ wired to `{}`.
 
 ## Group 17 · Safety
 
-| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | Status |
-|---|---|---|---|---|---|---|---|---|---|---|
-| UX-SAFE-001 | Report — reason | SAFETY-FR-001/002/003 | — | ✅ | ✅ | — | — | ✅ | ✅ | ✅ |
-| UX-SAFE-002 | Report — note & submit | SAFETY-FR-001 · EDGE-023 | `POST /reports` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
-| UX-SAFE-003 | Block confirmation | SAFETY-FR-005 · BR-025 | `PUT /users/:id/block` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
-| UX-SAFE-004 | Suspension explainer | BR-034 · ADMIN-FR-006 | — | ✅ | ✅ | — | — | — | — | ✅ |
+| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | A11y | Tests | Status |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| UX-SAFE-001 | Report — reason | SAFETY-FR-001/002/003 · MSG-FR-007 | — | ✅ | ✅ | — | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-SAFE-002 | Report — note & submit | SAFETY-FR-001 · EDGE-023 | `POST /reports` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-SAFE-003 | Block confirmation | SAFETY-FR-005 · BR-025 | `PUT /users/:id/block` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
+| UX-SAFE-004 | Suspension explainer | BR-034 · ADMIN-FR-006 | — | ✅ | ✅ | — | — | — | — | ✅ | ✅ | ✅ |
 
 UX-SAFE-004 was built in group 05–06 with the shell that shows it; it is counted
 here because this is the group its siblings arrive in.
@@ -1179,7 +1179,7 @@ account.
 ### Where reporting and blocking can start
 
 | Surface | Reports | Blocks | Why |
-|---|---|---|---|
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Post detail | `POST` | via the sheet | The bar's second slot; Save has the first. Exclusive with Delete. |
 | Comment row | `COMMENT` | via the sheet | The only surface a comment has. Exclusive with Delete. |
 | Event detail | `EVENT` | — | An event is not a person. No block is offered, because there is nobody behind it. |
@@ -1258,9 +1258,9 @@ deleted account carrying no link back, and there is nobody left to action.
 
 ## Group 18–19 · Account state and deletion
 
-| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | Status |
-|---|---|---|---|---|---|---|---|---|---|---|
-| UX-SET-009 | Delete account | SET-FR-004 · PRIV-006 · BR-008/009 | `/me/deletion-consequences` · `DELETE /me` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
+| Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | A11y | Tests | Status |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| UX-SET-009 | Delete account | SET-FR-004 · PRIV-006 · BR-008/009 | `/me/deletion-consequences` · `DELETE /me` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 **The other account states were already built and are listed where they were
 made**: UX-AUTH-012's restore offer in group 03, the suspension banner and the
@@ -1563,7 +1563,7 @@ definition rather than four.
 
 ### And the invariants are now tests
 
-Eight of them, over the source tree, because **a rule enforced by reading is a
+Ten of them, over the source tree, because **a rule enforced by reading is a
 rule that holds until the next screen** — which is what this audit measured.
 Absolute alignment, left/right padding, left/right text alignment, unmirrored
 directional icons, a reversed tab list, `text-tertiary` on text, a bare
@@ -1580,6 +1580,108 @@ that make mirroring fail are absent, and that the contrast tokens are used as
 the audit permits. Seeing the result needs a device, and there is none — §36
 makes RTL release-critical, so that remains the largest verification debt in
 Stage 7.
+
+## Group 23 · Integration validation
+
+No new screens, and one **Must** requirement that turned out never to have been
+implemented.
+
+### This table was in three shapes, and §46 prescribes one
+
+§46 gives the column set exactly: *Screen ID · Screen Name · Requirement IDs ·
+API IDs · LTR · RTL · Loading · Empty · Error · Offline · Accessibility · Tests ·
+Status.* Thirteen columns.
+
+Groups 01–02 wrote thirteen. **Groups 03–04 wrote seven** — no state columns at
+all. **Groups 05–19 wrote eleven** — the states, but no **Accessibility** and no
+**Tests**. So for **55 of 61 screens the accessibility column §46 asks for was
+simply absent**, which means group 22's audit of all 55 could not have been read
+off this table: there was nowhere in it to record the answer.
+
+Now one header and 61 rows of thirteen cells. The four state columns the seven-
+column rows never had were **read off the screens** rather than asserted — each
+composable's own body inspected for a loading, empty and error path — and
+`Offline` is uniformly ✅ because group 20 put the banner *above* the NavHost, so
+it renders over the auth and setup graphs too.
+
+### Several requirement IDs were wrong by one
+
+Building `18-mobile-requirement-traceability.md` meant inverting this table, and
+the inversion is what exposed them:
+
+| Screen | Cited | Which is actually | Should have been |
+|---|---|---|---|
+| Forgot password · Reset password | `AUTH-FR-006` | **Logout** | `AUTH-FR-007` |
+| Username selection | `PROFILE-FR-001` | **Create profile** | `PROFILE-FR-002` |
+| Profile setup | `PROFILE-FR-002` | **Username Selection** | `PROFILE-FR-001` |
+| Suggested accounts | `SOCIAL-FR-004` | **Following list** | `SOCIAL-FR-005` |
+| Home — Discover | `FEED-FR-004` | **Pagination** | `FEED-FR-003` |
+| Category filter | `FEED-FR-005` | **Pull to refresh** | `FEED-FR-006` |
+
+Two of those were a straight swap. **Every one of them looks plausible on its own
+row** — which is the argument for deriving a traceability matrix from this table
+instead of writing it fresh: a fresh matrix would have repeated the reading, and
+an inverted one contradicts itself out loud.
+
+Ten requirements were also implemented on screens that never cited them:
+`AUTH-FR-008` age gate, `AUTH-FR-009` terms, `SAFETY-FR-004` threshold auto-hide,
+`SAFETY-FR-008` guidelines, `SAFETY-FR-009` rate limiting, `POST-FR-010` length,
+`MEDIA-FR-005` upload limits, `MSG-FR-001` starting a conversation,
+`SOCIAL-FR-002` unfollow and `PROFILE-FR-006` account type. Coverage went from **80 of 112
+in-scope requirements claimed by some screen to 100** without a line of new UI —
+the work had been done and the table had not said so.
+
+### The Must nobody had implemented
+
+**PROFILE-FR-006, account type.** *"At registration the user selects Individual
+or Organization."* The field existed on `RegisterRequest` from group 03 and
+**nothing ever set it**, so `explicitNulls = false` dropped it and the server
+applied its `?? 'INDIVIDUAL'` default to every account this app has ever created.
+
+BR-011 is what makes that expensive: the value is *"set once, not
+user-changeable; an administrator may correct it"* — and **OD-020** forbids
+provisioning any administrator. So an organization registering through the app
+was mistyped permanently, with no correction path in existence.
+
+It is now a choice on **UX-AUTH-005**, under the phone field rather than on a
+sixty-second screen the inventory does not have, carrying the caption BR-011
+requires and §13's rule that choosing Organization *"does not automatically show
+a verified badge"*. `register()` takes an `AccountType` as a **required**
+parameter, so the omission cannot recur silently.
+
+### Two tests for the seams a unit test cannot see
+
+`ApiContractTest` compares all **75** routes the client declares against Stage
+6's generated contract: **0 missing**. Each of the 29 server routes the client
+never calls carries a stated reason — admin portal, health, push (DEP-003),
+media bytes fetched by Coil or a presigned `PUT`, the session-refresh route the
+sliding idle window makes unnecessary, and `PUT /me/interests` (GAP-M-016) — so a
+**new** uncalled route fails the build until somebody says which kind it is.
+
+Its limitation is worth as much as its result: the generated contract's
+`components.schemas` is **empty**. It documents paths and says nothing about
+bodies — so this test can prove a route exists and can never prove a field is
+spelled the way the client expects, which is precisely the class of defect that
+cost group 12 its message cursor and group 14 its PATCH nulls.
+
+`IntegrationWiringTest` asks the other question: does every function on every
+`*Source` interface reach a caller? Three do not, each now stated —
+`PostSource.update` (POST-FR-008 has no screen, GAP-M-017), `PostSource.delete`
+(a duplicate of the wired `PostDetailRepository.deletePost`), and
+`NotificationSource.markAllRead` (whose comment described a "Mark all read"
+control that is drawn nowhere, GAP-M-018).
+
+Both are allowlists, for the reason group 11 paid for: a denylist of guessed
+names let four real defects through 271 tests.
+
+### What eleven traced flows are not
+
+§44's flows and §45's device checks are in `19-mobile-test-report.md`, traced
+step by step against the code and the contract. **Eleven traced, zero executed** —
+there is no emulator and no device. The trace shows every step has an
+implementation, a route and, mostly, a test. It cannot show the steps connect
+when a person taps them, and group 23's own four findings are all defects a
+person holding the phone would have found in seconds.
 
 ## What must be true before this table can say "feature-complete"
 

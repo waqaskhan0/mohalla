@@ -27,13 +27,32 @@ interface PostSource {
         mediaIds: List<String>,
     ): ApiResult<PostResponse>
 
-    /** POST-FR-008. `mediaIds` is absent by design — see [PostRepository.update]. */
+    /**
+     * POST-FR-008. `mediaIds` is absent by design — see [PostRepository.update].
+     *
+     * NOTHING CALLS THIS, AND THAT IS THE CURRENT STATE OF THE REQUIREMENT.
+     * POST-FR-008 is a **Could**, and the 61-screen UI/UX inventory contains no
+     * edit-post screen — so the route exists, the body rules below are correct,
+     * and there is nowhere to invoke them from. Recorded as GAP-M-017 and
+     * pinned by `IntegrationWiringTest` so it cannot be mistaken for live code
+     * again; if an edit screen is ever designed, this is what it calls.
+     */
     suspend fun update(
         postId: String,
         body: String?,
         categorySlug: String?,
     ): ApiResult<PostResponse>
 
+    /**
+     * A DUPLICATE THAT NOTHING CALLS. POST-FR-008's sibling requirement
+     * POST-FR-007 is fully wired — but through
+     * `PostDetailRepository.deletePost`, which the post-detail screen calls
+     * behind a confirmation dialog, because deletion is offered where the post
+     * is read rather than where it was written. This declaration is the same
+     * route reached from the composer's repository, and it is reached by
+     * nothing. Kept only so the interface stays a complete description of the
+     * posts resource; `IntegrationWiringTest` holds the reason.
+     */
     suspend fun delete(postId: String): ApiResult<Unit>
 
     suspend fun categories(): ApiResult<List<CategoryResponse>>

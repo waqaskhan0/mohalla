@@ -1797,6 +1797,7 @@ private fun NavGraphBuilder.authGraph(
         RegisterPhoneScreen(
             state = state,
             onPhoneChanged = vm::onPhoneChanged,
+            onAccountTypeChanged = vm::onAccountTypeChanged,
             onContinue = { if (vm.phoneStepValid) navController.navigate(Routes.REGISTER_DOB) },
             onBack = { navController.popBackStack() },
         )

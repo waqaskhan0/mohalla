@@ -36,6 +36,16 @@ interface NotificationSource {
 
     suspend fun markRead(ids: List<String>): ApiResult<Int>
 
+    /**
+     * DECLARED, IMPLEMENTED, AND CALLED BY NOTHING — deliberately.
+     *
+     * NOTIF-FR-002 asks for "an in-app list … newest-first with an unread
+     * count" where "opening one navigates to the item that caused it". It does
+     * not ask for a bulk control, and §49 forbids adding functionality outside
+     * scope, so the server's `read-all` capability stays unused rather than
+     * becoming a feature nobody specified. GAP-M-018, pinned by
+     * `IntegrationWiringTest`.
+     */
     suspend fun markAllRead(): ApiResult<Int>
 
     suspend fun preferences(): ApiResult<Map<PushCategory, Boolean>>
@@ -79,11 +89,17 @@ class NotificationRepository(
     /**
      * Mark some read.
      *
-     * CHUNKED AT THE SERVER'S OWN CEILING of 200 ids. A reader who scrolls a
-     * long way and then taps "Mark all read" is served by [markAllRead]; this
-     * path carries what one screenful marked, which is far below the limit —
-     * but sending 201 ids would be a 400 for the whole batch, and losing every
-     * read marker because one page was long is not a trade worth taking.
+     * CHUNKED AT THE SERVER'S OWN CEILING of 200 ids. This path carries what
+     * one screenful marked, which is far below the limit — but sending 201 ids
+     * would be a 400 for the whole batch, and losing every read marker because
+     * one page was long is not a trade worth taking.
+     *
+     * THIS SENTENCE USED TO SAY that a reader who scrolls a long way "and then
+     * taps 'Mark all read'" is served by [markAllRead]. **There is no such
+     * control on any screen** — no button, no menu item, not even a string to
+     * label one. The comment described a feature by describing a caller that
+     * does not exist, which is precisely how [markAllRead] went nineteen
+     * groups looking like live code. See GAP-M-018.
      */
     override suspend fun markRead(ids: List<String>): ApiResult<Int> {
         if (ids.isEmpty()) return ApiResult.Ok(0)

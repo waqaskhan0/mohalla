@@ -52,6 +52,7 @@ class AuthRepository(
         password: String,
         dateOfBirth: String,
         termsVersion: String,
+        accountType: AccountType,
     ): ApiResult<Unit> = apiCall {
         api.register(
             RegisterRequest(
@@ -59,6 +60,13 @@ class AuthRepository(
                 password = password,
                 dateOfBirth = dateOfBirth,
                 termsVersion = termsVersion,
+                // PROFILE-FR-006. NOT OPTIONAL HERE even though it is optional
+                // on the wire: the server defaults an absent value to
+                // INDIVIDUAL, so leaving this nullable is what let every
+                // account created through this app become an individual
+                // regardless of what the person was. A required parameter
+                // means a caller has to have asked.
+                accountType = accountType.wire,
             ),
         )
     }.let { result ->

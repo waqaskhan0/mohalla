@@ -38,8 +38,9 @@ null, the ordering of the deletion consequences PRIV-006 requires a user to read
 which of the eight API failures each of §21's four states answers for, every
 link shape §42 accepts and the many more it refuses, eight accessibility and RTL
 invariants asserted over the whole source tree, and the exact field shape of
-every type that enforces a privacy rule structurally. **469 tests, all passing.** |
+every type that enforces a privacy rule structurally. **478 tests, all passing.** |
 | **What group 22 added** | Eight source-level invariants: no absolute alignment, no left/right padding or text alignment, every directional icon mirrored, the tab list never reversed, `text-tertiary` never colouring informational text, no bare 40dp `TextButton`, no hardcoded user-visible string, every lazy item keyed. Each an allowlist, so a new permitted use has to be argued for in the test. The RTL rules were all already satisfied; the contrast ones were violated on 55 sites. |
+| **What group 23 added** | Two integration tests over the seams a unit test cannot see. `ApiContractTest`: all 75 client routes exist in Stage 6's generated contract, 0 missing, and each of the 29 uncalled server routes carries a stated reason so a new one fails the build. `IntegrationWiringTest`: every function on every `*Source` interface reaches a caller, with the orphan set pinned at exactly three. Between them they found a **Must** requirement that had never been implemented and three declarations nothing called. |
 | **What that does not prove** | That pixels mirror. The tests prove Create sits at index 2 of 5 and that the list is never pre-reversed; they cannot prove the row renders right-to-left. §36 makes RTL release-critical, so this gap is the largest single verification debt in Stage 7. |
 
 The manifest defect found in group 05–06 is the argument for closing it:
@@ -471,6 +472,65 @@ it can never resolve.
 the fingerprint, and `android:autoVerify="true"`. One line in the manifest, and
 three things that are not this repository's to supply.
 
+### GAP-M-016 · Interests can be read and never written
+
+**PROFILE-FR-011** lets somebody choose topics that inform suggested accounts.
+The server serves `PUT /me/interests` (PROF-API-009) and returns the chosen list
+on the own-profile response. **The client reads that field and has no way to set
+it.**
+
+**Why it is recorded rather than fixed.** PROFILE-FR-011 is a **Could**, it
+depends on **OD-017**, and the 61-screen UI/UX inventory contains no
+interests-selection screen — so building one would be adding a screen the design
+does not have, for a requirement nobody has decided to keep. §49's rule against
+"nice to have" functionality outside scope applies directly.
+
+**What it costs today.** Suggested accounts (SOCIAL-FR-005) fall back to whatever
+the server does without interests, which is the documented degraded behaviour:
+*"optional; skipping degrades no other function."* So the cost is quality of
+suggestions, not a broken flow.
+
+**How it was found.** `ApiContractTest` — comparing every route the client
+declares against Stage 6's generated contract left 29 server routes uncalled, and
+this was the one among them that no scope decision, blocked dependency or
+transport choice explained.
+
+**To close it:** OD-017, then a screen, then one call.
+
+### GAP-M-017 · Editing a post has a route, a method, and no screen
+
+**POST-FR-008** is a **Could**. `PATCH /posts/{id}` is served,
+`PostSource.update` implements it correctly — including six lines explaining why
+BR-014 keeps `mediaIds` out of the signature so no client code can attempt to
+swap a published image — and **nothing calls it.** There is no edit-post screen in
+the inventory.
+
+**Why this is worth an entry rather than a deletion.** The reasoning attached to
+that method is right and will be needed the day an edit screen is designed. What
+was wrong was that it read like live code. The comment now says plainly that
+nothing calls it and why, and `IntegrationWiringTest` pins it so it cannot drift
+back into looking reached.
+
+### GAP-M-018 · "Mark all read" was described in a comment and drawn nowhere
+
+`NotificationSource.markAllRead` is declared, implemented against
+`POST /notifications/read-all`, and called by nothing. Its neighbour's comment
+asserted that *"a reader who scrolls a long way and then taps 'Mark all read' is
+served by [markAllRead]"* — **and no such control exists on any screen.** No
+button, no menu item, not even a string to label one.
+
+**Not being built, deliberately.** NOTIF-FR-002 asks for "an in-app list …
+newest-first with an unread count" where "opening one navigates to the item that
+caused it". A bulk control is not in it, and §49 forbids adding functionality
+outside scope. So the server's capability stays unused and the comment now says
+so.
+
+**The reason both of these matter more than their size.** Group 20 wrote down
+that *a callback nothing passes looks exactly like a callback that works*. These
+are the same defect one layer lower, and the comments were the thing that made
+them invisible — each described a caller, and a described caller reads exactly
+like a real one.
+
 ### GAP-M-003 · The prototype's attendee stack contradicts the SRS
 
 Recorded as resolved rather than open, because the API settles it.
@@ -497,6 +557,27 @@ Distinct from §3: these are things the client *can* build and has not yet.
 | Home | `UX-HOME-005` category filter sheet and `UX-HOME-006` announcement detail are not built. | `selectCategory` exists in the ViewModel and the filter reaches the API; there is no picker to drive it. |
 | Home | `UX-HOME-006` announcement detail is not built, so an ANNOUNCEMENT notification row is rendered and inert. | Every other notification row opens what it refers to. |
 | `ImagePicker.read` | Untested. It needs a real `ContentResolver` and `BitmapFactory`, so it cannot run on the JVM. | The attachment state machine around it IS tested through the real ViewModel (`AttachmentUploadTest`); the file-reading and compression path itself is only covered by an emulator run that cannot happen here. |
+
+**A Must requirement was found unimplemented in group 23 and is now built.**
+**PROFILE-FR-006** — account type — asks the user to choose Individual or
+Organization at registration. `RegisterRequest.accountType` had been declared
+since group 03, typed correctly, nullable exactly as the server's own
+`.optional()` schema is, and **set by nobody**: `explicitNulls = false` dropped it
+from every request body and `register.service.ts` applied its
+`?? 'INDIVIDUAL'` default. BR-011 makes the value *"set once, not
+user-changeable"*, and **OD-020** forbids provisioning the administrator who could
+correct it — so every mosque, school or union office that had signed up through
+this app was permanently recorded as an individual, with no route back.
+
+Group 04 looked straight at this and drew half the right conclusion. Its comment
+in `ProfileSetupViewModel` says the create-profile body *"has no `accountType`
+field at all, so there is nothing here to send: the type is set at
+registration."* The first half is true. The second was an assumption, and
+registration was not setting it either. The choice now sits under the phone field
+on UX-AUTH-005, with the caption BR-011 requires and §13's rule that Organization
+*"does not automatically show a verified badge"*; `register()` takes an
+`AccountType` as a required parameter, so no caller can omit it again, and
+`RegisterFlowTest` asserts the call site passes it.
 
 **Every Report control in the app is now wired**, which is what closed the last
 row of this table. Three were inert or removed while UX-SAFE-001 did not exist;

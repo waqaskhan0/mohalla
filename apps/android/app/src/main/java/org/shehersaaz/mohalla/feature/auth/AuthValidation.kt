@@ -130,3 +130,23 @@ fun isCompleteOtp(code: String): Boolean =
  */
 const val OTP_RESEND_COOLDOWN_SECONDS = 60
 const val OTP_MAX_RESENDS_PER_HOUR = 3
+
+/**
+ * Individual or Organization (PROFILE-FR-006, BR-011).
+ *
+ * CHOSEN ONCE, AT REGISTRATION, AND NEVER AGAIN. BR-011 makes it
+ * "set once, not user-changeable; an administrator may correct it" - and
+ * OD-020 currently forbids provisioning any administrator, so in practice
+ * there is no correction path at all. That is why the choice is put in front
+ * of the person rather than defaulted silently: the cost of getting it wrong
+ * is permanent, and they are the only one who can get it right.
+ *
+ * CHOOSING ORGANIZATION GRANTS NOTHING. §13 is explicit that it
+ * *"does not automatically show a verified badge"* - the badge is
+ * ADMIN-FR-010, somebody else's decision - so neither label promises standing.
+ * The wire value is the server's own enum, spelled its way.
+ */
+enum class AccountType(val wire: String) {
+    INDIVIDUAL("INDIVIDUAL"),
+    ORGANIZATION("ORGANIZATION"),
+}

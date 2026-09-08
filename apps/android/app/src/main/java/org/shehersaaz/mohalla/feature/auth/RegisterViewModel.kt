@@ -105,6 +105,11 @@ class RegisterViewModel(
 
     // ------------------------------------------------------------- step 4
     /** BR-004 — an explicit affirmative, never a pre-ticked box. */
+    /** PROFILE-FR-006 - see [RegisterUiState.accountType]. */
+    fun onAccountTypeChanged(type: AccountType) {
+        _state.update { it.copy(accountType = type) }
+    }
+
     fun onTermsAcceptedChanged(accepted: Boolean) {
         _state.update { it.copy(termsAccepted = accepted, submitFailure = null) }
     }
@@ -132,7 +137,14 @@ class RegisterViewModel(
         _state.update { it.copy(submitting = true, submitFailure = null) }
 
         viewModelScope.launch {
-            when (val result = auth.register(phone, current.password, dob, termsVersion)) {
+            val result = auth.register(
+                e164Phone = phone,
+                password = current.password,
+                dateOfBirth = dob,
+                termsVersion = termsVersion,
+                accountType = current.accountType,
+            )
+            when (result) {
                 is ApiResult.Ok -> _state.update {
                     // SEC-006: `202` says nothing about whether the number was
                     // free. The ONLY next step is the OTP screen, for every
@@ -217,6 +229,14 @@ data class RegisterUiState(
     val password: String = "",
     val passwordProblem: PasswordProblem? = null,
     val passwordServerError: String? = null,
+
+    /**
+     * PROFILE-FR-006. Defaults to INDIVIDUAL because that is what almost
+     * everybody is and what the server would have assumed anyway - but the
+     * control is on the screen, because BR-011 makes the value permanent and
+     * OD-020 means no administrator exists to correct it.
+     */
+    val accountType: AccountType = AccountType.INDIVIDUAL,
 
     val termsAccepted: Boolean = false,
 

@@ -77,6 +77,10 @@
 
     <string name="register_phone_title">آپ کا موبائل نمبر کیا ہے؟</string>
     <string name="register_phone_body">تصدیق کے لیے ہم آپ کو ایک کوڈ بھیجیں گے۔</string>
+    <string name="register_account_type">اکاؤنٹ کی قسم</string>
+    <string name="account_type_individual">انفرادی</string>
+    <string name="account_type_organization">ادارہ</string>
+    <string name="register_account_type_permanent">اسے بعد میں تبدیل نہیں کیا جا سکتا۔ ادارہ منتخب کرنے سے تصدیق کا نشان نہیں ملتا۔</string>
     <string name="register_dob_title">آپ کی تاریخِ پیدائش کیا ہے؟</string>
     <string name="register_dob_body">محلہ استعمال کرنے کے لیے آپ کی عمر کم از کم تیرہ سال ہونی چاہی۔</string>
     <string name="register_dob_underage">محلہ استعمال کرنے کے لیے آپ کی عمر کم از کم تیرہ سال ہونی چاہی۔</string>

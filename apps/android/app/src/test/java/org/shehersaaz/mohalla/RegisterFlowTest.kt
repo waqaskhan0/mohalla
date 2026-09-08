@@ -1,9 +1,11 @@
 package org.shehersaaz.mohalla
 
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.shehersaaz.mohalla.feature.auth.AccountType
 import org.shehersaaz.mohalla.feature.auth.PasswordResetUiState
 import org.shehersaaz.mohalla.feature.auth.RegisterUiState
 import org.shehersaaz.mohalla.feature.auth.formatDateOfBirth
@@ -47,6 +49,62 @@ class RegisterFlowTest {
         // never typed.
         listOf("", "1995", "1995-06", "95-06-15", "1995/06/15", "1995-13-01", "1995-06-32")
             .forEach { assertNull("$it should not parse", parseIsoDate(it)) }
+    }
+
+    // ------------------------------------------------------- account type
+
+    @Test
+    fun `THE ACCOUNT TYPE IS ACTUALLY SENT`() {
+        // THE DEFECT THIS EXISTS FOR did not look like a defect. The field was
+        // declared on `RegisterRequest` from group 03 onward, typed correctly,
+        // nullable exactly as the server's own `.optional()` schema is - and no
+        // caller ever set it. `explicitNulls = false` then dropped it from the
+        // body, `register.service.ts` applied its
+        // `cmd.accountType ?? 'INDIVIDUAL'` default, and every account ever
+        // created through this app became an individual.
+        //
+        // BR-011 is what makes it worth a test rather than a comment: the value
+        // is "set once, not user-changeable; an administrator may correct it",
+        // and OD-020 forbids provisioning an administrator - so an organization
+        // registered through the app had no route back at all.
+        //
+        // A UNIT TEST COULD NOT HAVE CAUGHT IT, which is the point. Every
+        // assertion about registration passed; the request was well-formed and
+        // the server accepted it. What was wrong was a field nobody populated,
+        // and only reading the call site - or checking it here - finds that.
+        val callSite = File(
+            "src/main/java/org/shehersaaz/mohalla/feature/auth/AuthRepository.kt",
+        ).readText()
+
+        assertTrue(
+            "AuthRepository builds a RegisterRequest without passing accountType",
+            callSite.contains("accountType = accountType.wire"),
+        )
+
+        // And REQUIRED rather than defaulted, so a caller has to have asked
+        // somebody rather than quietly accepting the server's assumption.
+        assertTrue(
+            "register() should take an AccountType so it cannot be omitted",
+            callSite.contains("accountType: AccountType"),
+        )
+    }
+
+    @Test
+    fun `the wire values are the server's own spellings`() {
+        // `registerBody` is `z.enum(['INDIVIDUAL','ORGANIZATION'])` and
+        // `.strict()`, so a lower-cased or pluralised value is a 400 for the
+        // whole registration rather than a field the server quietly ignores.
+        assertEquals("INDIVIDUAL", AccountType.INDIVIDUAL.wire)
+        assertEquals("ORGANIZATION", AccountType.ORGANIZATION.wire)
+        assertEquals(2, AccountType.entries.size)
+    }
+
+    @Test
+    fun `the default matches what the server would have assumed`() {
+        // Not an arbitrary default. If the control were ever removed again the
+        // behaviour would be unchanged rather than surprising, and almost
+        // everybody registering is in fact an individual.
+        assertEquals(AccountType.INDIVIDUAL, RegisterUiState().accountType)
     }
 
     // ------------------------------------------------ registration state
