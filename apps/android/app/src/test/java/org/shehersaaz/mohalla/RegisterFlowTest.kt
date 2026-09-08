@@ -1,15 +1,22 @@
 package org.shehersaaz.mohalla
 
+import androidx.lifecycle.SavedStateHandle
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.shehersaaz.mohalla.core.network.MohallaApi
+import org.shehersaaz.mohalla.core.storage.SecureStorage
 import org.shehersaaz.mohalla.feature.auth.AccountType
+import org.shehersaaz.mohalla.feature.auth.AuthRepository
 import org.shehersaaz.mohalla.feature.auth.PasswordResetUiState
 import org.shehersaaz.mohalla.feature.auth.RegisterUiState
+import org.shehersaaz.mohalla.feature.auth.RegisterViewModel
 import org.shehersaaz.mohalla.feature.auth.formatDateOfBirth
 import org.shehersaaz.mohalla.feature.auth.parseIsoDate
+import org.shehersaaz.mohalla.feature.startup.SessionRepository
+import retrofit2.Retrofit
 
 /**
  * The registration and reset flows' own rules.
@@ -49,6 +56,117 @@ class RegisterFlowTest {
         // never typed.
         listOf("", "1995", "1995-06", "95-06-15", "1995/06/15", "1995-13-01", "1995-06-32")
             .forEach { assertNull("$it should not parse", parseIsoDate(it)) }
+    }
+
+    // --------------------------------------------- the date field, keystroke
+    // by keystroke
+
+    @Test
+    fun `A PARTIAL DATE SURVIVES BEING TYPED`() {
+        // THE DEFECT THIS EXISTS FOR made registration impossible, and every
+        // test on this screen passed while it did.
+        //
+        // The field's value was read from the PARSED date:
+        //
+        //     value = state.dateOfBirth ?: ""
+        //     onValueChange = { typed -> parseIsoDate(typed)?.let { ... } }
+        //
+        // and the parsed date was only set once the whole string parsed. So
+        // typing "1" gave parseIsoDate("1") == null, nothing was lifted into
+        // the state, and the field re-composed straight back to "". Every
+        // keystroke was discarded. Nobody could enter a date of birth, so
+        // nobody could finish signing up.
+        //
+        // WHY 481 UNIT TESTS MISSED IT: `RegisterFlowTest` already asserted
+        // that `parseIsoDate` and `formatDateOfBirth` round-trip exactly, and
+        // they do - flawlessly, in isolation. The bug was in the plumbing
+        // BETWEEN the field and the ViewModel, which nothing exercised. It
+        // took ninety seconds of Flow A on an emulator to find.
+        //
+        // THIS ASSERTION IS THE OLD BEHAVIOUR'S NEGATION: under the old code
+        // the field's value after typing an incomplete date was "".
+        val vm = registerViewModel()
+
+        vm.onDateOfBirthTyped("1")
+        assertEquals("one digit must survive", "1", vm.state.value.dateOfBirthInput)
+        assertNull("one digit is not a date", vm.state.value.dateOfBirth)
+
+        vm.onDateOfBirthTyped("1995")
+        assertEquals("1995", vm.state.value.dateOfBirthInput)
+        assertNull(vm.state.value.dateOfBirth)
+
+        vm.onDateOfBirthTyped("1995-0")
+        assertEquals("1995-0", vm.state.value.dateOfBirthInput)
+        assertNull(vm.state.value.dateOfBirth)
+
+        vm.onDateOfBirthTyped("1995-06-1")
+        assertEquals("1995-06-1", vm.state.value.dateOfBirthInput)
+        assertNull("a whole date is needed", vm.state.value.dateOfBirth)
+
+        vm.onDateOfBirthTyped("1995-06-15")
+        assertEquals("1995-06-15", vm.state.value.dateOfBirthInput)
+        assertEquals("now it is a date", "1995-06-15", vm.state.value.dateOfBirth)
+    }
+
+    @Test
+    fun `THE TEXT IS NEVER REWRITTEN UNDER THE CURSOR`() {
+        // The first fix auto-inserted the dashes and turned `19950615` into
+        // `1995-61-50` on a device: rewriting the value moved the string out
+        // from under the caret, so each new digit landed mid-date. Typing is
+        // now reproduced exactly - every prefix of the target maps to itself.
+        val vm = registerViewModel()
+        val target = "1995-06-15"
+
+        target.indices.forEach { i ->
+            val prefix = target.take(i + 1)
+            vm.onDateOfBirthTyped(prefix)
+            assertEquals(
+                "typing must never reorder what was typed",
+                prefix,
+                vm.state.value.dateOfBirthInput,
+            )
+        }
+        assertEquals("1995-06-15", vm.state.value.dateOfBirth)
+    }
+
+    @Test
+    fun `EDITING A VALID DATE BACK TO AN INVALID ONE WITHDRAWS IT`() {
+        // Otherwise somebody types a good date, deletes a digit, and Continue
+        // stays enabled against a value the field no longer shows.
+        val vm = registerViewModel()
+
+        vm.onDateOfBirthTyped("1995-06-15")
+        assertEquals("1995-06-15", vm.state.value.dateOfBirth)
+
+        vm.onDateOfBirthTyped("1995-06-1")
+        assertNull("the parsed date must not outlive the text", vm.state.value.dateOfBirth)
+        assertEquals("1995-06-1", vm.state.value.dateOfBirthInput)
+    }
+
+    @Test
+    fun `AN IMPLAUSIBLE DATE IS TEXT BUT NOT A DATE`() {
+        val vm = registerViewModel()
+
+        vm.onDateOfBirthTyped("1995-13-01")
+        assertEquals("the text is kept so it can be corrected", "1995-13-01", vm.state.value.dateOfBirthInput)
+        assertNull("month 13 is not a date", vm.state.value.dateOfBirth)
+    }
+
+    @Test
+    fun `THE UNDERAGE WARNING WAITS FOR A WHOLE DATE`() {
+        // BR-002 is enforced server-side; this only warns. Warning while
+        // somebody is still typing the year would accuse a person who has
+        // entered "2" of being under 13.
+        val vm = registerViewModel()
+
+        vm.onDateOfBirthTyped("2")
+        assertTrue("no warning on a partial date", !vm.state.value.looksUnderage)
+
+        vm.onDateOfBirthTyped("2020-01-01")
+        assertTrue("a 2020 birth date is under 13", vm.state.value.looksUnderage)
+
+        vm.onDateOfBirthTyped("1990-01-01")
+        assertTrue("a 1990 birth date is not", !vm.state.value.looksUnderage)
     }
 
     // ------------------------------------------------------- account type
@@ -183,6 +301,41 @@ class RegisterFlowTest {
         assertEquals(
             "+92 3** *** **67",
             PasswordResetUiState(e164Phone = "+923001234567").maskedPhone,
+        )
+    }
+
+    /**
+     * A RegisterViewModel with no network behind it.
+     *
+     * The date-field tests never reach the API - `onDateOfBirthTyped` is pure
+     * state - so Retrofit's lazily-created interface and an in-memory store
+     * are enough, and far less misleading than seventy-five hand-written stub
+     * methods that would each have to be kept in step with the real one.
+     */
+    private fun registerViewModel(): RegisterViewModel {
+        val api = Retrofit.Builder()
+            .baseUrl("http://127.0.0.1/")
+            .build()
+            .create(MohallaApi::class.java)
+
+        val storage = object : SecureStorage {
+            private val values = mutableMapOf<String, String>()
+            override fun getString(key: String): String? = values[key]
+            override fun putString(key: String, value: String) {
+                values[key] = value
+            }
+            override fun remove(key: String) {
+                values.remove(key)
+            }
+            override fun clear() {
+                values.clear()
+            }
+        }
+
+        return RegisterViewModel(
+            auth = AuthRepository(api, SessionRepository(api, storage)),
+            savedState = SavedStateHandle(),
+            termsVersion = "synthetic-terms-v1",
         )
     }
 }

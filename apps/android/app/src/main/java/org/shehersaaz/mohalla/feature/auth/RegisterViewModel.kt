@@ -43,7 +43,10 @@ class RegisterViewModel(
     private val _state = MutableStateFlow(
         RegisterUiState(
             phoneInput = savedState[KEY_PHONE] ?: "",
-            dateOfBirth = savedState[KEY_DOB],
+            dateOfBirthInput = savedState[KEY_DOB] ?: "",
+            dateOfBirth = (savedState[KEY_DOB] as String?)
+                ?.let { parseIsoDate(it) }
+                ?.let { (y, m, d) -> formatDateOfBirth(y, m, d) },
         ),
     )
     val state: StateFlow<RegisterUiState> = _state.asStateFlow()
@@ -76,13 +79,42 @@ class RegisterViewModel(
      * The warning spares an honest mistake a round trip; the server refuses a
      * dishonest one.
      */
-    fun onDateOfBirthChanged(year: Int, monthZeroBased: Int, day: Int) {
-        val iso = formatDateOfBirth(year, monthZeroBased, day)
-        savedState[KEY_DOB] = iso
+    /**
+     * One keystroke of the date field.
+     *
+     * KEEPS THE TEXT AND THE PARSE SEPARATE. The text is whatever was typed,
+     * always; the date is set only when that text is a complete `YYYY-MM-DD`
+     * that [parseIsoDate] accepts, and CLEARED when it stops being one - so
+     * deleting a digit out of a valid date also withdraws consent to continue
+     * rather than leaving the old value armed behind an edited field.
+     *
+     * THE TEXT IS NEVER REWRITTEN. An earlier attempt inserted the dashes
+     * automatically and produced `1995-61-50` from `19950615`, because
+     * rewriting the value moved the text out from under the caret. So this
+     * only filters, and `KeyboardType.Phone` supplies the `-` key that
+     * `KeyboardType.Number` never had.
+     */
+    fun onDateOfBirthTyped(text: String) {
+        // KEPT EXACTLY AS TYPED, only filtered. Reformatting the string while
+        // the reader is typing into it is what produced `1995-61-50` from
+        // `19950615`: `OutlinedTextField` holds a plain `String` and owns its
+        // own caret, so every dash this function inserted left the cursor a
+        // place behind and the next digit landed in the middle of the date.
+        val formatted = text.filter { it.isDigit() || it == '-' }.take(10)
+
+        val parsed = parseIsoDate(formatted)
+        savedState[KEY_DOB] = formatted
+
         _state.update {
             it.copy(
-                dateOfBirth = iso,
-                looksUnderage = !isAtLeastMinimumAge(year, monthZeroBased, day),
+                dateOfBirthInput = formatted,
+                dateOfBirth = parsed?.let { (y, m, d) -> formatDateOfBirth(y, m, d) },
+                // BR-002 is the server's to enforce; this only warns, and only
+                // once there is a whole date to warn about.
+                looksUnderage = parsed
+                    ?.let { (y, m, d) -> !isAtLeastMinimumAge(y, m, d) }
+                    ?: false,
+                dobServerError = null,
                 submitFailure = null,
             )
         }
@@ -222,6 +254,18 @@ data class RegisterUiState(
     val phoneCheck: PhoneCheck = PhoneCheck.Incomplete,
     val phoneError: String? = null,
 
+    /**
+     * WHAT HAS BEEN TYPED, which is not the same as what has been understood.
+     *
+     * Conflating the two is what made this screen unusable: the field's value
+     * was read from [dateOfBirth], [dateOfBirth] was only set once the whole
+     * string parsed, and so every partial entry was thrown away as it was
+     * typed. A half-finished date is a legitimate state and needs somewhere to
+     * live.
+     */
+    val dateOfBirthInput: String = "",
+
+    /** Set only when [dateOfBirthInput] is a complete, plausible date. */
     val dateOfBirth: String? = null,
     val looksUnderage: Boolean = false,
     val dobServerError: String? = null,

@@ -189,12 +189,15 @@ private fun AccountTypeSelector(
 @Composable
 fun RegisterDateOfBirthScreen(
     state: RegisterUiState,
-    onDateChanged: (year: Int, monthZeroBased: Int, day: Int) -> Unit,
+    onDateTyped: (String) -> Unit,
     onContinue: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val raw = state.dateOfBirth ?: ""
+    // THE TYPED TEXT, not the parsed date. Reading the parsed date back into
+    // the field is what discarded every keystroke - see
+    // [RegisterViewModel.onDateOfBirthTyped].
+    val raw = state.dateOfBirthInput
 
     AuthScaffold(
         modifier = modifier,
@@ -222,12 +225,13 @@ fun RegisterDateOfBirthScreen(
     ) {
         MohallaTextField(
             value = raw,
-            onValueChange = { typed ->
-                parseIsoDate(typed)?.let { (y, m, d) -> onDateChanged(y, m, d) }
-            },
+            onValueChange = onDateTyped,
             label = stringResource(R.string.register_dob_select),
             helper = "YYYY-MM-DD",
-            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
+            // THE DIALPAD, because it is the only stock keyboard carrying both
+            // digits and `-`. `KeyboardType.Number` offers no hyphen, so the
+            // `YYYY-MM-DD` the helper text asks for was unreachable on a phone.
+            keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone,
             imeAction = ImeAction.Next,
             // Digits and dashes read left-to-right in both languages.
             forceLtrContent = true,

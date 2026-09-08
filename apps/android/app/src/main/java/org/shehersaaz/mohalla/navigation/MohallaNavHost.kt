@@ -1809,7 +1809,7 @@ private fun NavGraphBuilder.authGraph(
 
         RegisterDateOfBirthScreen(
             state = state,
-            onDateChanged = vm::onDateOfBirthChanged,
+            onDateTyped = vm::onDateOfBirthTyped,
             onContinue = { navController.navigate(Routes.REGISTER_PASSWORD) },
             onBack = { navController.popBackStack() },
         )
