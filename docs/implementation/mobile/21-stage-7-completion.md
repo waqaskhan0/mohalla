@@ -17,7 +17,7 @@ and none of the three is an external dependency:
 |---|---|
 | Mandatory emulator flows are executed | **2 of 11.** A and G ran; B, C, D, E, F, H, I, J, K did not |
 | Accessibility implementation/audit is performed | **Source-level only.** Ten invariants hold across the tree; no device audit, no TalkBack, no font-scale run |
-| No known code defect prevents a Must flow | **Two open defects.** RUNTIME-005 and RUNTIME-006 |
+| No known code defect prevents a Must flow | **One open defect.** RUNTIME-006. RUNTIME-005 is fixed |
 | All 61 screens represented | ✅ one canonical schema, 61 rows, 0 duplicates |
 | Required screens implemented | **59 of 61.** `UX-HOME-005` and `UX-HOME-006` not started |
 | Local API integration gaps fixed | ✅ one found, one fixed (MOBILE-BACKEND-FIX-001) |
@@ -38,10 +38,10 @@ eleven.
 |---|---|
 | Branch | `feature/stage-7-android-v1` |
 | Base | `0981b1a` (`origin/main`, untouched) |
-| HEAD | `5c3b171` |
-| Commits ahead of `main` | **60** — 30 Stage 6 backend, 30 Stage 7 |
-| This pass | 8 commits, `02c3c03..5c3b171` |
-| Remote | `origin/feature/stage-7-android-v1` at `5c3b171`, in sync |
+| HEAD | `2fcb3de` (this report is committed on top of it) |
+| Commits ahead of `main` | **62** — 30 Stage 6 backend, the rest Stage 7 |
+| This pass | 10 commits, `02c3c03..HEAD` |
+| Remote | `origin/feature/stage-7-android-v1`, pushed and in sync |
 | `main` touched | **NO** |
 | Merge status | **NOT MERGED — AWAITING OWNER REVIEW** |
 
@@ -95,9 +95,9 @@ end to end, with `ORGANIZATION` persisted in Postgres.
 |---|---|
 | Android clean build | **PASS** |
 | Android Lint (`lintDebug`) | **PASS**, clean |
-| Android unit tests | **487** across 33 classes · **0 failures** |
+| Android unit tests | **488** across 33 classes · **0 failures** |
 | Backend tests | **904** across 46 files · **0 failures** |
-| **Total** | **1391 · 0 failures** |
+| **Total** | **1392 · 0 failures** |
 | `npm run verify` | **12 passed · 0 failed · 3 blocked** |
 | `npm run smoke` | **8 passed · 0 failed · 0 blocked** |
 | `guard:all` | dependency direction · locale parity · secret scan — all **PASS** |
@@ -170,7 +170,7 @@ guesswork that fix avoided. The shape is stated in
 
 | | Severity |
 |---|---|
-| **RUNTIME-005** — auth and setup screens render only `Offline` and `Server` failures; every other `ApiFailure` shows nothing at all | Real. It is why a 401 looked like an inert button for two attempts |
+| ~~RUNTIME-005~~ | **FIXED.** Seven screens matched two or three of eight `ApiFailure` variants and let the rest fall silent. `noticeFor`/`failureText` are one exhaustive `when` with no `else`, so a ninth variant fails to compile at the mapping. Pinned by a source invariant, proven by reverting two call sites |
 | **RUNTIME-006** — Home's Urdu empty-state button compressed to 74px (≈28dp) with its label clipped, against 126px (48dp) elsewhere | Real, RTL-only, measured |
 | **OBS-001** — a live OTP is recoverable from its unsalted SHA-256 in under a second given database read access | A Stage 6 security decision, recorded not acted on |
 
@@ -192,28 +192,35 @@ Six further defects were found and fixed this pass; see
 | Publication authorization · licence | Open governance items; the audit records that neither blocks pushes |
 | Physical-device matrix · UAT · production environment | Later QA and release stages |
 
-## 10. Documentation status — **5 of 21**
+## 10. Documentation status — **21 of 21**
 
-| Present | Missing |
+All twenty-one §48 documents exist. The sixteen module records were produced by
+**redistribution**, which is what §2 asked for, and every table in them is
+joined from a parsed source rather than composed:
+
+| Column | Joined from |
 |---|---|
-| `00-mobile-baseline.md` | `01`–`16` (16 module documents) |
-| `17-mobile-screen-coverage.md` | |
-| `18-mobile-requirement-traceability.md` | |
-| `19-mobile-test-report.md` | |
-| `20-mobile-open-issues.md` | |
-| `21-stage-7-completion.md` (this file) | |
+| Screen rows | `17-mobile-screen-coverage.md`, all fourteen columns verbatim |
+| Requirement rows | `18`'s own row data, itself parsed from the SRS |
+| Decisions | the per-group prose of `17`, **moved** rather than paraphrased |
+| Commits | `git log`, restricted to that module's own source paths |
+| Runtime | the `Runtime` column, so a module cannot claim more than ran |
 
-**Not written, and not padded to look written.** §2 of the final-pass addendum
-asked for the sixteen module documents to be produced by redistributing evidence
-that already exists — chiefly the per-group sections inside
-`17-mobile-screen-coverage.md`, which run to some 1,700 lines and already carry
-the screen IDs, requirement IDs, decisions and defects each module document
-needs. That redistribution is real work and it was not done: the runtime pass
-took the time, and §34 was explicit that runtime execution outranked
-documentation formatting.
+`DocumentationIdTest` passes across all twenty-one: every requirement and screen
+ID cited anywhere in the directory exists in the SRS or the UI/UX specification.
 
-Stating it as a gap is the honest option. Sixteen generated summaries would have
-made this row look green and taught a reader nothing.
+Where a module genuinely shares an implementation with another, §24's
+permission is used and the record cross-references instead of duplicating —
+`UX-SET-005` is described once, in `12-safety-blocking.md`, and referenced from
+`11-settings.md`.
+
+Two needed more than the join could give. `16-performance.md` owns no screen and
+no requirement family, so the generic join produced a stub — §2 forbids exactly
+that, and it now carries the structural rules that are actually enforced plus an
+explicit statement that **no NFR is claimed from emulator numbers in either
+direction**. `15-accessibility-rtl.md` gained Flow G's measured mirroring, which
+is the only runtime accessibility evidence the stage has, and an itemised list
+of what §25 and §26 have **not** audited.
 
 ## 11. What to do next, in order
 
@@ -223,13 +230,12 @@ made this row look green and taught a reader nothing.
 2. **Execute flows B, C, D, E, F, H, I, J, K.** On this pass's evidence, expect
    them to find defects: two flows found six, three of them in requirements
    already documented as implemented.
-3. **Fix RUNTIME-005 and RUNTIME-006**, then re-execute the affected screens.
+3. **Fix RUNTIME-006**, then re-execute Home in Urdu and re-measure the button.
 4. **Re-execute `UX-SETUP-003`** to confirm the crash fix renders.
 5. **MOBILE-BACKEND-GAP-002**, once Flow H has shown what the screen needs.
 6. **§25 device accessibility audit, §26 large-font run, §27 measurements** — all
    now possible.
 7. **Write Compose UI tests.** The emulator exists; there are none.
-8. **The sixteen module documents**, by redistribution.
 9. **Build `UX-HOME-005` and `UX-HOME-006`.**
 
 Everything in that list is doable with what is now on this machine. Nothing in it
