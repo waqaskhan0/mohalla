@@ -44,6 +44,7 @@ import org.shehersaaz.mohalla.core.design.MohallaType
 import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.ui.MohallaButton
 import org.shehersaaz.mohalla.core.ui.MohallaTextButton
+import org.shehersaaz.mohalla.core.ui.failureText
 
 /**
  * UX-AUTH-009 — OTP verification (AUTH-FR-003 · SEC-003 · EDGE-005 · §12).
@@ -118,8 +119,10 @@ fun OtpScreen(
             state.lockedOut -> state.serverMessage ?: stringResource(R.string.otp_locked_out)
             state.expiredCode -> state.serverMessage ?: stringResource(R.string.otp_expired)
             state.invalidCode -> state.serverMessage ?: stringResource(R.string.otp_invalid)
-            state.failure is ApiFailure.Offline -> stringResource(R.string.state_offline_banner)
-            state.failure is ApiFailure.Server -> stringResource(R.string.state_error_body)
+            // Every refusal, exhaustively. Offline and Server were handled
+            // here and the other six variants produced no message at all
+            // (RUNTIME-005).
+            state.failure != null -> failureText(state.failure)
             state.codeResent -> stringResource(R.string.otp_resent)
             else -> null
         }

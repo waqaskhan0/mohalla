@@ -42,6 +42,7 @@
     <string name="state_offline_title">کوئی کنکشن نہیں</string>
     <string name="state_offline_body">آپ آف لائن ہیں۔ جو چیزیں آپ پہلے کھول چکے ہیں وہ اب بھی پڑھی جا سکتی ہیں۔</string>
     <string name="state_offline_banner">انٹرنیٹ کنکشن نہیں ہے</string>
+    <string name="state_session_expired">آپ کو سائن آؤٹ کر دیا گیا ہ۔ براہِ کرم دوبارہ لاگ ان کریں۔</string>
 
     <string name="state_error_title">کچھ غلط ہو گیا</string>
     <string name="state_error_body">براہِ کرم تھوڑی دیر بعد دوبارہ کوشش کریں۔</string>

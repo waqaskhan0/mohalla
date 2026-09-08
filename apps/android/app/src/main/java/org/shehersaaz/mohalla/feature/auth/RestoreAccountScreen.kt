@@ -19,6 +19,7 @@ import org.shehersaaz.mohalla.core.network.ApiResult
 import org.shehersaaz.mohalla.feature.settings.DeletionSource
 import org.shehersaaz.mohalla.core.ui.AuthNotice
 import org.shehersaaz.mohalla.core.ui.AuthNoticeTone
+import org.shehersaaz.mohalla.core.ui.noticeFor
 import org.shehersaaz.mohalla.core.ui.AuthScaffold
 import org.shehersaaz.mohalla.core.ui.MohallaButton
 import org.shehersaaz.mohalla.core.ui.MohallaSecondaryButton
@@ -79,16 +80,10 @@ fun RestoreAccountScreen(
                 AuthNoticeTone.ERROR,
             )
 
-            state.failure is ApiFailure.Offline -> AuthNotice(
-                stringResource(R.string.state_offline_banner),
-                AuthNoticeTone.WARNING,
-            )
-
-            state.failure is ApiFailure.Server -> AuthNotice(
-                stringResource(R.string.state_error_body),
-                AuthNoticeTone.ERROR,
-            )
-
+            // Every OTHER refusal, exhaustively - see [noticeFor]. Two
+            // variants used to be handled here and the other six rendered
+            // nothing at all (RUNTIME-005).
+            state.failure != null -> noticeFor(state.failure)
             else -> null
         },
         action = {

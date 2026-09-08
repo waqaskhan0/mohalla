@@ -32,6 +32,7 @@ import org.shehersaaz.mohalla.core.ui.MohallaPasswordField
 import org.shehersaaz.mohalla.core.ui.MohallaPhoneField
 import org.shehersaaz.mohalla.core.ui.MohallaTextButton
 import org.shehersaaz.mohalla.core.ui.MohallaTextField
+import org.shehersaaz.mohalla.core.ui.noticeFor
 
 /**
  * Registration, four steps — UX-AUTH-005 · 006 · 007 · 008.
@@ -338,24 +339,13 @@ fun RegisterTermsScreen(
                 stringResource(R.string.register_terms_unavailable),
                 AuthNoticeTone.ERROR,
             )
-        } else when (val failure = state.submitFailure) {
-            ApiFailure.Offline -> AuthNotice(
-                stringResource(R.string.state_offline_banner),
-                AuthNoticeTone.WARNING,
-            )
-            is ApiFailure.RateLimited -> AuthNotice(
-                failure.message ?: stringResource(R.string.state_rate_limited_body),
-                AuthNoticeTone.WARNING,
-            )
-            is ApiFailure.Validation -> AuthNotice(
-                failure.message ?: stringResource(R.string.state_error_body),
-                AuthNoticeTone.ERROR,
-            )
-            is ApiFailure.Server -> AuthNotice(
-                failure.message ?: stringResource(R.string.state_error_body),
-                AuthNoticeTone.ERROR,
-            )
-            else -> null
+        } else {
+            // EXHAUSTIVE, via [noticeFor]. Four variants were handled here and
+            // the other four - Unauthenticated, Restricted, Unavailable,
+            // Conflict - fell to `else -> null` and rendered nothing at all
+            // (RUNTIME-005). On the screen that submits the registration, a
+            // refusal that says nothing is the worst possible outcome.
+            noticeFor(state.submitFailure)
         },
         action = {
             MohallaButton(

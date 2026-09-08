@@ -31,6 +31,8 @@ import org.shehersaaz.mohalla.core.ui.MohallaButton
 import org.shehersaaz.mohalla.core.ui.MohallaTextButton
 import org.shehersaaz.mohalla.core.ui.MohallaPasswordField
 import org.shehersaaz.mohalla.core.ui.MohallaPhoneField
+import org.shehersaaz.mohalla.core.ui.failureText
+import org.shehersaaz.mohalla.core.ui.isAdvisory
 
 /**
  * UX-AUTH-004 — Log in (AUTH-FR-005 · SEC-006/007).
@@ -137,7 +139,13 @@ fun LoginScreen(
                 warning = false,
             )
 
-            else -> Unit
+            // EVERYTHING ELSE STILL SAYS SOMETHING. Five variants used to
+            // land on `Unit` here and render nothing at all - a 401, a 403, a
+            // 409, a validation error or a neutral-unavailable left the screen
+            // looking as though the button had not been pressed (RUNTIME-005).
+            else -> failureText(failure)?.let { text ->
+                AuthNotice(text = text, warning = failure?.isAdvisory() == true)
+            }
         }
 
         MohallaButton(

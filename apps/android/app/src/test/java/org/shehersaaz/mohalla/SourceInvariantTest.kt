@@ -349,4 +349,65 @@ class SourceInvariantTest {
             offenders,
         )
     }
+
+    @Test
+    fun `NO SCREEN MATCHES ONLY SOME OF ApiFailure AND FALLS SILENT`() {
+        // RUNTIME-005. Found when a 401 on the username step made Continue
+        // look inert: the screen's notice matched `Offline` and `Server` and
+        // let the other six variants fall to `else -> null`, so the one moment
+        // a reader most needs a sentence produced nothing at all.
+        //
+        // Kotlin does not require a `when` used as a STATEMENT to be
+        // exhaustive, so nothing failed to compile, and no unit test looked at
+        // a composable's notice slot. Seven screens had the same shape.
+        //
+        // THE RULE: a file that names individual `ApiFailure` variants must
+        // route the remainder through `noticeFor` or `failureText`, both of
+        // which are exhaustive `when`s with no `else` and will fail to compile
+        // when a ninth variant is added. `FailureState` counts too - it is the
+        // full-screen equivalent.
+        val exempt = setOf(
+            // The mapping itself, and the full-screen version of it.
+            "core/ui/FailureNotice.kt",
+            "core/ui/FailureState.kt",
+            // Repositories classify failures; they render nothing.
+            "feature/messages/MessagingRepository.kt",
+            "feature/search/SearchRepository.kt",
+            "feature/startup/SessionRepository.kt",
+            // Has a real fallback of its own: `else` gives a message rather
+            // than null, so no refusal is silent here.
+            "feature/settings/ChangePasswordScreen.kt",
+        )
+
+        val offenders = sources
+            .filterNot { it.path in exempt }
+            .filter { src ->
+                // SCOPED TO SCREENS THAT RENDER A NOTICE. A ViewModel or a
+                // repository CLASSIFIES a failure and draws nothing, so an
+                // incomplete `when` there is a different question - it has to
+                // put the failure into state, and the screen is where the
+                // sentence either appears or does not. `notice =` and
+                // `AuthNotice(` are the two ways a notice reaches a scaffold.
+                val rendersNotice = src.text.contains("notice =") ||
+                    src.text.contains("AuthNotice(")
+                val namesVariants = src.codeLines().any { (_, l) ->
+                    l.contains("ApiFailure.")
+                }
+                rendersNotice && namesVariants &&
+                    !src.text.contains("noticeFor(") &&
+                    !src.text.contains("failureText(") &&
+                    !src.text.contains("FailureState(")
+            }
+            .map { it.path }
+            .sorted()
+
+        assertEquals(
+            "These files match individual ApiFailure variants and route the " +
+                "rest nowhere. Send the remainder to noticeFor/failureText, " +
+                "which cannot fall silent:\n" +
+                offenders.joinToString("\n") { "    $it" } + "\n",
+            emptyList<String>(),
+            offenders,
+        )
+    }
 }

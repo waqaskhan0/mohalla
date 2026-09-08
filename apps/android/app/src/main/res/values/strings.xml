@@ -32,6 +32,7 @@
     <string name="state_offline_title">No connection</string>
     <string name="state_offline_body">You are offline. Some things you have already opened are still readable.</string>
     <string name="state_offline_banner">No internet connection</string>
+    <string name="state_session_expired">You have been signed out. Please log in again.</string>
 
     <!-- UX-STATE-003 -->
     <string name="state_error_title">Something went wrong</string>
