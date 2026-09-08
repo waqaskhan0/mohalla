@@ -2,13 +2,15 @@
 
 **Stage 7 · Android** · §44 · §45 · last updated after the final completion pass
 
-> **Flow A and Flow G were EXECUTED on an emulator against the real Stage 6
-> stack.** They found **six defects**, all of which are fixed and re-verified.
-> One of the six was a Stage 6 backend defect.
+> **Flows A, B, C, F and G were EXECUTED on an emulator against the real
+> Stage 6 stack.** They found **ten defects**, all fixed and re-verified. Two
+> were Stage 6 backend defects.
 >
-> **Flows B, C, D, E, F, H, I, J and K are NOT EXECUTED.**
+> **Flows D, E, H, I, J and K are NOT EXECUTED**, and neither is B's
+> notification-arrival step nor C's image path — each needs a second synthetic
+> user or the system image picker.
 >
-> 487 Android unit tests · 904 backend tests · 0 failures · Android Lint clean.
+> 491 Android · 904 backend · 95 database tests · **0 failures** · Lint clean.
 
 ---
 
@@ -328,19 +330,19 @@ Stage 7 can act on it.
 
 | Flow | Runtime result |
 |---|---|
-| **A — New user** | **PASS** (six defects found and fixed) |
-| B — Returning user | **NOT EXECUTED** |
-| C — Create post | **NOT EXECUTED** |
+| **A — New user** | **PASS**, end to end with no skipped steps (six defects found and fixed) |
+| **B — Returning user** | **PASS** except the notification-arrival step — found RUNTIME-007 |
+| **C — Create post** | **PASS** for the text path — found MOBILE-BACKEND-FIX-002. Image path NOT EXECUTED |
 | D — Social | **NOT EXECUTED** |
 | E — Message request | **NOT EXECUTED** |
-| F — Events | **NOT EXECUTED** |
+| **F — Events** | **PASS**, including §14's attendee-privacy check |
 | **G — RTL** | **PASS** for mirroring and translation · RUNTIME-006 open |
 | H — Block privacy | **NOT EXECUTED** |
 | I — Suspension | **NOT EXECUTED** |
 | J — Offline | **NOT EXECUTED** |
 | K — Account deletion | **NOT EXECUTED** |
 
-**2 of 11 executed.** The nine are `NOT EXECUTED`, not `BLOCKED` — the
+**5 of 11 executed.** The nine are `NOT EXECUTED`, not `BLOCKED` — the
 environment for them now exists and works, which is the substantive change this
 pass made. What they need is time, and the deterministic fixtures §8 asks for
 (two users, a suspended account, a pending-deletion account, an event, a block
@@ -349,6 +351,128 @@ relationship) were not built.
 Screens that ran are marked `✅` in the `Runtime` column of
 `17-mobile-screen-coverage.md`; every other screen is `—`, which means **NOT
 EXECUTED** and must never be read as a pass.
+
+## 6b. Flows B, C and F — executed
+
+### Flow B — Returning user · **PASS** except the last step
+
+| Step | Result |
+|---|---|
+| Login | **PASS** — UX-AUTH-004, and it found **RUNTIME-007** |
+| Home / feed | **PASS** — announcements strip, following-feed empty state |
+| Post detail | **PASS** — UX-HOME-003, with the author's Save and Delete actions |
+| Like | **PASS** — `like_count` 0 → 1 in Postgres |
+| Comment | **PASS** — `comment_count` 0 → 1, the comment renders in the thread |
+| Notification | **NOT EXECUTED** — and it cannot be, with one user |
+
+The notification centre itself renders correctly: **"Nothing yet — when people
+interact with your posts, you'll see it here."** Which is right, because the
+only interactions were with the reader's own post and nobody is notified about
+themselves. Proving arrival needs a second synthetic user (§8).
+
+### Flow C — Create post · **PASS** for text
+
+| Step | Result |
+|---|---|
+| Create | **PASS** — UX-CREATE-001, author identity shown, `0 / 3000` counter |
+| Text | **PASS** — typed 35 characters, the counter read **`35 / 3000`** exactly (BR-012) |
+| Image selection · compression · upload | **NOT EXECUTED** — a system Activity result |
+| Publish | **PASS** — the post is in `posts` |
+| Post appears | **PASS** — on the profile, with Like, Comments and Share |
+
+And it found **MOBILE-BACKEND-FIX-002**: the post appeared in the list while the
+Posts stat directly above it read **0**.
+
+### Flow F — Events · **PASS**
+
+| Step | Result |
+|---|---|
+| Events tab · list | **PASS** — UX-EVENT-001, date block, `1 person going` |
+| Event detail | **PASS** — UX-EVENT-003, organiser, type, description |
+| Going | **PASS** — `1 person going` → `2 people going`, and `going_count` 1 → 2 |
+| RSVP change | **PASS** — Interested gives `1 person going · 1 interested`, and the database reads `going_count 1, interested_count 1` |
+| Aggregate count update | **PASS** — app and database agree exactly at every step |
+| External join-link state | **PASS** — "Respond to this event to get the joining link" became **"The joining link opens on 8 September, 7:31 PM"** (EVENT-FR-003, BR-045) |
+| **No attendee identities exposed** | **PASS** — §14's critical check |
+
+That last row is the one worth stating plainly. The detail screen shows the
+**organiser** and an **aggregate count** and nothing else: no attendee list, no
+avatar stack, no names. EVENT-FR-004 permits a public count and states the
+attendee list is not shown in V1 (ARCH-CONFLICT-006), and the runtime screen
+matches.
+
+One near-miss worth recording as a lesson about evidence. The app showed
+"2 people going" while a database query showed 1, which looked like an
+optimistic count failing to reconcile — exactly the defect §14 asks about. It
+was not: the seed data contains many events sharing a title, and the query had
+matched a different row. Queried by id, the event read `going_count 2,
+actual_going 2`. **The app was right and the first query was wrong**, and saying
+so is more useful than a phantom defect would have been.
+
+## 6c. The four further defects
+
+### RUNTIME-007 · logging in skipped onboarding entirely
+
+`onAuthenticated = { navController.toShell() }` — unconditional. An account that
+had registered and verified but never claimed a username logged back in and
+landed on Home with `username` and `display_name` both **null**, read straight
+out of Postgres. PROFILE-FR-002 makes the handle mandatory and BR-005 makes it
+permanent, so that account could never be searched for or mentioned and its own
+profile rendered blank. It is not an exotic state — it is what a lost session, a
+killed app or a flat battery mid-signup leaves behind.
+
+The splash always got this right; the login path never asked, and could not:
+`LoginOutcome.Authenticated` carries a capability and nothing else. Fixed by
+extracting `destinationForSession` so **both** paths use one resolver, reading
+`/me` after login, and popping the auth graph so Back from the username screen
+does not land on a password field.
+
+Verified: that account now opens "Choose your username". Onboarding then
+completed through **UX-SETUP-003**, which also confirms the RUNTIME-003 crash
+fix renders, and the follow persisted to `follows`.
+
+### MOBILE-BACKEND-FIX-002 · `profiles.post_count` was never maintained
+
+The profile read **0 Posts** above a list containing one post.
+
+Every other denormalised counter in the schema is trigger-maintained, and each
+was correct in the same run — `follows_counts`, `likes_count`,
+`comments_count`, `event_rsvps_counts`. `posts` had **no count trigger at all**.
+
+Fixed with `0023_post_count_trigger`, following the pattern
+`0010_epic05_social_graph` sets for follows, and **backfilled**: 0 profiles now
+disagree with their own posts. It counts `VISIBLE` only — counting auto-hidden
+posts would let a viewer compare the number against the list they can see and
+infer that one had been hidden, which is precisely what BR-025 exists to
+prevent. Five database tests; three fail when the trigger is dropped.
+
+Also fixed on the way: `npm run migrate` read `DATABASE_URL`, which is
+`runtime_app` — USAGE on schema `public` but no CREATE — so this migration
+failed with "permission denied for schema public" until the script was pointed
+at `MIGRATION_DATABASE_URL`, which the repository defines for exactly this.
+Anyone adding a migration would have hit the same wall.
+
+### RUNTIME-005 · fixed and verified
+
+Seven screens matched two or three of eight `ApiFailure` variants and let the
+rest fall silent. `noticeFor`/`failureText` are now one exhaustive `when` with
+no `else`, pinned by a source invariant proven by reverting two call sites.
+
+Verified at runtime in a way that turned out better than a notice: with the
+session revoked mid-onboarding, the app **signs the reader out and returns them
+to Welcome**. That is group 20's revocation observer, which only fires when a
+token was actually attached — so it could not have worked before
+MOBILE-BACKEND-FIX-001, because there was no session to revoke. The two fixes
+compose, and together they turn a dead button into a correct sign-out.
+
+### RUNTIME-008 · "1 comments"
+
+The post-detail header said "1 comments". `comment_count` was a plain string
+where the project already uses `<plurals>` for
+`event_going_count`, `event_interested_count`, `attach_images_remaining` and the
+three notification times. Urdu was wrong the same way — `تبصرے` is the plural
+form. Both forms now declared; the header reads "1 comment", and "1 person
+going" on the events screen confirms the pattern works where applied.
 
 ## 7. §45 — device checks
 
@@ -380,9 +504,10 @@ on a phone. No NFR is claimed from them, in either direction.
 
 | Suite | Classes / files | Tests | Failures |
 |---|---|---|---|
-| Android unit | 33 | **487** | 0 |
-| Backend | 46 | **904** | 0 |
-| **Total** | 79 | **1391** | **0** |
+| Android unit | 33 | **491** | 0 |
+| Backend (api) | 46 | **904** | 0 |
+| Database | 7 | **95** (3 skipped) | 0 |
+| **Total** | 86 | **1490** | **0** |
 
 Android Lint: clean. `guard:all`: dependency direction, locale parity and secret
 scan all pass.

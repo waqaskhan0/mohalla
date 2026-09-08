@@ -15,20 +15,24 @@ and none of the three is an external dependency:
 
 | §28 condition | State |
 |---|---|
-| Mandatory emulator flows are executed | **2 of 11.** A and G ran; B, C, D, E, F, H, I, J, K did not |
+| Mandatory emulator flows are executed | **5 of 11.** A, B, C, F and G ran; D, E, H, I, J, K did not |
 | Accessibility implementation/audit is performed | **Source-level only.** Ten invariants hold across the tree; no device audit, no TalkBack, no font-scale run |
 | No known code defect prevents a Must flow | **One open defect.** RUNTIME-006. RUNTIME-005 is fixed |
 | All 61 screens represented | ✅ one canonical schema, 61 rows, 0 duplicates |
 | Required screens implemented | **59 of 61.** `UX-HOME-005` and `UX-HOME-006` not started |
-| Local API integration gaps fixed | ✅ one found, one fixed (MOBILE-BACKEND-FIX-001) |
+| Local API integration gaps fixed | ✅ **two** found, two fixed (MOBILE-BACKEND-FIX-001, -002) |
 | Runtime RTL executed | ✅ Flow G, measured |
 | Build · lint · tests pass | ✅ |
 
 §32 says not to write this file prematurely and bend the evidence to match it.
-The evidence says not complete, so that is what it says. **This is much closer
-than it was** — the runtime environment now exists and works, and the two flows
-that ran found and fixed six real defects — but two of eleven flows is not
-eleven.
+The evidence says not complete, so that is what it says.
+
+**The gap has narrowed a great deal.** The runtime environment exists and works,
+five of eleven flows now pass, and those five found and fixed **ten** real
+defects — two of them in the Stage 6 backend. But five of eleven is not eleven,
+and the six that remain are the ones that need a second synthetic user: block
+privacy, suspension, message requests, the social flow, offline and deletion.
+Those are also, on this pass's evidence, the flows most likely to find something.
 
 ---
 
@@ -95,9 +99,10 @@ end to end, with `ORGANIZATION` persisted in Postgres.
 |---|---|
 | Android clean build | **PASS** |
 | Android Lint (`lintDebug`) | **PASS**, clean |
-| Android unit tests | **488** across 33 classes · **0 failures** |
-| Backend tests | **904** across 46 files · **0 failures** |
-| **Total** | **1392 · 0 failures** |
+| Android unit tests | **491** across 33 classes · **0 failures** |
+| Backend tests (api) | **904** across 46 files · **0 failures** |
+| Database tests | **95** across 7 files · **0 failures** |
+| **Total** | **1490 · 0 failures** |
 | `npm run verify` | **12 passed · 0 failed · 3 blocked** |
 | `npm run smoke` | **8 passed · 0 failed · 0 blocked** |
 | `guard:all` | dependency direction · locale parity · secret scan — all **PASS** |
@@ -111,12 +116,12 @@ second database that was not provisioned. **BLOCKED, not PASS.**
 
 | Flow | Result |
 |---|---|
-| **A — New user** | **PASS** — six defects found and fixed |
-| B — Returning user | NOT EXECUTED |
-| C — Create post | NOT EXECUTED |
+| **A — New user** | **PASS**, end to end, no skipped steps — six defects found and fixed |
+| **B — Returning user** | **PASS** except notification arrival — found RUNTIME-007 |
+| **C — Create post** | **PASS** for text — found MOBILE-BACKEND-FIX-002. Image path NOT EXECUTED |
 | D — Social | NOT EXECUTED |
 | E — Message request | NOT EXECUTED |
-| F — Events | NOT EXECUTED |
+| **F — Events** | **PASS**, including §14's attendee-privacy check |
 | **G — RTL** | **PASS** for mirroring and translation · RUNTIME-006 open |
 | H — Block privacy | NOT EXECUTED |
 | I — Suspension | NOT EXECUTED |
@@ -153,6 +158,19 @@ implementation, called inside the same transaction that consumes the challenge.
 `PASSWORD_RESET` deliberately issues nothing. Two regression tests, proven by
 reverting the fix.
 
+### MOBILE-BACKEND-FIX-002 — `profiles.post_count` was never maintained
+
+The profile read **0 Posts** above a list containing one post. Every other
+denormalised counter in the schema is trigger-maintained and each was correct in
+the same run; `posts` had no count trigger at all.
+
+`0023_post_count_trigger`, following the pattern
+`0010_epic05_social_graph` sets for follows, plus a backfill — 0 profiles now
+disagree with their own posts. Counts `VISIBLE` only, because counting
+auto-hidden posts would let a viewer infer from the number that something had
+been hidden (BR-025). Five database tests; three fail when the trigger is
+dropped.
+
 ### MOBILE-BACKEND-GAP-002 — the blocked list cannot name anyone (open)
 
 `GET /me/blocks` returns no `displayName` and no `username`, so an approved
@@ -170,7 +188,7 @@ guesswork that fix avoided. The shape is stated in
 
 | | Severity |
 |---|---|
-| ~~RUNTIME-005~~ | **FIXED.** Seven screens matched two or three of eight `ApiFailure` variants and let the rest fall silent. `noticeFor`/`failureText` are one exhaustive `when` with no `else`, so a ninth variant fails to compile at the mapping. Pinned by a source invariant, proven by reverting two call sites |
+| ~~RUNTIME-005~~ · ~~RUNTIME-007~~ · ~~RUNTIME-008~~ | **ALL FIXED and runtime-verified.** RUNTIME-005: Seven screens matched two or three of eight `ApiFailure` variants and let the rest fall silent. `noticeFor`/`failureText` are one exhaustive `when` with no `else`, so a ninth variant fails to compile at the mapping. Pinned by a source invariant, proven by reverting two call sites |
 | **RUNTIME-006** — Home's Urdu empty-state button compressed to 74px (≈28dp) with its label clipped, against 126px (48dp) elsewhere | Real, RTL-only, measured |
 | **OBS-001** — a live OTP is recoverable from its unsalted SHA-256 in under a second given database read access | A Stage 6 security decision, recorded not acted on |
 
@@ -231,7 +249,6 @@ of what §25 and §26 have **not** audited.
    them to find defects: two flows found six, three of them in requirements
    already documented as implemented.
 3. **Fix RUNTIME-006**, then re-execute Home in Urdu and re-measure the button.
-4. **Re-execute `UX-SETUP-003`** to confirm the crash fix renders.
 5. **MOBILE-BACKEND-GAP-002**, once Flow H has shown what the screen needs.
 6. **§25 device accessibility audit, §26 large-font run, §27 measurements** — all
    now possible.

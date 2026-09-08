@@ -26,13 +26,13 @@ on a device**, because none is available (see `00-mobile-baseline.md` §6).
 
 | | Screens |
 |---|---|
-| ✅ Exercised on an emulator, inside an executed §44 flow | **15** |
-| ✗ Exercised and FAILED — defect fixed, re-render not executed | **1** (UX-SETUP-003) |
-| — **NOT EXECUTED** | **45** |
+| ✅ Exercised on an emulator, inside an executed §44 flow | **22** |
+| — **NOT EXECUTED** | **39** |
 
-Flow A and Flow G ran; the other nine §44 flows did not. See
-`19-mobile-test-report.md` for what each executed step proved and for the six
-defects the two flows found.
+Flows **A, B, C, F and G** ran. B's notification-arrival step, C's image path
+and flows D, E, H, I, J, K did not — each needs either a second synthetic user
+or the system image picker. See `19-mobile-test-report.md` for what every
+executed step proved and for the **ten** defects those five flows found.
 
 **Coverage: 90% complete.** Stage 7 is **NOT** feature-complete.
 
@@ -128,7 +128,7 @@ parameter**, so no caller can make the neutral refusal distinguishable
 | Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | A11y | Tests | Runtime | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | UX-AUTH-003 | Welcome | AUTH-FR-001 · SEC-006 | — | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | ✅ | ✅ |
-| UX-AUTH-004 | Log in | AUTH-FR-005 · SEC-006/007 | `POST /login` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | ✅ |
+| UX-AUTH-004 | Log in | AUTH-FR-005 · SEC-006/007 | `POST /login` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | UX-AUTH-005 | Register — phone | AUTH-FR-001 · PROFILE-FR-006 · BR-001 | `POST /register` | ✅ | ✅ | — | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | UX-AUTH-006 | Register — date of birth | AUTH-FR-008 · BR-002 | — | ✅ | ✅ | — | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | UX-AUTH-007 | Register — password | AUTH-FR-001 · SRS §12 | — | ✅ | ✅ | — | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -174,7 +174,7 @@ placeholder that looks like a real policy.
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | UX-SETUP-001 | Username selection | PROFILE-FR-002 · EDGE-007 | `/me/username` `/username/available` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | UX-SETUP-002 | Profile setup | PROFILE-FR-001/003 · MEDIA-FR-001 | `POST /me/profile` · `/media/*` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| UX-SETUP-003 | Suggested accounts | SOCIAL-FR-005 · RSK-001 | `GET /suggestions` · `/users/:id/follow` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ | ✅ |
+| UX-SETUP-003 | Suggested accounts | SOCIAL-FR-005 · RSK-001 | `GET /suggestions` · `/users/:id/follow` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ### What onboarding decided
 
@@ -314,9 +314,9 @@ of a document nobody has written. The debug build carries the literal
 | Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | A11y | Tests | Runtime | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | — | Event card · date block · RSVP row | UI/UX §18 | — | ✅ | ✅ | ✅ | — | — | — | ✅ |
-| UX-EVENT-001 | Events — Upcoming | EVENT-FR-005 | `GET /events` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
+| UX-EVENT-001 | Events — Upcoming | EVENT-FR-005 | `GET /events` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | UX-EVENT-002 | Events — Mine | EVENT-FR-004/007 | `GET /users/:id/events` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ◐ |
-| UX-EVENT-003 | Event detail | EVENT-FR-003/004/006 · BR-045 | `/events/:id` · `/rsvp` · `/join` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | ✅ |
+| UX-EVENT-003 | Event detail | EVENT-FR-003/004/006 · BR-045 | `/events/:id` · `/rsvp` · `/join` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | UX-EVENT-004 | Create event | EVENT-FR-001/002 · BR-043 | `POST /events` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | ✅ |
 | UX-EVENT-005 | Edit / cancel event | EVENT-FR-007 | `PATCH`/`DELETE /events/:id` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | ✅ |
 
@@ -433,7 +433,7 @@ JDK's own `ur-PK` data, which renders `14` beside the Urdu month name `ستمب�
 | — | Media rendering · avatar · strip | MEDIA-FR-001 · §34 | `GET /media/:id` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | — | Upload tile ×5 states | §19 · §34 · EDGE-013 | `/media/*` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
 | — | Date and time picker | §18 | — | ✅ | ✅ | — | — | — | — | ✅ |
-| UX-CREATE-001 | Composer | POST-FR-001/003/006 · BR-012/013 · EDGE-011/013 | `POST /posts` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
+| UX-CREATE-001 | Composer | POST-FR-001/003/006 · BR-012/013 · EDGE-011/013 | `POST /posts` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | UX-CREATE-002 | Image picker & compress | MEDIA-FR-001/005 · NFR-PERF-005 | `/media/upload-slot` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | ✅ |
 | UX-CREATE-003 | Attachment sheet | POST-FR-002/004/005 | — | ✅ | ✅ | — | — | — | — | ✅ | ✅ | — | ◐ |
 | UX-CREATE-004 | Category picker | POST-FR-006 · BR-017 | `GET /categories` | ✅ | ✅ | ✅ | ✅ | — | — | ✅ | ✅ | — | ✅ |
@@ -551,7 +551,7 @@ is what closes UX-EVENT-004 and UX-EVENT-005.
 | Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | A11y | Tests | Runtime | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | — | Comment item · reply item | ENGAGE-FR-002/003 · BR-033 | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| UX-HOME-003 | Post detail | POST-FR-007/009/010 · ENGAGE-FR-001…007 | `/posts/:id` · `/comments` · `/like` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
+| UX-HOME-003 | Post detail | POST-FR-007/009/010 · ENGAGE-FR-001…007 | `/posts/:id` · `/comments` · `/like` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | UX-HOME-004 | Image viewer | MEDIA-FR-002 | `GET /media/:id` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | ✅ |
 
 ### What post detail and engagement decided, and why it is written down
@@ -866,7 +866,7 @@ sets, and a field added under any name fails with the requirement quoted.
 | Screen | Name | Requirements | APIs | LTR | RTL | Loading | Empty | Error | Offline | A11y | Tests | Runtime | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | — | Notification row (component) | §18 · NOTIF-FR-002/003 | — | ✅ | ✅ | ✅ | — | — | — | ✅ |
-| UX-HOME-007 | Notification centre | NOTIF-FR-002/003/004/005 · LOCALE-FR-006 | `/notifications` · `/notifications/read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
+| UX-HOME-007 | Notification centre | NOTIF-FR-002/003/004/005 · LOCALE-FR-006 | `/notifications` · `/notifications/read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | UX-SET-003 | Notification preferences | NOTIF-FR-007 · SET-FR-007 | `/notifications/preferences` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | ✅ |
 
 **The Home bell is no longer inert**, and neither is the Messages tab's badge.

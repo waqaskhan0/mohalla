@@ -18,13 +18,16 @@ after Flow A and Flow G were executed and six defects were fixed.
 
 | Item | Class |
 |---|---|
-| **RUNTIME-005** — setup and auth screens render only `Offline` and `Server` failures; every other `ApiFailure` shows nothing | **IMPLEMENTABLE NOW** |
+| ~~RUNTIME-005~~ | **FIXED and runtime-verified.** `noticeFor`/`failureText` are one exhaustive `when` with no `else`, pinned by a source invariant |
+| ~~RUNTIME-007~~ — logging in skipped onboarding, landing an account with no username on Home | **FIXED and runtime-verified.** `destinationForSession` extracted so the login and splash paths share one resolver |
+| ~~RUNTIME-008~~ — "1 comments" | **FIXED.** `comment_count` is a `<plurals>` in both languages |
+| ~~MOBILE-BACKEND-GAP-003~~ — `profiles.post_count` never maintained | **FIXED** as MOBILE-BACKEND-FIX-002: `0023_post_count_trigger`, backfilled, five database tests |
 | **RUNTIME-006** — Home's Urdu empty-state button compressed to ≈28dp with a clipped label | **IMPLEMENTABLE NOW** |
 | **GAP-M-016** · **GAP-M-017** · **GAP-M-018** — interests, post editing, mark-all-read | **IMPLEMENTABLE NOW**, and deliberately not built: each is a Could with no designed screen, and §49 forbids adding one |
 | `UX-HOME-005` category filter · `UX-HOME-006` announcement detail | **IMPLEMENTABLE NOW** — the only two unbuilt screens of 61 |
 | Compose UI tests (none exist) | **IMPLEMENTABLE NOW** — the emulator exists |
-| §44 flows B, C, D, E, F, H, I, J, K | **RUNTIME VERIFICATION REQUIRED** — environment ready, fixtures and time are not |
-| `UX-SETUP-003` re-render after the RUNTIME-003 crash fix | **RUNTIME VERIFICATION REQUIRED** |
+| §44 flows **D, E, H, I, J, K**, plus B’s notification arrival and C’s image path | **RUNTIME VERIFICATION REQUIRED** — B, C and F now pass; what the rest need is a **second synthetic user** (§8) and the system image picker, not a device |
+| ~~`UX-SETUP-003` re-render~~ | **VERIFIED.** The suggestions screen renders after the crash fix, reached by completing onboarding |
 | §45 image picker · camera · large font · slow network · offline/reconnect · chat · scrolling | **RUNTIME VERIFICATION REQUIRED** |
 | **GAP-M-013** — `/me/blocks` returns no display name or handle | **BACKEND GAP** — see §0.1 |
 | **EVENT-FR-004** — no endpoint returns the events a user RSVP'd to, so `UX-EVENT-002` cannot list them | **BACKEND GAP** |
@@ -84,7 +87,7 @@ null, the ordering of the deletion consequences PRIV-006 requires a user to read
 which of the eight API failures each of §21's four states answers for, every
 link shape §42 accepts and the many more it refuses, eight accessibility and RTL
 invariants asserted over the whole source tree, and the exact field shape of
-every type that enforces a privacy rule structurally. **487 Android tests and 904 backend tests, all passing.** |
+every type that enforces a privacy rule structurally. **491 Android, 904 backend and 95 database tests, all passing.** |
 | **What group 22 added** | Eight source-level invariants: no absolute alignment, no left/right padding or text alignment, every directional icon mirrored, the tab list never reversed, `text-tertiary` never colouring informational text, no bare 40dp `TextButton`, no hardcoded user-visible string, every lazy item keyed. Each an allowlist, so a new permitted use has to be argued for in the test. The RTL rules were all already satisfied; the contrast ones were violated on 55 sites. |
 | **What group 23 added** | Two integration tests over the seams a unit test cannot see. `ApiContractTest`: all 75 client routes exist in Stage 6's generated contract, 0 missing, and each of the 29 uncalled server routes carries a stated reason so a new one fails the build. `IntegrationWiringTest`: every function on every `*Source` interface reaches a caller, with the orphan set pinned at exactly three. Between them they found a **Must** requirement that had never been implemented and three declarations nothing called. |
 | **What that does not prove** | That pixels mirror. The tests prove Create sits at index 2 of 5 and that the list is never pre-reversed; they cannot prove the row renders right-to-left. §36 makes RTL release-critical, so this gap is the largest single verification debt in Stage 7. |
