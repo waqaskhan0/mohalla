@@ -1,6 +1,6 @@
 # 17 — Mobile Screen Coverage
 
-**Stage 7 · Android** · 61 required screens · last updated after group 21 (Deep links)
+**Stage 7 · Android** · 61 required screens · last updated after group 22 (Accessibility, RTL and performance)
 
 > **This table is the answer to "is Stage 7 feature-complete?"** It is not, and
 > the count below says by how much. A screen is `DONE` only when it is built,
@@ -1499,6 +1499,87 @@ trade worth making. **GAP-M-015.**
 `android:host` would claim every URL on the domain, including the Privacy Policy
 that PRIV-017 requires to be readable in a *browser* before Google Play will
 accept the app.
+
+## Group 22 · Accessibility, RTL and performance
+
+No new screens. This group audited all 55 built ones against §26, §35 and §36,
+and the honest summary is that **RTL was clean and contrast was not**.
+
+### RTL held up
+
+Nothing to fix. No absolute alignment anywhere, no left/right padding, no
+left/right text alignment, every directional icon already `AutoMirrored`, and the
+tab list never reversed in code. §36's "do not treat RTL as final polish" was
+followed group by group — every screen was written with logical direction from
+the start — and the audit found the discipline had held across all 55.
+
+### Contrast had not
+
+**`text-tertiary` was carrying informational text on 44 sites.** The UI/UX
+spec's own contrast audit is unambiguous: *"text-tertiary on white 2.9:1 — Fails
+AA and is therefore FORBIDDEN for text. Permitted only for decorative dividers,
+disabled-state icons, and non-informative placeholder glyphs."* And the same
+table names `text-secondary` (5.4:1, AA) for what those 44 sites actually held:
+*"Metadata, timestamps, helper text."*
+
+Every post's timestamp and city, every handle, every comment's time, every day
+heading in the notification centre, the three stat-pill labels on every profile,
+the character counters, the settings rows' values, the helper text on the OTP
+screen — all below AA, on the platform whose target user (persona MI) runs the
+system font at 130%.
+
+**Eleven more were conditional picks**, classified one at a time:
+
+- A **departed author's placeholder** still answers "who wrote this", so BR-009's
+  "Deleted User" is information — raised.
+- A **cancelled event's title** still has to be readable. The banner says it is
+  cancelled; the title says *which* event, and somebody checking whether their
+  Saturday is free needs to read it. Dimming it below AA would leave the
+  cancellation notice as the only legible thing on the card.
+- The **request count badge** was white on `text-tertiary` — **2.6:1**, making
+  BR-027's count the least legible thing in the tab it belongs to. Now white on
+  `text-secondary` at 5.6:1, and still deliberately neutral: §18.5 wants "a
+  number rather than a red dot", because a dot demands attention and a number is
+  information.
+- **Four of the five bottom-navigation labels are unselected at any moment**, and
+  unselected was `text-tertiary`. The a11y checklist requires that "bottom
+  navigation labels are always visible, never icon-only" — so most of the app's
+  navigation was below AA. Locked stays tertiary: WCAG 1.4.3 exempts an inactive
+  control, and §35's shape change carries that meaning.
+
+What remains tertiary is enumerated with a reason at each site: two bullet
+glyphs, a text-field placeholder, disabled and in-flight states, and decorative
+icon tints where the words beside them carry the meaning.
+
+### Touch targets were 40dp in twelve places
+
+Material 3's `TextButton` is 40dp tall; the checklist says **"48×48dp minimum
+everywhere"**. Twelve were bare — including **Forgot password** and **Resend
+code**, both on recovery paths where the reader is already stuck and a missed tap
+is the second thing that has gone wrong. `MohallaTextButton` now carries the
+height, so the thirteenth caller cannot forget it; three sites that had already
+been done by hand in group 04 were converted too, so the number has one
+definition rather than four.
+
+### And the invariants are now tests
+
+Eight of them, over the source tree, because **a rule enforced by reading is a
+rule that holds until the next screen** — which is what this audit measured.
+Absolute alignment, left/right padding, left/right text alignment, unmirrored
+directional icons, a reversed tab list, `text-tertiary` on text, a bare
+`TextButton`, a hardcoded user-visible string, a lazy list item without a stable
+key, and a blocking call or an HTTP logger.
+
+Each is an **allowlist**, following the lesson group 11 measured: a denylist of
+guessed names let four real defects through a suite of 271 tests. A new
+permitted use has to be added to the test, which is the moment somebody reads why
+the rule exists.
+
+**What this still cannot prove is that pixels mirror.** It proves the mistakes
+that make mirroring fail are absent, and that the contrast tokens are used as
+the audit permits. Seeing the result needs a device, and there is none — §36
+makes RTL release-critical, so that remains the largest verification debt in
+Stage 7.
 
 ## What must be true before this table can say "feature-complete"
 

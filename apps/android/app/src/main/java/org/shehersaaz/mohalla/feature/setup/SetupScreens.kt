@@ -27,6 +27,7 @@ import org.shehersaaz.mohalla.core.design.MohallaType
 import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.network.SuggestedUser
 import org.shehersaaz.mohalla.core.ui.AuthNotice
+import org.shehersaaz.mohalla.core.ui.MohallaTextButton
 import org.shehersaaz.mohalla.core.ui.AuthNoticeTone
 import org.shehersaaz.mohalla.core.ui.AuthScaffold
 import org.shehersaaz.mohalla.core.ui.MohallaButton
@@ -248,7 +249,7 @@ private fun PhotoRow(
                 Text(
                     text = stringResource(R.string.a11y_loading),
                     style = MohallaTheme.text(MohallaType.Label),
-                    color = MohallaTheme.colors.TextTertiary,
+                    color = MohallaTheme.colors.TextSecondary,
                 )
             }
         }
@@ -257,39 +258,22 @@ private fun PhotoRow(
             when {
                 // Transient failure — retry, using the bytes already held, so
                 // the user does not go back to the gallery.
-                state.uploadFailed && state.pendingPhoto != null -> TextButton(
+                state.uploadFailed && state.pendingPhoto != null -> MohallaTextButton(
+                    text = stringResource(R.string.action_retry),
                     onClick = onRetry,
-                    modifier = Modifier.defaultMinSize(minHeight = MohallaTheme.spacing.Space12),
-                ) {
-                    Text(
-                        text = stringResource(R.string.action_retry),
-                        style = MohallaTheme.text(MohallaType.Button),
-                        color = MohallaTheme.colors.BrandPrimary,
-                    )
-                }
+                )
 
-                state.photoMediaId != null -> TextButton(
+                state.photoMediaId != null -> MohallaTextButton(
+                    text = stringResource(R.string.photo_remove),
                     onClick = onRemove,
-                    modifier = Modifier.defaultMinSize(minHeight = MohallaTheme.spacing.Space12),
-                ) {
-                    Text(
-                        text = stringResource(R.string.photo_remove),
-                        style = MohallaTheme.text(MohallaType.Button),
-                        color = MohallaTheme.colors.Error,
-                    )
-                }
+                    destructive = true,
+                )
 
-                else -> TextButton(
+                else -> MohallaTextButton(
+                    text = stringResource(R.string.photo_add_optional),
                     onClick = onPick,
                     enabled = !state.uploading,
-                    modifier = Modifier.defaultMinSize(minHeight = MohallaTheme.spacing.Space12),
-                ) {
-                    Text(
-                        text = stringResource(R.string.photo_add_optional),
-                        style = MohallaTheme.text(MohallaType.Button),
-                        color = MohallaTheme.colors.BrandPrimary,
-                    )
-                }
+                )
             }
         }
     }
@@ -420,7 +404,7 @@ private fun SuggestionRow(
                     user.city,
                 ).joinToString(" · "),
                 style = MohallaTheme.text(MohallaType.Caption),
-                color = MohallaTheme.colors.TextTertiary,
+                color = MohallaTheme.colors.TextSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

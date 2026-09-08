@@ -253,8 +253,11 @@ private fun StartsAtField(
                 text = listOfNotNull(date, time).takeIf { it.isNotEmpty() }?.joinToString(" · ")
                     ?: stringResource(R.string.event_pick_date_time),
                 style = MohallaTheme.text(MohallaType.Body),
+                // "Pick a date and time" is the LABEL of an enabled control,
+                // not a placeholder inside a text field — it is what the reader
+                // taps, so it has to be legible.
                 color = if (startsAtMillis == null) {
-                    MohallaTheme.colors.TextTertiary
+                    MohallaTheme.colors.TextSecondary
                 } else {
                     MohallaTheme.colors.TextPrimary
                 },

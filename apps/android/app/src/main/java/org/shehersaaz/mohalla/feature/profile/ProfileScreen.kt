@@ -214,7 +214,7 @@ private fun ProfileBody(
             Text(
                 text = stringResource(R.string.profile_posts),
                 style = MohallaTheme.text(MohallaType.Label),
-                color = MohallaTheme.colors.TextTertiary,
+                color = MohallaTheme.colors.TextSecondary,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(
@@ -325,7 +325,7 @@ private fun Identity(profile: ProfileView) {
             Text(
                 text = "@${profile.username}",
                 style = MohallaTheme.text(MohallaType.Body),
-                color = MohallaTheme.colors.TextTertiary,
+                color = MohallaTheme.colors.TextSecondary,
             )
         }
 
@@ -437,7 +437,7 @@ private fun StatPill(
         Text(
             text = label,
             style = MohallaTheme.text(MohallaType.Caption),
-            color = MohallaTheme.colors.TextTertiary,
+            color = MohallaTheme.colors.TextSecondary,
         )
     }
 }

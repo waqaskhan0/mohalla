@@ -27,6 +27,7 @@ import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.ui.FailureState
 import org.shehersaaz.mohalla.core.ui.MohallaAvatar
 import org.shehersaaz.mohalla.core.ui.MohallaBackHeader
+import org.shehersaaz.mohalla.core.ui.MohallaTextButton
 import org.shehersaaz.mohalla.core.ui.MohallaButton
 import org.shehersaaz.mohalla.core.ui.MohallaSecondaryButton
 import org.shehersaaz.mohalla.core.ui.MohallaTextField
@@ -191,7 +192,7 @@ private fun UsernameRow(username: String?) {
         Text(
             text = stringResource(R.string.username_label),
             style = MohallaTheme.text(MohallaType.Caption),
-            color = MohallaTheme.colors.TextTertiary,
+            color = MohallaTheme.colors.TextSecondary,
         )
         Text(
             text = ltr("@$username"),
@@ -203,7 +204,7 @@ private fun UsernameRow(username: String?) {
         Text(
             text = stringResource(R.string.profile_username_permanent),
             style = MohallaTheme.text(MohallaType.Caption),
-            color = MohallaTheme.colors.TextTertiary,
+            color = MohallaTheme.colors.TextSecondary,
         )
     }
 }
@@ -252,29 +253,23 @@ private fun PhotoRow(
                 // EDGE-013 — the bytes are still held, so a retry does not send
                 // the reader back to the picker.
                 if (state.uploadFailed && state.pendingPhoto != null) {
-                    TextButton(onClick = onRetry) {
-                        Text(
-                            text = stringResource(R.string.action_retry),
-                            style = MohallaTheme.text(MohallaType.Button),
-                        )
-                    }
-                }
-
-                TextButton(onClick = onPick) {
-                    Text(
-                        text = stringResource(R.string.photo_change),
-                        style = MohallaTheme.text(MohallaType.Button),
+                    MohallaTextButton(
+                        text = stringResource(R.string.action_retry),
+                        onClick = onRetry,
                     )
                 }
 
+                MohallaTextButton(
+                    text = stringResource(R.string.photo_change),
+                    onClick = onPick,
+                )
+
                 if (state.photoMediaId != null) {
-                    TextButton(onClick = onRemove) {
-                        Text(
-                            text = stringResource(R.string.photo_remove),
-                            style = MohallaTheme.text(MohallaType.Button),
-                            color = MohallaTheme.colors.Error,
-                        )
-                    }
+                    MohallaTextButton(
+                        text = stringResource(R.string.photo_remove),
+                        onClick = onRemove,
+                        destructive = true,
+                    )
                 }
             }
         }

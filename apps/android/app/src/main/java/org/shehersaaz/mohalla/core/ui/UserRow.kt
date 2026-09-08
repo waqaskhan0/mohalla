@@ -88,8 +88,11 @@ fun UserRow(
                         user.displayName.orEmpty()
                     },
                     style = MohallaTheme.text(MohallaType.Title),
+                    // BR-009's placeholder still NAMES the author, so it is
+                    // information and has to reach AA. De-emphasised by one step,
+                    // not by dropping below the contrast floor.
                     color = if (isDeleted) {
-                        MohallaTheme.colors.TextTertiary
+                        MohallaTheme.colors.TextSecondary
                     } else {
                         MohallaTheme.colors.TextPrimary
                     },
@@ -120,7 +123,7 @@ fun UserRow(
                 Text(
                     text = meta.joinToString(" · "),
                     style = MohallaTheme.text(MohallaType.Caption),
-                    color = MohallaTheme.colors.TextTertiary,
+                    color = MohallaTheme.colors.TextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )

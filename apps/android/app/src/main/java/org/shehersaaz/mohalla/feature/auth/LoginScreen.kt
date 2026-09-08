@@ -28,6 +28,7 @@ import org.shehersaaz.mohalla.core.design.MohallaTheme
 import org.shehersaaz.mohalla.core.design.MohallaType
 import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.ui.MohallaButton
+import org.shehersaaz.mohalla.core.ui.MohallaTextButton
 import org.shehersaaz.mohalla.core.ui.MohallaPasswordField
 import org.shehersaaz.mohalla.core.ui.MohallaPhoneField
 
@@ -147,13 +148,11 @@ fun LoginScreen(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        TextButton(onClick = onForgotPassword, modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = stringResource(R.string.login_forgot_password),
-                style = MohallaTheme.text(MohallaType.Button),
-                color = MohallaTheme.colors.BrandPrimary,
-            )
-        }
+        MohallaTextButton(
+            text = stringResource(R.string.login_forgot_password),
+            onClick = onForgotPassword,
+            modifier = Modifier.fillMaxWidth(),
+        )
 
         Spacer(Modifier.height(MohallaTheme.spacing.Space8))
     }

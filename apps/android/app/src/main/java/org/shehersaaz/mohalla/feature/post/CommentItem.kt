@@ -140,7 +140,7 @@ private fun CommentRow(
                     text = authorName,
                     style = MohallaTheme.text(MohallaType.Label),
                     color = if (isDeletedAuthor) {
-                        MohallaTheme.colors.TextTertiary
+                        MohallaTheme.colors.TextSecondary
                     } else {
                         MohallaTheme.colors.TextPrimary
                     },
@@ -167,7 +167,7 @@ private fun CommentRow(
                 Text(
                     text = comment.createdAt.take(RELATIVE_TIME_PREFIX),
                     style = MohallaTheme.text(MohallaType.Caption),
-                    color = MohallaTheme.colors.TextTertiary,
+                    color = MohallaTheme.colors.TextSecondary,
                 )
             }
 
@@ -224,7 +224,7 @@ private fun CommentRow(
                         Text(
                             text = stringResource(R.string.comment_delete),
                             style = MohallaTheme.text(MohallaType.Label),
-                            color = MohallaTheme.colors.TextTertiary,
+                            color = MohallaTheme.colors.TextSecondary,
                         )
                     }
                 } else if (!isDeletedAuthor) {
@@ -254,7 +254,7 @@ private fun CommentRow(
                         Text(
                             text = stringResource(R.string.comment_report),
                             style = MohallaTheme.text(MohallaType.Label),
-                            color = MohallaTheme.colors.TextTertiary,
+                            color = MohallaTheme.colors.TextSecondary,
                         )
                     }
                 }

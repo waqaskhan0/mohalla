@@ -169,7 +169,7 @@ private fun DayHeading(day: NotificationDay) {
             },
         ),
         style = MohallaTheme.text(MohallaType.Label),
-        color = MohallaTheme.colors.TextTertiary,
+        color = MohallaTheme.colors.TextSecondary,
         modifier = Modifier
             .fillMaxWidth()
             .background(MohallaTheme.colors.BgPrimary)

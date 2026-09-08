@@ -234,7 +234,7 @@ private fun FeedItems(
                 Text(
                     text = stringResource(R.string.feed_end),
                     style = MohallaTheme.text(MohallaType.Caption),
-                    color = MohallaTheme.colors.TextTertiary,
+                    color = MohallaTheme.colors.TextSecondary,
                     textAlign = TextAlign.Center,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -309,7 +309,7 @@ private fun FeaturedStrip(
         Text(
             text = stringResource(R.string.feed_featured),
             style = MohallaTheme.text(MohallaType.Label),
-            color = MohallaTheme.colors.TextTertiary,
+            color = MohallaTheme.colors.TextSecondary,
             modifier = Modifier.semantics { heading() },
         )
 

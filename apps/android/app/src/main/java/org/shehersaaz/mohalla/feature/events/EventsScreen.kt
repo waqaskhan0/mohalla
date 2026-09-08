@@ -193,7 +193,7 @@ private fun EventsList(
                 Text(
                     text = stringResource(R.string.events_end),
                     style = MohallaTheme.text(MohallaType.Caption),
-                    color = MohallaTheme.colors.TextTertiary,
+                    color = MohallaTheme.colors.TextSecondary,
                     textAlign = TextAlign.Center,
                     modifier = Modifier
                         .fillMaxWidth()

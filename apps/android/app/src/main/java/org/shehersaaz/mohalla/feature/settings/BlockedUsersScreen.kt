@@ -32,6 +32,7 @@ import org.shehersaaz.mohalla.core.format.EventTimes
 import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.ui.FailureState
 import org.shehersaaz.mohalla.core.ui.MohallaBackHeader
+import org.shehersaaz.mohalla.core.ui.MohallaTextButton
 
 /**
  * Blocked accounts — UX-SET-005 (SET-FR-003 · SAFETY-FR-006/007).
@@ -100,7 +101,7 @@ fun BlockedUsersScreen(
                     Text(
                         text = stringResource(R.string.blocked_no_names),
                         style = MohallaTheme.text(MohallaType.BodySm),
-                        color = MohallaTheme.colors.TextTertiary,
+                        color = MohallaTheme.colors.TextSecondary,
                         modifier = Modifier.padding(
                             horizontal = MohallaTheme.screenMargin,
                             vertical = MohallaTheme.spacing.Space3,
@@ -166,18 +167,16 @@ private fun BlockedRow(
                 Text(
                     text = stringResource(R.string.blocked_since, blockedAt),
                     style = MohallaTheme.text(MohallaType.Caption),
-                    color = MohallaTheme.colors.TextTertiary,
+                    color = MohallaTheme.colors.TextSecondary,
                 )
             }
         }
 
-        TextButton(onClick = onUnblock, enabled = !acting) {
-            Text(
-                text = stringResource(R.string.blocked_unblock),
-                style = MohallaTheme.text(MohallaType.Button),
-                color = MohallaTheme.colors.BrandPrimary,
-            )
-        }
+        MohallaTextButton(
+            text = stringResource(R.string.blocked_unblock),
+            onClick = onUnblock,
+            enabled = !acting,
+        )
     }
 }
 

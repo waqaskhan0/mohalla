@@ -125,8 +125,13 @@ fun EventCard(
                 Text(
                     text = event.title,
                     style = MohallaTheme.text(MohallaType.Title),
+                    // A CANCELLED EVENT STILL HAS TO BE READABLE. The banner
+                    // says it is cancelled; the title says which event, and
+                    // somebody checking whether their Saturday is free needs to
+                    // read it. Dimming it below AA would make the cancellation
+                    // notice the only legible thing on the card.
                     color = if (isCancelled) {
-                        MohallaTheme.colors.TextTertiary
+                        MohallaTheme.colors.TextSecondary
                     } else {
                         MohallaTheme.colors.TextPrimary
                     },

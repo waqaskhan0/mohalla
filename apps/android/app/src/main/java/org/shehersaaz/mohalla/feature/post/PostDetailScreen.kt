@@ -394,7 +394,7 @@ private fun ExpandedPost(
                         },
                         style = MohallaTheme.text(MohallaType.Title),
                         color = if (isDeletedAuthor) {
-                            MohallaTheme.colors.TextTertiary
+                            MohallaTheme.colors.TextSecondary
                         } else {
                             MohallaTheme.colors.TextPrimary
                         },
@@ -416,7 +416,7 @@ private fun ExpandedPost(
                         post.editedAt?.let { stringResource(R.string.post_edited) },
                     ).joinToString(" · "),
                     style = MohallaTheme.text(MohallaType.Caption),
-                    color = MohallaTheme.colors.TextTertiary,
+                    color = MohallaTheme.colors.TextSecondary,
                 )
             }
         }
@@ -608,7 +608,7 @@ private fun CommentComposer(
                     Text(
                         text = stringResource(R.string.comment_placeholder),
                         style = MohallaTheme.text(MohallaType.Body, display = isUrdu),
-                        color = MohallaTheme.colors.TextTertiary,
+                        color = MohallaTheme.colors.TextSecondary,
                     )
                 }
                 BasicTextField(
@@ -630,7 +630,7 @@ private fun CommentComposer(
                     color = if (state.draftOverLimit) {
                         MohallaTheme.colors.Error
                     } else {
-                        MohallaTheme.colors.TextTertiary
+                        MohallaTheme.colors.TextSecondary
                     },
                 )
             }

@@ -244,7 +244,7 @@ private fun EventBody(
             Text(
                 text = event.categorySlug,
                 style = MohallaTheme.text(MohallaType.Label),
-                color = MohallaTheme.colors.TextTertiary,
+                color = MohallaTheme.colors.TextSecondary,
                 modifier = Modifier
                     .background(MohallaTheme.colors.SurfaceSunken, MohallaTheme.radius.ShapeFull)
                     .padding(
@@ -355,7 +355,7 @@ private fun CreatorRow(
             Text(
                 text = stringResource(R.string.event_organiser),
                 style = MohallaTheme.text(MohallaType.Caption),
-                color = MohallaTheme.colors.TextTertiary,
+                color = MohallaTheme.colors.TextSecondary,
             )
         }
     }

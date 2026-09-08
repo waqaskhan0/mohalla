@@ -157,8 +157,10 @@ private fun AuthorRow(post: FeedItemResponse, onOpenAuthor: () -> Unit) {
                 Text(
                     text = authorName,
                     style = MohallaTheme.text(MohallaType.Title),
+                    // See `UserRow` — a departed author's placeholder is
+                    // still the answer to "who wrote this".
                     color = if (isDeletedAuthor) {
-                        MohallaTheme.colors.TextTertiary
+                        MohallaTheme.colors.TextSecondary
                     } else {
                         MohallaTheme.colors.TextPrimary
                     },
@@ -185,7 +187,7 @@ private fun AuthorRow(post: FeedItemResponse, onOpenAuthor: () -> Unit) {
             Text(
                 text = meta,
                 style = MohallaTheme.text(MohallaType.Caption),
-                color = MohallaTheme.colors.TextTertiary,
+                color = MohallaTheme.colors.TextSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

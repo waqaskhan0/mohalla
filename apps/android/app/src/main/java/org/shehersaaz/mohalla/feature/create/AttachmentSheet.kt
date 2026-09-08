@@ -241,7 +241,7 @@ private fun SheetRow(
                 Text(
                     text = detail,
                     style = MohallaTheme.text(MohallaType.Caption),
-                    color = MohallaTheme.colors.TextTertiary,
+                    color = MohallaTheme.colors.TextSecondary,
                 )
             }
         }

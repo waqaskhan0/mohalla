@@ -93,7 +93,7 @@ fun MohallaImage(
                     Text(
                         text = stringResource(R.string.media_unavailable),
                         style = MohallaTheme.text(MohallaType.Caption),
-                        color = MohallaTheme.colors.TextTertiary,
+                        color = MohallaTheme.colors.TextSecondary,
                     )
                 }
             },

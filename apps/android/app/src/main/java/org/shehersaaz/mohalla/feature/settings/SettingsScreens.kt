@@ -189,7 +189,7 @@ private fun SettingsRow(
                 Text(
                     text = value,
                     style = MohallaTheme.text(MohallaType.Body),
-                    color = MohallaTheme.colors.TextTertiary,
+                    color = MohallaTheme.colors.TextSecondary,
                 )
             }
         }
@@ -251,7 +251,7 @@ fun LanguageSettingsScreen(
         Text(
             text = stringResource(R.string.settings_language_note),
             style = MohallaTheme.text(MohallaType.Caption),
-            color = MohallaTheme.colors.TextTertiary,
+            color = MohallaTheme.colors.TextSecondary,
             modifier = Modifier.padding(
                 horizontal = MohallaTheme.screenMargin,
                 vertical = MohallaTheme.spacing.Space4,

@@ -27,6 +27,7 @@ import org.shehersaaz.mohalla.core.design.MohallaType
 import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.ui.FailureState
 import org.shehersaaz.mohalla.core.ui.MohallaBackHeader
+import org.shehersaaz.mohalla.core.ui.MohallaTextButton
 import org.shehersaaz.mohalla.core.ui.PostCard
 
 /**
@@ -116,13 +117,10 @@ fun SavedPostsScreen(
                                 .padding(horizontal = MohallaTheme.screenMargin),
                             horizontalArrangement = Arrangement.End,
                         ) {
-                            TextButton(onClick = { onUnsave(post.id) }) {
-                                Text(
-                                    text = stringResource(R.string.saved_remove),
-                                    style = MohallaTheme.text(MohallaType.Button),
-                                    color = MohallaTheme.colors.TextSecondary,
-                                )
-                            }
+                            MohallaTextButton(
+                                text = stringResource(R.string.saved_remove),
+                                onClick = { onUnsave(post.id) },
+                            )
                         }
                     }
                 }

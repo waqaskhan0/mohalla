@@ -13,6 +13,7 @@ import org.shehersaaz.mohalla.core.design.MohallaTheme
 import org.shehersaaz.mohalla.core.design.MohallaType
 import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.ui.AuthNotice
+import org.shehersaaz.mohalla.core.ui.MohallaTextButton
 import org.shehersaaz.mohalla.core.ui.AuthNoticeTone
 import org.shehersaaz.mohalla.core.ui.AuthScaffold
 import org.shehersaaz.mohalla.core.ui.MohallaButton
@@ -269,20 +270,16 @@ fun RegisterTermsScreen(
             )
         },
     ) {
-        TextButton(onClick = onOpenTerms, modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = stringResource(R.string.legal_terms),
-                style = MohallaTheme.text(MohallaType.Button),
-                color = MohallaTheme.colors.BrandPrimary,
-            )
-        }
-        TextButton(onClick = onOpenGuidelines, modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = stringResource(R.string.legal_guidelines),
-                style = MohallaTheme.text(MohallaType.Button),
-                color = MohallaTheme.colors.BrandPrimary,
-            )
-        }
+        MohallaTextButton(
+            text = stringResource(R.string.legal_terms),
+            onClick = onOpenTerms,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        MohallaTextButton(
+            text = stringResource(R.string.legal_guidelines),
+            onClick = onOpenGuidelines,
+            modifier = Modifier.fillMaxWidth(),
+        )
 
         MohallaCheckbox(
             checked = state.termsAccepted,

@@ -112,7 +112,7 @@ fun NotificationRow(
                 Text(
                     text = timeLabel,
                     style = MohallaTheme.text(MohallaType.Caption),
-                    color = MohallaTheme.colors.TextTertiary,
+                    color = MohallaTheme.colors.TextSecondary,
                 )
             }
         }

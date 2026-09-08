@@ -212,6 +212,7 @@ private fun Consequence(key: String) {
         Text(
             text = "•",
             style = MohallaTheme.text(MohallaType.Body),
+            // Non-informative glyph. See `BlockConfirmSheet`'s own note.
             color = MohallaTheme.colors.TextTertiary,
         )
         Text(

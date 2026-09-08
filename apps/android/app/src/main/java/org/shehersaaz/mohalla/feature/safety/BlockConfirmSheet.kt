@@ -136,6 +136,9 @@ private fun Consequence(text: String) {
         Text(
             text = "•",
             style = MohallaTheme.text(MohallaType.Body),
+            // A bullet carries no information — the sentence beside it does — so
+            // this is one of the three uses the contrast audit permits for
+            // text-tertiary: "non-informative placeholder glyphs".
             color = MohallaTheme.colors.TextTertiary,
         )
         Text(

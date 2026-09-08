@@ -312,7 +312,7 @@ private fun AuthorRow(author: PublicProfileResponse?) {
                 Text(
                     text = "@$it",
                     style = MohallaTheme.text(MohallaType.Caption),
-                    color = MohallaTheme.colors.TextTertiary,
+                    color = MohallaTheme.colors.TextSecondary,
                     maxLines = 1,
                 )
             }
@@ -347,7 +347,7 @@ private fun BodyField(
                 Text(
                     text = stringResource(R.string.composer_placeholder),
                     style = MohallaTheme.text(MohallaType.Body, display = isUrdu),
-                    color = MohallaTheme.colors.TextTertiary,
+                    color = MohallaTheme.colors.TextSecondary,
                 )
             }
 
@@ -394,7 +394,7 @@ private fun Counter(count: Int, over: Boolean) {
     Text(
         text = stringResource(R.string.composer_counter, count, BODY_MAX_GRAPHEMES),
         style = MohallaTheme.text(MohallaType.Caption),
-        color = if (over) MohallaTheme.colors.Error else MohallaTheme.colors.TextTertiary,
+        color = if (over) MohallaTheme.colors.Error else MohallaTheme.colors.TextSecondary,
         modifier = Modifier
             .fillMaxWidth()
             // Announced when it crosses into error, and not on every keystroke:

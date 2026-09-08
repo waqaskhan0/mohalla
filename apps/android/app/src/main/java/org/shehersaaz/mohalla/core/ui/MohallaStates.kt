@@ -143,7 +143,7 @@ private fun StateBlock(
             Text(
                 text = footnote,
                 style = MohallaTheme.text(MohallaType.Caption),
-                color = MohallaTheme.colors.TextTertiary,
+                color = MohallaTheme.colors.TextSecondary,
                 textAlign = TextAlign.Center,
             )
         }

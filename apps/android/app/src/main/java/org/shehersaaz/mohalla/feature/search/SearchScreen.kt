@@ -217,7 +217,7 @@ private fun SearchField(
                     Text(
                         text = stringResource(R.string.search_placeholder),
                         style = MohallaTheme.text(MohallaType.Body, display = isUrdu),
-                        color = MohallaTheme.colors.TextTertiary,
+                        color = MohallaTheme.colors.TextSecondary,
                     )
                 }
                 BasicTextField(
@@ -475,7 +475,7 @@ private fun RecentSearchList(
                 Text(
                     text = stringResource(R.string.search_recent_title),
                     style = MohallaTheme.text(MohallaType.Label),
-                    color = MohallaTheme.colors.TextTertiary,
+                    color = MohallaTheme.colors.TextSecondary,
                     modifier = Modifier
                         .weight(1f)
                         .semantics { heading() },
@@ -536,7 +536,7 @@ private fun RecentSearchList(
                 // PRIV-011, stated to the person it protects.
                 text = stringResource(R.string.search_recent_device_only),
                 style = MohallaTheme.text(MohallaType.Caption),
-                color = MohallaTheme.colors.TextTertiary,
+                color = MohallaTheme.colors.TextSecondary,
                 modifier = Modifier.padding(top = MohallaTheme.spacing.Space3),
             )
         }

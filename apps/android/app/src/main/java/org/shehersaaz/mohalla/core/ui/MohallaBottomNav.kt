@@ -159,9 +159,16 @@ private fun NavItem(
                     // Locked reads as unavailable in COLOUR AND SHAPE. §35
                     // forbids colour as the only carrier, and a greyed plus
                     // alone would be exactly that.
+                    // Locked stays tertiary: WCAG 1.4.3 exempts an inactive
+                    // control, and §35's shape change carries the meaning.
                     locked -> MohallaTheme.colors.TextTertiary
                     selected -> MohallaTheme.colors.BrandPrimary
-                    else -> MohallaTheme.colors.TextTertiary
+                    // AN UNSELECTED TAB IS NOT DISABLED. The a11y checklist
+                    // requires that "bottom navigation labels are always
+                    // visible, never icon-only", and four of the five labels are
+                    // unselected at any moment — at 2.9:1 most of the app's
+                    // navigation was below AA.
+                    else -> MohallaTheme.colors.TextSecondary
                 },
                 modifier = Modifier.size(MohallaTheme.spacing.Space6),
             )

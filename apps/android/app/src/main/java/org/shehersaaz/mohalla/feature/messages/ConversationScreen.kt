@@ -338,7 +338,7 @@ private fun Composer(
                     Text(
                         text = stringResource(R.string.conversation_placeholder),
                         style = MohallaTheme.text(MohallaType.Body, display = isUrdu),
-                        color = MohallaTheme.colors.TextTertiary,
+                        color = MohallaTheme.colors.TextSecondary,
                     )
                 }
                 BasicTextField(
@@ -355,10 +355,12 @@ private fun Composer(
                 Text(
                     text = (MESSAGE_BODY_MAX_GRAPHEMES - state.draftLength).toString(),
                     style = MohallaTheme.text(MohallaType.Caption),
+                    // A counter counting down to a limit is information the
+                    // writer is acting on.
                     color = if (state.draftOverLimit) {
                         MohallaTheme.colors.Error
                     } else {
-                        MohallaTheme.colors.TextTertiary
+                        MohallaTheme.colors.TextSecondary
                     },
                 )
             }

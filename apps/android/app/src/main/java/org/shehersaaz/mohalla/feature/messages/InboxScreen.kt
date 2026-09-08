@@ -180,7 +180,14 @@ private fun SectionTabs(
                             color = MohallaTheme.colors.TextInverse,
                             modifier = Modifier
                                 .background(
-                                    MohallaTheme.colors.TextTertiary,
+                                    // WHITE ON text-tertiary IS 2.6:1 — the count
+                                    // was the least legible thing in the tab it
+                                    // belongs to. text-secondary carries white at
+                                    // 5.6:1 and stays deliberately neutral: §18.5
+                                    // wants "a number rather than a red dot",
+                                    // because a dot demands attention and a
+                                    // number is information (BR-027).
+                                    MohallaTheme.colors.TextSecondary,
                                     MohallaTheme.radius.ShapeFull,
                                 )
                                 .padding(
@@ -312,7 +319,7 @@ private fun ConversationRow(
                         Text(
                             text = stringResource(R.string.conversation_read_only_tag),
                             style = MohallaTheme.text(MohallaType.Label),
-                            color = MohallaTheme.colors.TextTertiary,
+                            color = MohallaTheme.colors.TextSecondary,
                         )
                     }
                 }
@@ -338,7 +345,7 @@ private fun ConversationRow(
                     Text(
                         text = it.take(TIME_PREFIX),
                         style = MohallaTheme.text(MohallaType.Caption),
-                        color = MohallaTheme.colors.TextTertiary,
+                        color = MohallaTheme.colors.TextSecondary,
                     )
                 }
 

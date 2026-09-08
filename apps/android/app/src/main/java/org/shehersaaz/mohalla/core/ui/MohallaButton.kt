@@ -7,6 +7,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -86,6 +87,44 @@ fun MohallaSecondaryButton(
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = Color.Transparent,
             contentColor = MohallaTheme.colors.BrandPrimary,
+            disabledContentColor = MohallaTheme.colors.TextTertiary,
+        ),
+    ) {
+        Text(text = text, style = MohallaTheme.text(MohallaType.Button))
+    }
+}
+
+/**
+ * A text-only action, at the project's own minimum height.
+ *
+ * MATERIAL'S `TextButton` IS 40dp TALL AND THE SPEC ASKS FOR 48. The a11y
+ * checklist is unambiguous — "48×48dp minimum everywhere" — and twelve bare
+ * `TextButton`s were 40: Forgot password, Resend code, both legal links, the
+ * photo controls on two screens, Remove from saved, and Unblock. Two of those
+ * are on recovery paths, where the reader is already stuck and a missed tap is
+ * the second thing that has gone wrong.
+ *
+ * The height lives HERE rather than in twelve `defaultMinSize` calls, so the
+ * thirteenth caller cannot forget it.
+ */
+@Composable
+fun MohallaTextButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    destructive: Boolean = false,
+) {
+    TextButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.defaultMinSize(minHeight = MohallaTheme.spacing.Space12),
+        colors = ButtonDefaults.textButtonColors(
+            contentColor = if (destructive) {
+                MohallaTheme.colors.Error
+            } else {
+                MohallaTheme.colors.BrandPrimary
+            },
             disabledContentColor = MohallaTheme.colors.TextTertiary,
         ),
     ) {

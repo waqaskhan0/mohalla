@@ -43,6 +43,7 @@ import org.shehersaaz.mohalla.core.design.MohallaTheme
 import org.shehersaaz.mohalla.core.design.MohallaType
 import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.ui.MohallaButton
+import org.shehersaaz.mohalla.core.ui.MohallaTextButton
 
 /**
  * UX-AUTH-009 — OTP verification (AUTH-FR-003 · SEC-003 · EDGE-005 · §12).
@@ -239,24 +240,22 @@ private fun ResendRow(state: OtpUiState, onResend: () -> Unit) {
         state.resendsExhausted -> Text(
             text = stringResource(R.string.otp_resend_exhausted),
             style = MohallaTheme.text(MohallaType.BodySm),
-            color = MohallaTheme.colors.TextTertiary,
+            color = MohallaTheme.colors.TextSecondary,
         )
 
         state.cooldownSeconds > 0 -> Text(
             text = stringResource(R.string.otp_resend_in, state.cooldownSeconds),
             style = MohallaTheme.text(MohallaType.BodySm),
-            color = MohallaTheme.colors.TextTertiary,
+            color = MohallaTheme.colors.TextSecondary,
             // Polite: a ticking countdown announced assertively would interrupt
             // the user every second.
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
         )
 
-        else -> TextButton(onClick = onResend, enabled = state.canResend) {
-            Text(
-                text = stringResource(R.string.otp_resend),
-                style = MohallaTheme.text(MohallaType.Button),
-                color = MohallaTheme.colors.BrandPrimary,
-            )
-        }
+        else -> MohallaTextButton(
+            text = stringResource(R.string.otp_resend),
+            onClick = onResend,
+            enabled = state.canResend,
+        )
     }
 }

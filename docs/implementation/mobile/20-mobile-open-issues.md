@@ -36,8 +36,10 @@ reconciliation, the notification centre's day boundary in the reader's own
 timezone, the encoded shape of a PATCH body that has to distinguish absent from
 null, the ordering of the deletion consequences PRIV-006 requires a user to read,
 which of the eight API failures each of §21's four states answers for, every
-link shape §42 accepts and the many more it refuses, and the exact field shape
-of every type that enforces a privacy rule structurally. **459 tests, all passing.** |
+link shape §42 accepts and the many more it refuses, eight accessibility and RTL
+invariants asserted over the whole source tree, and the exact field shape of
+every type that enforces a privacy rule structurally. **469 tests, all passing.** |
+| **What group 22 added** | Eight source-level invariants: no absolute alignment, no left/right padding or text alignment, every directional icon mirrored, the tab list never reversed, `text-tertiary` never colouring informational text, no bare 40dp `TextButton`, no hardcoded user-visible string, every lazy item keyed. Each an allowlist, so a new permitted use has to be argued for in the test. The RTL rules were all already satisfied; the contrast ones were violated on 55 sites. |
 | **What that does not prove** | That pixels mirror. The tests prove Create sits at index 2 of 5 and that the list is never pre-reversed; they cannot prove the row renders right-to-left. §36 makes RTL release-critical, so this gap is the largest single verification debt in Stage 7. |
 
 The manifest defect found in group 05–06 is the argument for closing it:

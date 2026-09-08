@@ -146,7 +146,7 @@ private fun BubbleFooter(
             Text(
                 text = timeLabel,
                 style = MohallaTheme.text(MohallaType.Caption),
-                color = MohallaTheme.colors.TextTertiary,
+                color = MohallaTheme.colors.TextSecondary,
             )
         }
 
@@ -158,13 +158,13 @@ private fun BubbleFooter(
                 BubbleState.Sending -> Text(
                     text = stringResource(R.string.message_sending),
                     style = MohallaTheme.text(MohallaType.Caption),
-                    color = MohallaTheme.colors.TextTertiary,
+                    color = MohallaTheme.colors.TextSecondary,
                 )
 
                 BubbleState.Sent -> Text(
                     text = stringResource(R.string.message_sent),
                     style = MohallaTheme.text(MohallaType.Caption),
-                    color = MohallaTheme.colors.TextTertiary,
+                    color = MohallaTheme.colors.TextSecondary,
                 )
 
                 BubbleState.Read -> Text(
@@ -248,7 +248,7 @@ private fun MessageImage(mediaId: String) {
                     Text(
                         text = stringResource(R.string.media_unavailable),
                         style = MohallaTheme.text(MohallaType.Caption),
-                        color = MohallaTheme.colors.TextTertiary,
+                        color = MohallaTheme.colors.TextSecondary,
                     )
                 }
             },
