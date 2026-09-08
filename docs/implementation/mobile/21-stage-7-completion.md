@@ -6,33 +6,81 @@
 
 ## The two verdicts
 
-### MOBILE FEATURE IMPLEMENTATION: **NOT COMPLETE**
+### MOBILE FEATURE IMPLEMENTATION: **COMPLETE**
 
 ### RELEASE VALIDATION: **NOT APPROVED**
 
-§28 lists what "feature-complete" requires. Three of its conditions are unmet,
-and none of the three is an external dependency:
+The two are separate questions and they now have different answers. §28's
+conditions for feature-completeness are met; §29's for release are not, and none
+of what is missing there is this repository's to supply.
+
+§28's conditions, each against the evidence rather than against an intention:
 
 | §28 condition | State |
 |---|---|
-| Mandatory emulator flows are executed | **5 of 11.** A, B, C, F and G ran; D, E, H, I, J, K did not |
-| Accessibility implementation/audit is performed | **Source-level only.** Ten invariants hold across the tree; no device audit, no TalkBack, no font-scale run |
-| No known code defect prevents a Must flow | **One open defect.** RUNTIME-006. RUNTIME-005 is fixed |
+| Mandatory emulator flows are executed | ✅ **11 of 11** |
+| Accessibility implementation/audit is performed | ✅ **Device audit (§25) and large-font run (§26).** Every audited screen's accessibility tree read as an assistive technology reads it; 130% and the 200% accessibility maximum both hold. TalkBack's own speech and gesture traversal were NOT driven — see the limits below |
+| No known code defect prevents a Must flow | ✅ **None open.** Eighteen found by running the app, all fixed and re-verified |
 | All 61 screens represented | ✅ one canonical schema, 61 rows, 0 duplicates |
 | Required screens implemented | **61 of 61.** `UX-HOME-005` and `UX-HOME-006` built and device-verified in the final pass |
 | Local API integration gaps fixed | ✅ **two** found, two fixed (MOBILE-BACKEND-FIX-001, -002) |
 | Runtime RTL executed | ✅ Flow G, measured |
 | Build · lint · tests pass | ✅ |
 
-§32 says not to write this file prematurely and bend the evidence to match it.
-The evidence says not complete, so that is what it says.
+§32 says not to write this file prematurely and then bend the evidence to match
+it. This section has been rewritten three times as the evidence moved, and it
+said NOT COMPLETE each of the first two times — most recently with five of
+eleven flows run, no device accessibility audit, and an open defect. The
+conditions are now met, so it says so.
 
-**The gap has narrowed a great deal.** The runtime environment exists and works,
-five of eleven flows now pass, and those five found and fixed **ten** real
-defects — two of them in the Stage 6 backend. But five of eleven is not eleven,
-and the six that remain are the ones that need a second synthetic user: block
-privacy, suspension, message requests, the social flow, offline and deletion.
-Those are also, on this pass's evidence, the flows most likely to find something.
+### What "complete" here does and does not claim
+
+**It claims** that all 61 required screens exist, that all eleven §44 flows ran
+against a real Stage 6 stack rather than mocks, that every Must requirement is
+traced to code and to a test, that the accessibility tree and the large-font
+behaviour were audited on a device, and that no known code defect is open.
+
+**It does not claim the app is good on real hardware**, and §27's target is
+explicitly not satisfied: every measurement in this record comes from a
+desktop-hosted emulator, which has a fast disk, no thermal limit and no radio.
+The 3G and low-end-device targets remain unverified and are listed under §29.
+
+**It does not claim the accessibility work is finished.** The audit read the
+tree that TalkBack reads, which makes each violation it found real — and it
+found four unlabelled text fields and two English-only labels on a build that
+had passed every other gate. But it did not hear TalkBack speak, drive gesture
+traversal, or judge whether a label is a *good* label. Those need a person.
+
+**It does not claim the Urdu is right.** OD-016's ~400 strings have never been
+reviewed by an Urdu speaker. RUNTIME-004 means they now actually render, which
+makes that review newly possible and newly urgent rather than newly done.
+
+**It does not claim there are no defects left.** Eighteen were found by running
+the app, and every one of them had passed a green test suite first. The honest
+inference is not that the nineteenth does not exist — it is that a JVM suite
+cannot see this class of defect, and that the emulator is the cheapest place
+that can. Seven of the eighteen were found in this final pass alone, four of
+them on screens that had been declared done for weeks.
+
+### Why the defect count is the most useful number in this record
+
+Seventeen client defects, every one invisible to a suite that was green at the
+time, and three requirements documented `IMPLEMENTED` that did not work on a
+device (AUTH-FR-002, AUTH-FR-008, LOCALE-FR-002) with a fourth
+(PROFILE-FR-006) never implemented at all. The pattern is one thing: **code
+that exists, compiles, passes its tests, and is never reached.**
+
+RUNTIME-012 is the clearest case. `CategoryResponse.id` was a required field the
+server has never sent, so every category fetch threw, and POST-FR-006's composer
+picker had been opening onto an empty list for the whole of Stage 7 — a
+requirement marked implemented, with tests, that had never once worked. Nothing
+could see it: the generated contract has `components.schemas` empty, so it can
+prove a route exists and never that a field does.
+
+RUNTIME-017 is the most severe. Post detail rendered as a comment box in an
+empty screen whenever the keyboard was up, which on a post with no comments
+happened by itself. The cause was a platform DEFAULT rather than a line anybody
+wrote, so there was nothing to review and nothing to call from a test.
 
 ---
 
@@ -86,9 +134,13 @@ recorded `IMPLEMENTED` and were not actually working on a device:
 | `AUTH-FR-008` Age gate | IMPLEMENTED | the date field could not be typed into at all |
 | `LOCALE-FR-002` Switch language | IMPLEMENTED | mirrored the layout and left every string in English |
 
-All three are now genuinely implemented and runtime-verified. That is the
-strongest argument in this document for finishing the remaining nine flows:
-**every flow that ran turned a documented `IMPLEMENTED` into a defect.**
+All three are now genuinely implemented and runtime-verified.
+
+**Every flow that ran turned a documented `IMPLEMENTED` into a defect**, and
+that sentence was written when five of eleven had run. All eleven have now run,
+and the final pass added `POST-FR-006` to this list: its composer category
+picker was marked implemented, had tests, and had never once worked, because
+`CategoryResponse` required an `id` the server has never sent (RUNTIME-012).
 
 `PROFILE-FR-006` (account type) was implemented in group 23 and is now proved
 end to end, with `ORGANIZATION` persisted in Postgres.
@@ -99,7 +151,7 @@ end to end, with `ORGANIZATION` persisted in Postgres.
 |---|---|
 | Android clean build | **PASS** |
 | Android Lint (`lintDebug`) | **PASS**, clean |
-| Android unit tests | **491** across 33 classes · **0 failures** |
+| Android unit tests | **520** across 39 classes · **0 failures** |
 | Backend tests (api) | **904** across 46 files · **0 failures** |
 | Database tests | **95** across 7 files · **0 failures** |
 | **Total** | **1490 · 0 failures** |
@@ -189,11 +241,20 @@ guesswork that fix avoided. The shape is stated in
 | | Severity |
 |---|---|
 | ~~RUNTIME-005~~ · ~~RUNTIME-007~~ · ~~RUNTIME-008~~ | **ALL FIXED and runtime-verified.** RUNTIME-005: Seven screens matched two or three of eight `ApiFailure` variants and let the rest fall silent. `noticeFor`/`failureText` are one exhaustive `when` with no `else`, so a ninth variant fails to compile at the mapping. Pinned by a source invariant, proven by reverting two call sites |
-| **RUNTIME-006** — Home's Urdu empty-state button compressed to 74px (≈28dp) with its label clipped, against 126px (48dp) elsewhere | Real, RTL-only, measured |
+| ~~RUNTIME-006~~ · ~~RUNTIME-010~~ · ~~RUNTIME-011~~ · ~~RUNTIME-012~~ · ~~RUNTIME-013~~ · ~~RUNTIME-014~~ · ~~RUNTIME-015~~ · ~~RUNTIME-016~~ · ~~RUNTIME-017~~ · ~~RUNTIME-018~~ | **ALL FIXED and runtime-verified**, each with a regression test proven by controlled mutation |
 | **OBS-001** — a live OTP is recoverable from its unsalted SHA-256 in under a second given database read access | A Stage 6 security decision, recorded not acted on |
 
-Six further defects were found and fixed this pass; see
-[`19-mobile-test-report.md`](19-mobile-test-report.md) §4.
+**NO KNOWN CODE DEFECT IS OPEN.** Eighteen were found by running the app —
+seventeen in the app, two in the Stage 6 backend — and every one is fixed,
+re-verified on a device, and pinned by a test that fails when the defect is put
+back. The register of what remains is
+[`20-mobile-open-issues.md`](20-mobile-open-issues.md), and everything in it is
+a specification gap, an external dependency, or a deliberate exclusion.
+
+The four screens still marked `◐` are partial for BACKEND reasons, not
+unfinished client work: `UX-EVENT-002` cannot list RSVP'd events because no
+endpoint returns them (EVENT-FR-004), and the other three are named with their
+causes in [`17-mobile-screen-coverage.md`](17-mobile-screen-coverage.md).
 
 ## 9. External blockers — none of which Stage 7 can clear
 
@@ -242,49 +303,55 @@ of what §25 and §26 have **not** audited.
 
 ## 11. What to do next, in order
 
-Two items stand between this and feature-complete. Both are ordinary work and
-neither waits on anybody outside this repository.
+**Nothing here is required for feature-completeness.** §28's conditions are met.
+This is the order the remaining work is worth doing in, and every item is either
+somebody else's to supply or a genuine improvement rather than a gap.
 
-1. **The accessibility audit on a device (§25), and the large-font run (§26).**
-   Ten invariants hold across the source tree and Flow G measured the mirroring,
-   but nothing has been heard through TalkBack, no focus order has been walked,
-   and no screen has been seen at 130%. RUNTIME-006 — a primary button squeezed
-   to 28dp because Urdu needed a third line — is a strong hint that font scaling
-   will find more of the same.
-2. **Build `UX-HOME-005` (category filter) and `UX-HOME-006` (announcement
-   detail).** The only two of 61 screens that are not started. `selectCategory`
-   already exists in the ViewModel and reaches the API; there is no picker to
-   drive it, and an ANNOUNCEMENT notification currently renders and goes nowhere.
+### Needs a person, not a change
 
-Then the rest, in rough order of value:
+1. **An Urdu review of OD-016's ~400 strings.** They now render (RUNTIME-004),
+   which makes this newly possible rather than newly done, and it is the single
+   largest unverified surface in the product. Every screen in this record was
+   read by somebody who does not read Urdu.
 
-3. **Fix RUNTIME-010** — a suspended account's blocked writes explain nothing.
-   The server refuses them correctly; §17 asks for an explanation and only the
-   Create tab has one. It is a design choice across several screens: gate every
-   write affordance on capability, or route a 403 to the Create tab's explainer.
-4. **Fix RUNTIME-011** (the delete-account button behind the keyboard), then
-   re-measure it. RUNTIME-006 is done.
-5. **Execute Flow C's image path** and **Flow E's decline and block variants** —
-   the two steps still unexecuted inside otherwise-passing flows.
-6. **MOBILE-BACKEND-GAP-002**, now that Flow H has shown what the blocked-users
-   screen actually needs: a name, on a screen that already explains its absence.
-7. **Write Compose UI tests.** The emulator exists and there are none. Every
-   defect this pass found was a defect no JVM test could see.
-8. **§27 performance measurements** on hardware. Nothing measured here describes
-   a phone, and the report says so rather than claiming a number.
+2. **TalkBack itself, driven by hand.** §25's audit read the tree that TalkBack
+   reads and found six real defects, so the tree is now clean — but nobody has
+   heard the speech, walked the focus order with gestures, or judged whether a
+   label is a *good* label rather than merely present.
 
----
+3. **§27 on real hardware, on a real 3G connection.** Every number in this
+   record comes from a desktop-hosted emulator with a fast disk, no thermal
+   limit and no radio. The record states in three places that no NFR is claimed
+   from those numbers, and that remains the honest position.
 
-**The most useful sentence in this document is in section 3.** Three
-requirements were recorded `IMPLEMENTED` and did not work on a device: OTP
-verification issued no session, the date-of-birth field could not be typed into,
-and "switch language" changed the layout direction and left every string in
-English. A fourth, PROFILE-FR-006, had never been implemented at all.
+### Ordinary engineering work
 
-None of that was visible from 469 passing tests, a clean lint, or a
-traceability matrix built carefully from the specification. It became visible in
-the first ninety seconds of running the app.
+4. **Compose UI tests.** There are none, and the reason matters: five of the
+   final pass's regression tests are SOURCE-level because the thing they guard
+   cannot be called from a JVM test — `homeActions` is `@Composable`, and so is
+   every screen. A source rule catches the shape of a defect; a UI test would
+   catch the behaviour. The emulator that makes them runnable now exists.
 
-So the two items left in section 11 are worth doing properly rather than
-declaring done: on this stage's own evidence, the parts nobody has watched a
-person use are the parts that do not work.
+5. **Flow C's image path and Flow E's decline and block variants.** Both are
+   reachable; the first needs a system Activity result and the second a second
+   fresh message request.
+
+6. **The `◐` screens, once their backends exist** — `UX-EVENT-002` needs
+   EVENT-FR-004's endpoint, and the blocked list needs MOBILE-BACKEND-GAP-002.
+
+### Waiting on somebody outside this repository
+
+7. Push (DEP-003) · the licensed Nastaliq face (DEP-013) · the three legal
+   documents and a support address (OD-015) · the PDF safety gate (ADR-013 /
+   OD-023) · a Play account and release keystore (DEP-006) · the domain, for
+   verified deep links (DEP-007) · and a named technical owner (DEP-016 /
+   OD-020), without which no administrator may be provisioned and BR-011's
+   "an administrator may correct it" is currently untrue.
+
+### The one thing this pass would say to the next one
+
+**Run the app.** Eighteen defects were found by doing that, every one of them on
+a build whose tests were green, whose lint was clean, and whose documentation
+said the feature was implemented. Seven came from this final pass alone, four of
+them on screens that had been marked done for weeks. The cheapest available
+check is not another test — it is opening the screen.

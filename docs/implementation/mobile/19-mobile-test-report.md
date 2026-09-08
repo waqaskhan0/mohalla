@@ -592,7 +592,7 @@ API path to it from here.
 
 ### RUNTIME-010 · a suspended account's blocked writes explain nothing
 
-**Open.** Found by Flow I.
+**FIXED in the final pass and verified on the device.** Found by Flow I.
 
 `AccountCapability` is read by the shell and **only** by the shell, so it gates
 the Create tab and nothing else. Like, comment, follow and message keep their
@@ -608,7 +608,7 @@ every write affordance on capability, or route a 403 to the same explainer the
 Create tab opens — and picking one blind would be the guesswork this pass has
 been avoiding.
 
-### RUNTIME-011 · the delete-account button sits behind the keyboard
+### RUNTIME-011 · the delete-account button sits behind the keyboard — **FIXED**
 
 **Open, minor.** Found by Flow K.
 

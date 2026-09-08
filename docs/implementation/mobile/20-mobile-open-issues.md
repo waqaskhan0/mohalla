@@ -651,7 +651,7 @@ space: no header, no author, no body, no engagement row, no "Start the
 conversation". Nobody had to touch anything — the comment field auto-focuses on
 an empty thread, so the keyboard opened by itself.
 
-Ten screens apply `imePadding()`, which is the Compose way and what
+Eleven screens apply `imePadding()`, which is the Compose way and what
 `ComposerScreen` documents in its own comment: it lifts the toolbar above the
 keyboard rather than shrinking the text area. **That comment assumes the window
 keeps its height, and it did not.** `windowSoftInputMode` was never declared, so
@@ -720,7 +720,7 @@ but a clean result narrower than "accessible".
 
 ### RUNTIME-005 · Most failures render nothing at all
 
-**Open. Found by Flow A, and it wasted an hour of this pass.**
+**FIXED and runtime-verified.** Found by Flow A, and it wasted an hour of this pass.
 
 `UsernameScreen`'s notice handles `takenMessage`, `ApiFailure.Offline` and
 `ApiFailure.Server`. It handles **none** of `Unauthenticated`, `Restricted`,
@@ -739,7 +739,7 @@ failure rendering cannot yet be checked by running them.
 
 ### RUNTIME-006 · An Urdu label clipped inside a 28dp button
 
-**Open. Found by Flow G, measured rather than eyeballed.**
+**FIXED and re-verified at Urdu × 130%.** Found by Flow G, measured rather than eyeballed.
 
 Home's empty-state body wraps to **three** lines in Urdu against two in English,
 and the primary action button beneath it is squeezed:
