@@ -293,6 +293,17 @@ export const announcementPublishedSchema = z.object({
 });
 export type AnnouncementPublished = z.infer<typeof announcementPublishedSchema>;
 
+/**
+ * `PUT /admin/users/:id/verification` - ADMIN-FR-010.
+ *
+ * 204 NO CONTENT, so there is nothing to parse and nothing to render from. The
+ * portal confirms by RE-READING the account rather than by trusting its own
+ * request: the badge is what the account view says it is, and a screen that
+ * reported success from the absence of an error would be reporting its own
+ * intention.
+ */
+export const noContentSchema = z.void();
+
 // --------------------------------------------------------------- dashboard
 
 /**
