@@ -1014,3 +1014,67 @@ button[disabled] {
 .capitalise {
   text-transform: capitalize;
 }
+
+/* ---------------------------------------------------------------- UX-ADM-005
+   Account lookup. A search box rather than a list, because there is no route
+   that lists accounts and this screen should not become a register of every
+   citizen on the platform. */
+
+.search-form {
+  margin-block: var(--space-6);
+  max-width: 34rem;
+}
+
+.search-form label {
+  display: block;
+  margin-block-end: var(--space-2);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.search-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.search-row input {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  padding: 0.5rem var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font: inherit;
+}
+
+.search-row button {
+  flex: 0 0 auto;
+  padding: 0.5rem var(--space-4);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: var(--color-surface);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.search-row button:hover {
+  background: #0f4658;
+}
+
+.search-form .field-note {
+  margin-block-start: var(--space-2);
+  margin-block-end: 0;
+}
+
+.account-name {
+  font-weight: 600;
+}
+
+/* Verified is a statement about an organization, so it reads as a word. The
+   badge in the app is a mark; here it is a fact in a table. */
+.flag-verified {
+  margin-inline-start: var(--space-2);
+  background: #e8f1ec;
+  color: #2f6b46;
+}

@@ -168,6 +168,54 @@ export const conversationExcerptSchema = z.object({
 });
 export type ConversationExcerpt = z.infer<typeof conversationExcerptSchema>;
 
+// -------------------------------------------------------------- accounts
+
+/**
+ * `GET /admin/users/search` and `GET /admin/users/:id` — `AdminUserView`.
+ *
+ * NO PHONE, NO EMAIL, NO DATE OF BIRTH, and that absence is the design rather
+ * than an omission. The API's own description says why: "a lookup must not
+ * itself be a sensitive-data view, or PRIV-008 would be audited on every screen
+ * and mean nothing." The identifiers live behind a second, deliberate call that
+ * writes an audit row before it reads anything.
+ *
+ * So the privacy rule here is enforced by the RESPONSE containing no
+ * identifier, not by the portal choosing not to render one — the same shape as
+ * the dashboard, and the same reason it is worth pointing out.
+ *
+ * `username` and `displayName` are NULLABLE: an account can exist before its
+ * profile does, and a row rendered as an empty cell is honest where a fabricated
+ * placeholder would not be.
+ */
+export const adminUserViewSchema = z.object({
+  userId: id,
+  username: z.string().nullable(),
+  displayName: z.string().nullable(),
+  accountType: z.string().min(1),
+  state: z.string().min(1),
+  suspendedUntil: instant.nullable(),
+  verifiedBadge: z.boolean(),
+  createdAt: instant,
+  postCount: z.number().int().nonnegative(),
+  reportsMade: z.number().int().nonnegative(),
+  reportsReceived: z.number().int().nonnegative(),
+});
+export type AdminUserView = z.infer<typeof adminUserViewSchema>;
+
+/**
+ * `GET /admin/users/search?q=` — the wrapper.
+ *
+ * THERE IS NO TOTAL AND NO OFFSET. The route takes `q` and `limit` and nothing
+ * else, so the portal cannot page and cannot say how many accounts matched. A
+ * screen that showed twenty rows without saying so would let an administrator
+ * conclude twenty is all there are — the ADMIN-RUNTIME-003 mistake in a
+ * different column. The users screen states the cap instead.
+ */
+export const userSearchResultSchema = z.object({
+  users: z.array(adminUserViewSchema),
+});
+export type UserSearchResult = z.infer<typeof userSearchResultSchema>;
+
 // --------------------------------------------------------------- dashboard
 
 /**

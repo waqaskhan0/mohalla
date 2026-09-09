@@ -73,3 +73,43 @@ const ENFORCEMENT_KINDS: Record<string, string> = {
 export function enforcementKindLabel(kind: string): string {
   return ENFORCEMENT_KINDS[kind] ?? kind;
 }
+
+/**
+ * `UserState` — where an account stands.
+ *
+ * SIX VALUES, and the two that are easy to conflate are kept apart:
+ * PENDING_DELETION is a person who asked to leave and is inside the grace
+ * period; DELETED is one who has gone. An administrator looking at either must
+ * not act as though it were the other, and the API refuses enforcement on a
+ * deleted account outright (`CANNOT_ACT_ON_DELETED`).
+ */
+const USER_STATES: Record<string, string> = {
+  UNVERIFIED: 'Unverified',
+  ACTIVE: 'Active',
+  SUSPENDED: 'Suspended',
+  BANNED: 'Banned',
+  PENDING_DELETION: 'Deletion requested',
+  DELETED: 'Deleted',
+};
+
+export function userStateLabel(state: string): string {
+  return USER_STATES[state] ?? state;
+}
+
+/**
+ * `accountType` — an individual or an organization.
+ *
+ * It matters on more than one screen: only ORGANIZATION accounts are eligible
+ * for the verified badge (ADMIN-FR-010), and the API's refusal for an
+ * individual STATES that rule rather than being neutral, because an
+ * administrator verifying a person has made a category error rather than
+ * probed a boundary.
+ */
+const ACCOUNT_TYPES: Record<string, string> = {
+  INDIVIDUAL: 'Individual',
+  ORGANIZATION: 'Organization',
+};
+
+export function accountTypeLabel(accountType: string): string {
+  return ACCOUNT_TYPES[accountType] ?? accountType;
+}
