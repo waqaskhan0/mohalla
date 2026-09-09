@@ -462,3 +462,145 @@ button[disabled] {
   color: var(--color-muted);
   max-inline-size: 68ch;
 }
+
+/* ------------------------------------------------------------------------ *
+ * Metric tiles — UX-ADM-002
+ *
+ * §27: "Four tiles: Open reports first and largest." At 768–1023px the spec
+ * says they go "4-across → 2×2".
+ * ------------------------------------------------------------------------ */
+
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-block-start: var(--space-6);
+}
+
+.metric-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  /* Equal heights across the row without stretching the content: the value
+     sits under the label and the note pins to the bottom. */
+  justify-content: start;
+}
+
+.tile-label {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.tile-value {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+  /* So a figure going 9 → 10 does not shift anything, and a column of values
+     lines up on the digits. */
+  font-variant-numeric: tabular-nums;
+}
+
+.tile-note {
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+  margin-block-start: auto;
+}
+
+/*
+ * The primary tile — "first and largest ... the only figure that demands
+ * action". Larger figure, an accent edge, and the accent colour on the value.
+ * Three signals rather than colour alone.
+ */
+.metric-tile-primary {
+  border-inline-start: 3px solid var(--color-accent);
+}
+
+.metric-tile-primary .tile-value {
+  font-size: 2.75rem;
+  color: var(--color-accent);
+}
+
+.metric-tile-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.metric-tile-link:hover {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 6%, var(--color-surface));
+}
+
+.tile-action {
+  color: var(--color-accent);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.section-heading {
+  margin-block-start: var(--space-6);
+  font-size: 1.0625rem;
+}
+
+.secondary-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.secondary-figures dt {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.secondary-figures dd {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Skeleton — shape only, never a number that could be mistaken for a figure. */
+.skeleton-line {
+  display: block;
+  background: color-mix(in srgb, var(--color-muted) 22%, transparent);
+  border-radius: 4px;
+}
+
+.skeleton-label {
+  inline-size: 55%;
+  block-size: 0.875rem;
+}
+
+.skeleton-value {
+  inline-size: 35%;
+  block-size: 2rem;
+}
+
+/* The spec's tablet rule: 4-across becomes 2×2 (§27). */
+@media (max-width: 1023px) {
+  .tile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .tile-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.figure-note {
+  margin: 0;
+  margin-block-start: 2px;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  max-inline-size: 22ch;
+}

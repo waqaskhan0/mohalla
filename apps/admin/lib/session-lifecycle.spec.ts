@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readCode, readFile } from './test-support/read-source';
 
 /**
  * The two defects the browser found in Group 02, pinned.
@@ -30,25 +29,7 @@ import { join } from 'node:path';
  * `16-admin-test-report.md`.
  */
 
-const ADMIN = process.cwd();
-const read = (relative: string) => readFileSync(join(ADMIN, relative), 'utf8');
-
-/**
- * The file with its comments removed.
- *
- * NEEDED BECAUSE TWO EARLIER VERSIONS OF THESE TESTS READ PROSE INSTEAD OF
- * CODE. One searched for the word "token" and failed on a comment explaining
- * that no token is handled; another searched for "invite" and failed on a
- * comment saying there is no invitation flow. Both times the assertion was
- * right and the input was wrong. These files carry long explanations on
- * purpose, so any rule about what the code contains has to look at the code.
- */
-const readCode = (relative: string) =>
-  read(relative)
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n')
-    .filter((line) => !line.trim().startsWith('//'))
-    .join('\n');
+const read = readFile;
 
 describe('ADMIN-RUNTIME-001 — a dead session must not render a protected page', () => {
   it('the shell guards every route in the group, in one place', () => {
