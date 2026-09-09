@@ -26,6 +26,15 @@ import { join } from 'node:path';
  * sufficient on its own: a rule also has to pick markers that only appear in
  * the thing being forbidden. "csv" and "download" indicate a data export;
  * "export" indicates an ES module.
+ *
+ * AND ONE MORE, ABOUT THIS FILE. A broken regex literal here once made the
+ * module a parse error, so the three specs that import it did not COLLECT --
+ * vitest reported "Test Files 3 failed | 4 passed" beside "Tests 25 passed",
+ * and a mutation of the code under test duly "passed" because its assertions
+ * had never run. A test-count line is not a suite result: this suite is
+ * checked by exit code. Because everything asserting a source-level rule
+ * depends on this one module, a fault here is silent across all of them at
+ * once, which is the argument for it being small and dull.
  */
 
 const ADMIN = process.cwd();
@@ -59,4 +68,33 @@ export function readLogic(relative: string): string {
       // sentence does not read as a forbidden word in a call.
       .replace(/>[^<>{}]+</g, '><')
   );
+}
+
+/**
+ * One top-level function's source, bounded by the next one.
+ *
+ * WHY THIS EXISTS. Slicing with `source.slice(source.indexOf('function X'))`
+ * runs to the end of the FILE, so an assertion about `X` silently reads every
+ * function after it. That is how a test asserting the empty-queue state
+ * contains no `role="alert"` failed on the error state defined below it — the
+ * rule was right and its input was three functions too long.
+ *
+ * The same family as reading prose instead of code: a rule about one thing,
+ * handed more than that thing.
+ */
+export function functionSource(relative: string, name: string): string {
+  const source = readFile(relative);
+  const start = source.indexOf(`function ${name}`);
+  if (start < 0) return '';
+
+  // The next top-level declaration, or the end of the file. Searched from one
+  // character past `start` so this function's own keyword is not the boundary
+  // that ends it, and sliced back out of `source` so the offset correction is
+  // applied once rather than silently shaving the leading `f` off the result.
+  const rest = source.slice(start + 1);
+  const nextDeclaration = rest.search(/\n(?:export )?(?:async )?function /);
+
+  return nextDeclaration < 0
+    ? source.slice(start)
+    : source.slice(start, start + 1 + nextDeclaration);
 }

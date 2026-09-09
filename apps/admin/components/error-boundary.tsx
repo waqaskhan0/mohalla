@@ -28,7 +28,10 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
-    // eslint-disable-next-line no-console
+    // The console is the only sink available here: this runs in the browser,
+    // and an admin client must not post error text to an endpoint of its own -
+    // a component stack from this portal can carry the very user-generated
+    // content the render choked on. A developer reads it locally.
     console.error('[admin] render error', error, info.componentStack);
   }
 

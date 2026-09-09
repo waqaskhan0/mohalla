@@ -61,8 +61,15 @@ export default [
   },
 
   // The RTL gate. Applied wherever a style object can be written.
+  //
+  // The second glob read `packages/tokens/**` until Stage 8, and no such
+  // directory has ever existed - the package is `packages/design-tokens`. So
+  // the gate had been silently covering one of its two targets. Nothing was
+  // found to fix in the tokens source once the glob reached it, which is the
+  // only reason this is a corrected gate rather than a defect report: a gate
+  // aimed at a path that does not exist reports success either way.
   {
-    files: ['apps/admin/**/*.{ts,tsx,js,jsx}', 'packages/tokens/**/*.{ts,js}'],
+    files: ['apps/admin/**/*.{ts,tsx,js,jsx}', 'packages/design-tokens/**/*.{ts,js}'],
     plugins: { mohalla },
     rules: {
       'mohalla/no-physical-properties': 'error',

@@ -604,3 +604,194 @@ button[disabled] {
   font-size: 0.75rem;
   max-inline-size: 22ch;
 }
+
+/* ------------------------------------------------------------------------ *
+ * Data table + severity indicator — UX-ADM-003
+ *
+ * §27: "Tables scroll horizontally inside their container; the page never
+ * scrolls sideways." A page that scrolls sideways loses the sidebar, which is
+ * how somebody ends up unable to navigate back.
+ * ------------------------------------------------------------------------ */
+
+.table-scroll {
+  overflow-x: auto;
+  margin-block-start: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.data-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  /* Rows are scanned, so the text sits close to the top of a tall cell. */
+  vertical-align: top;
+}
+
+.table-caption {
+  /* Present for screen readers, not painted: the visible page already states
+     the ordering in the headers, and repeating it above the table would be
+     noise for a sighted reader and useful for everyone else. */
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.data-table th,
+.data-table td {
+  padding-block: var(--space-2);
+  padding-inline: var(--space-4);
+  text-align: start;
+  border-block-end: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.data-table th {
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+  font-weight: 650;
+  background: color-mix(in srgb, var(--color-muted) 6%, transparent);
+}
+
+.data-table tbody tr:last-child td {
+  border-block-end: none;
+}
+
+.data-table tbody tr:hover {
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+}
+
+/* The ordering rank, next to the header it applies to. */
+.rank {
+  display: inline-block;
+  margin-inline-start: var(--space-2);
+  padding-inline: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  color: var(--color-accent);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+.row-link {
+  color: var(--color-accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.row-link:hover {
+  text-decoration: underline;
+}
+
+/* Severity: a dot AND a label, never colour alone (NFR-ACC-005). */
+.severity {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.severity-dot {
+  inline-size: 10px;
+  block-size: 10px;
+  border-radius: 50%;
+  flex: none;
+  /* A ring as well as a fill, so the dot is still distinguishable from the
+     background in a high-contrast mode that flattens colour. */
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+.severity-dot-critical {
+  background: #b3261e;
+}
+
+.severity-dot-high {
+  background: #c2410c;
+}
+
+.severity-dot-medium {
+  background: #a16207;
+}
+
+.severity-dot-low {
+  background: #4d7c8a;
+}
+
+/* An unrecognised value still gets a dot, deliberately neutral — see the
+   component's note on why it renders the raw value rather than guessing. */
+.severity-dot-unknown {
+  background: var(--color-muted);
+}
+
+.severity-label {
+  font-weight: 600;
+}
+
+.flag {
+  display: inline-block;
+  padding-inline: var(--space-2);
+  padding-block: 2px;
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.flag-hidden {
+  background: color-mix(in srgb, #b3261e 16%, transparent);
+  color: #f2b8b5;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-block-start: var(--space-4);
+}
+
+.pager-controls {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.pager-controls a {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+/* An empty queue is good news, and reads as good news (§16). */
+.queue-clear {
+  margin-block-start: var(--space-6);
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-inline-start: 3px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  max-inline-size: 60ch;
+}
+
+.queue-clear-headline {
+  margin: 0;
+  margin-block-end: var(--space-2);
+  font-size: 1.125rem;
+  font-weight: 650;
+}
+
+.skeleton-cell {
+  inline-size: 70%;
+  block-size: 1rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

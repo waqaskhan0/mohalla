@@ -24,7 +24,7 @@
     "test": "npm run build:packages && npm run test --workspaces --if-present",
     "test:foundation": "npm run test --workspace @mohalla/db --if-present && npm run test --workspace apps/api --if-present",
     "guard:deps": "node scripts/posix/check-module-dependencies.mjs",
-    "guard:rtl": "eslint apps/admin packages/tokens --rule-dir packages/eslint-plugin-mohalla",
+    "guard:rtl": "eslint apps/admin packages/design-tokens",
     "guard:locale": "node scripts/posix/check-locale-parity.mjs",
     "guard:secrets": "node scripts/posix/check-secrets.mjs",
     "guard:all": "npm run guard:deps && npm run guard:locale && npm run guard:secrets",
