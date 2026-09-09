@@ -260,6 +260,39 @@ export const enforcementResultSchema = z.object({
 });
 export type EnforcementResult = z.infer<typeof enforcementResultSchema>;
 
+// ----------------------------------------------------------- announcements
+
+/**
+ * `GET /admin/announcements/allowance` - NOTIF-FR-005.
+ *
+ * TWO PER ROLLING SEVEN DAYS, and the route exists so the portal can say so
+ * BEFORE an administrator writes an announcement rather than refusing after
+ * they have - which is the API's own stated reason for it.
+ *
+ * `used` can exceed `limit` in principle if the limit is ever lowered, so the
+ * portal computes remaining as a floor of zero rather than trusting
+ * subtraction.
+ */
+export const broadcastAllowanceSchema = z.object({
+  used: z.number().int().nonnegative(),
+  limit: z.number().int().nonnegative(),
+});
+export type BroadcastAllowance = z.infer<typeof broadcastAllowanceSchema>;
+
+/**
+ * `POST /admin/announcements` - ADMIN-FR-009.
+ *
+ * The response says whether the push actually went out, which is not the same
+ * as what was asked for: a publication can succeed while its broadcast is
+ * refused, so the portal reports the API's answer rather than the form's
+ * intention.
+ */
+export const announcementPublishedSchema = z.object({
+  id,
+  broadcast: z.boolean(),
+});
+export type AnnouncementPublished = z.infer<typeof announcementPublishedSchema>;
+
 // --------------------------------------------------------------- dashboard
 
 /**

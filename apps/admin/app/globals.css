@@ -1113,3 +1113,133 @@ h1 .flag-verified {
 .duration-set .field-note {
   margin-block: var(--space-4) 0;
 }
+
+/* ---------------------------------------------------------------- UX-ADM-007
+   The announcement form. Both languages side by side and identical, because
+   ADMIN-FR-009 requires both "because a single-language announcement fails
+   half the audience" — and a layout that put English full-width with Urdu
+   tucked underneath would teach the opposite of the rule it implements. */
+
+.announcement-form {
+  margin-block-start: var(--space-6);
+  display: grid;
+  gap: var(--space-6);
+  max-width: 62rem;
+}
+
+.bilingual {
+  display: grid;
+  gap: var(--space-6);
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  /* STRETCH, not start. Urdu Naskh takes 1.85 leading against Latin's 1.5, so
+     two textareas with the same `rows` are not the same height — measured at
+     1440px, the Urdu box stood taller than its English pair. Stretching the
+     cells and letting each control fill one makes the pair equal without
+     hardcoding a height, and the Urdu text keeps its leading inside. */
+  align-items: stretch;
+}
+
+.bilingual > .field {
+  display: flex;
+  flex-direction: column;
+}
+
+.bilingual > .field textarea {
+  flex: 1 1 auto;
+}
+
+/* And the same for the single-line pair: the Urdu control carries a larger
+   size and leading, so an intrinsic height leaves one box taller than the
+   other. An explicit height makes the two read as one object. */
+.bilingual > .field input[type='text'] {
+  block-size: 2.75rem;
+}
+
+.announcement-form input[type='text'],
+.announcement-form textarea,
+.announcement-form input[type='date'] {
+  inline-size: 100%;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font: inherit;
+  line-height: var(--line-height-latin);
+}
+
+.announcement-form textarea {
+  resize: vertical;
+}
+
+.announcement-form [aria-invalid='true'] {
+  border-color: #a8332e;
+}
+
+.announcement-form [readonly] {
+  background: #f6f4f0;
+  color: var(--color-muted);
+}
+
+/* The Urdu fields. `dir` and `lang` are set on the controls themselves in the
+   component — this only supplies the leading, because Urdu Naskh needs more of
+   it than Latin at the same size. */
+.field-urdu input[type='text'],
+.field-urdu textarea {
+  line-height: var(--line-height-urdu);
+  font-size: 1.0625rem;
+}
+
+.field-urdu label {
+  font-size: 1.0625rem;
+}
+
+.broadcast-set {
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.broadcast-set legend {
+  padding-inline: var(--space-2);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.checkbox-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  font-weight: 600;
+}
+
+.checkbox-row input {
+  margin-block-start: 0.2rem;
+  flex: 0 0 auto;
+}
+
+.broadcast-set .field-note,
+.broadcast-set .notice {
+  margin-block: var(--space-2) 0;
+}
+
+/* Each field's label carries a gloss on its own line, in both columns, so the
+   English and Urdu inputs of a pair share a baseline. See the note in
+   announcement-form.tsx: giving the gloss only to the Urdu side pushed its box
+   one line lower than its pair. */
+.announcement-form label {
+  display: block;
+  margin-block-end: var(--space-2);
+}
+
+.announcement-form .label-main {
+  display: block;
+  font-weight: 600;
+}
+
+.announcement-form .label-gloss {
+  display: block;
+  color: var(--color-muted);
+  font-weight: 400;
+  font-size: 0.875rem;
+  line-height: var(--line-height-latin);
+}
