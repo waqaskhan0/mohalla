@@ -1,0 +1,8 @@
+{
+  "deletion.consequence.profileRemoved": "Your profile, photo and bio are removed from Mohalla.",
+  "deletion.consequence.postsRemainAnonymised": "Your posts and comments stay where they are, shown as “Deleted User”. They are not removed, because other people replied to them.",
+  "deletion.consequence.messagesRemainForTheOtherPerson": "Messages you sent stay in the other person’s conversation, shown as “Deleted User”.",
+  "deletion.consequence.sessionsEndImmediately": "You are signed out on every device straight away.",
+  "deletion.consequence.restorableForThirtyDays": "You can bring your account back by logging in within 30 days. Your followers, following and posts return with it.",
+  "deletion.consequence.permanentAfterThirtyDays": "After 30 days this cannot be undone."
+}

@@ -21,12 +21,14 @@
     "@nestjs/platform-socket.io": "12.0.1",
     "@nestjs/swagger": "12.0.1",
     "@nestjs/websockets": "12.0.1",
+    "@node-rs/argon2": "2.0.2",
     "helmet": "8.1.0",
     "pg": "8.23.0",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.1",
     "socket.io": "4.8.3",
-    "zod": "4.5.4"
+    "zod": "4.5.4",
+    "@mohalla/observability": "*"
   },
   "devDependencies": {
     "@nestjs/testing": "12.0.1",

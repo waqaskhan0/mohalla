@@ -1,9 +1,558 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Mohalla</string>
-    <string name="foundation_title">Mohalla — Foundation</string>
-    <string name="foundation_subtitle">Shehersaaz Community Platform</string>
-    <string name="foundation_body">This build exists to prove the Android project compiles and mirrors correctly. No product feature is implemented.</string>
-    <string name="foundation_direction_label">Layout direction</string>
-    <string name="foundation_locale_label">Locale</string>
+    <string name="announcement_title">Announcement</string>
+    <string name="feed_filter_title">Filter by category</string>
+    <string name="feed_filter_all">All categories</string>
+    <string name="feed_filter_clear">Clear filter</string>
+    <string name="a11y_filter">Filter by category</string>
+
+    <!-- ============================================ navigation (UI/UX §14) -->
+    <string name="nav_home">Home</string>
+    <string name="nav_events">Events</string>
+    <string name="nav_create">Create</string>
+    <string name="nav_messages">Messages</string>
+    <string name="nav_profile">Profile</string>
+
+    <!-- ==================================== UX-AUTH-002 Language selection -->
+    <string name="language_title">Choose your language</string>
+    <string name="language_subtitle">You can change this any time in Settings.</string>
+    <string name="language_english">English</string>
+    <string name="language_urdu">اردو</string>
+    <string name="language_continue">Continue</string>
+
+    <!-- ================================================ UX-AUTH-003 Welcome -->
+    <string name="welcome_tagline">Your neighbourhood, online.</string>
+    <string name="welcome_body">Share what is happening where you live, find local events, and speak to your neighbours.</string>
+    <string name="welcome_create_account">Create account</string>
+    <string name="welcome_log_in">Log in</string>
+
+    <!-- ============================================== cross-cutting states -->
+    <!-- UX-STATE-001. ONE neutral message for deleted, hidden, blocked, banned
+         and never-existed. Deliberately says nothing about which (SEC-019). -->
+    <string name="state_unavailable_title">This content is not available</string>
+    <string name="state_unavailable_body">It may have been removed, or you may not have access to it.</string>
+
+    <!-- UX-STATE-002 -->
+    <string name="state_offline_title">No connection</string>
+    <string name="state_offline_body">You are offline. Some things you have already opened are still readable.</string>
+    <string name="state_offline_banner">No internet connection</string>
+    <string name="state_session_expired">You have been signed out. Please log in again.</string>
+
+    <!-- UX-STATE-003 -->
+    <string name="state_error_title">Something went wrong</string>
+    <string name="state_error_body">Please try again in a moment.</string>
+    <string name="state_error_reference">Reference: %1$s</string>
+
+    <!-- UX-STATE-004 -->
+    <string name="state_rate_limited_title">Too many attempts</string>
+    <string name="state_rate_limited_body">Please wait a little before trying again.</string>
+
+    <string name="action_retry">Try again</string>
+    <string name="action_back">Back</string>
+    <string name="action_close">Close</string>
+    <string name="action_cancel">Cancel</string>
+
+    <!-- ================================================ accessibility only -->
+    <string name="a11y_loading">Loading</string>
+    <string name="a11y_selected">Selected</string>
+    <string name="a11y_unread_count">%1$d unread</string>
+
+    <!-- ============================================ UX-AUTH-004 and 005-008 -->
+    <string name="login_title">Log in</string>
+    <string name="login_submit">Log in</string>
+    <string name="login_forgot_password">Forgotten your password?</string>
+    <!-- SEC-006: ONE message for a wrong password, an unknown number and a
+         banned account. It says nothing about which. -->
+    <string name="login_failed">That number and password do not match.</string>
+
+    <string name="field_phone">Mobile number</string>
+    <string name="field_phone_not_mobile">Enter a Pakistani mobile number, starting 03.</string>
+    <string name="field_password">Password</string>
+    <string name="field_password_policy">8 to 64 characters, with at least one letter and one number.</string>
+    <string name="field_password_too_short">Use at least 8 characters.</string>
+    <string name="field_password_needs_letter">Add at least one letter.</string>
+    <string name="field_password_too_long">Use 64 characters or fewer.</string>
+    <string name="field_password_needs_digit">Add at least one number.</string>
+
+    <string name="register_phone_title">What is your mobile number?</string>
+    <string name="register_phone_body">We will send you a code to confirm it.</string>
+    <string name="register_account_type">Account type</string>
+    <string name="account_type_individual">Individual</string>
+    <string name="account_type_organization">Organization</string>
+    <string name="register_account_type_permanent">This cannot be changed later. Choosing Organization does not add a verified badge.</string>
+    <string name="register_dob_title">When were you born?</string>
+    <string name="register_dob_body">You need to be at least 13 to use Mohalla.</string>
+    <string name="register_dob_underage">You need to be at least 13 to use Mohalla.</string>
+    <string name="register_dob_select">Select your date of birth</string>
+    <string name="register_password_title">Choose a password</string>
+    <string name="register_terms_title">Terms and Community Guidelines</string>
+    <string name="register_terms_accept">I have read and accept the Terms and the Community Guidelines.</string>
+    <string name="register_submit">Create account</string>
+    <string name="action_continue">Continue</string>
+
+    <!-- =============================================== UX-AUTH-009 the OTP -->
+    <string name="otp_title">Enter your code</string>
+    <string name="a11y_otp_field">Verification code, %1$d digits</string>
+    <string name="otp_sent_to">We sent a 6-digit code to %1$s</string>
+    <string name="otp_submit">Verify</string>
+    <string name="otp_resend">Send a new code</string>
+    <string name="otp_resend_in">You can ask for a new code in %1$d seconds</string>
+    <string name="otp_resend_exhausted">You have asked for a new code too many times. Try again later.</string>
+    <string name="otp_resent">A new code is on its way.</string>
+    <string name="otp_invalid">That code is not correct. Check the digits and try again.</string>
+    <string name="otp_expired">That code has expired. Ask for a new one.</string>
+    <string name="otp_locked_out">Too many attempts. Try again in 15 minutes.</string>
+
+    <!-- ================================== UX-AUTH-010 and 011 the password -->
+    <string name="forgot_title">Reset your password</string>
+    <string name="forgot_body">Enter your mobile number and we will send you a code.</string>
+    <string name="forgot_submit">Send code</string>
+    <string name="reset_title">Choose a new password</string>
+    <string name="reset_submit">Save new password</string>
+    <string name="reset_done">Your password has been changed. You can log in now.</string>
+
+    <!-- ========================================== UX-AUTH-012 the restore -->
+    <string name="restore_title">Welcome back</string>
+    <string name="restore_body">Your account is scheduled for deletion. Restore it and your profile, followers and posts all come back.</string>
+    <string name="restore_submit">Restore my account</string>
+    <string name="restore_done">Your account has been restored.</string>
+
+    <!-- ===================================== remaining auth flow strings -->
+    <string name="field_code">6-digit code</string>
+    <string name="field_new_password">New password</string>
+    <string name="legal_terms">Read the Terms</string>
+    <string name="legal_guidelines">Read the Community Guidelines</string>
+    <!-- OD-015: the documents do not exist yet. Said plainly rather than
+         linking to a placeholder that looks like a real policy. -->
+    <string name="legal_unavailable">This document is not available yet.</string>
+    <string name="restore_sign_out">Sign out instead</string>
+
+    <!-- ============================================ UX-SETUP-001..003 -->
+    <string name="username_title">Choose your username</string>
+    <!-- PROFILE-FR-001: permanent. Said BEFORE they choose, not after. -->
+    <string name="username_permanent_warning">This is how people will find you, and it cannot be changed later.</string>
+    <string name="username_label">Username</string>
+    <string name="username_looks_free">That username is available.</string>
+    <!-- Taken OR reserved. The server does not say which, and nor does this. -->
+    <string name="username_unavailable">That username is not available. Try another.</string>
+    <string name="username_too_short">Use at least 3 characters.</string>
+    <string name="username_too_long">Use no more than 20 characters.</string>
+    <string name="username_must_start_with_letter">Start with a letter.</string>
+    <string name="username_needs_lowercase">Use lowercase letters only.</string>
+    <string name="username_invalid_characters">Use letters, numbers and underscores only.</string>
+
+    <string name="profile_setup_title">Set up your profile</string>
+    <string name="profile_setup_body">Only your name is needed. You can add the rest now or later.</string>
+    <string name="field_display_name">Your name</string>
+    <string name="field_city_optional">City (optional)</string>
+    <string name="field_bio_optional">About you (optional)</string>
+    <string name="field_characters_left">%1$d characters left</string>
+    <string name="field_too_long">That is too long.</string>
+    <string name="photo_add_optional">Add a photo (optional)</string>
+    <string name="photo_remove">Remove photo</string>
+    <string name="photo_upload_failed">The photo did not upload. You can try again.</string>
+    <string name="photo_rejected">That image could not be used. Please choose another.</string>
+
+    <string name="suggestions_title">Follow a few neighbours</string>
+    <string name="suggestions_body">Following people fills your feed. You can change this any time.</string>
+    <string name="suggestions_skip">Skip for now</string>
+    <string name="suggestions_empty">There is nobody to suggest yet. Your feed will still show what is happening nearby.</string>
+    <string name="action_follow">Follow</string>
+    <string name="action_following">Following</string>
+    <string name="badge_verified">Verified</string>
+    <!-- Post card -->
+    <string name="profile_deleted_user">Deleted User</string>
+    <string name="post_under_review">Under review. Only you can see this post.</string>
+    <string name="post_edited">edited</string>
+    <string name="a11y_like">Like</string>
+    <string name="a11y_unlike">Remove like</string>
+    <string name="a11y_comments">Comments</string>
+    <string name="a11y_share">Share</string>
+
+    <!-- Home -->
+    <string name="feed_following">Following</string>
+    <string name="feed_discover">Discover</string>
+    <string name="feed_featured">Announcements</string>
+    <string name="feed_end">You have reached the end.</string>
+    <string name="feed_page_failed">More posts could not be loaded.</string>
+    <string name="feed_empty_following_title">Your feed is waiting</string>
+    <string name="feed_empty_following_body">Follow a few neighbours and their posts will appear here. Until then, Discover shows what is happening nearby.</string>
+    <string name="feed_find_people">Find people to follow</string>
+    <string name="feed_see_discover">See Discover</string>
+    <string name="feed_empty_discover_title">Nothing here yet</string>
+    <string name="feed_empty_discover_body">Nobody nearby has posted recently. Check back a little later.</string>
+    <!-- Shell chrome -->
+    <string name="action_search">Search</string>
+    <string name="action_notifications">Notifications</string>
+    <string name="action_learn_more">Learn more</string>
+    <string name="a11y_create_locked">Create a post — unavailable while your account is limited</string>
+    <string name="a11y_profile_attention">Profile — something needs your attention</string>
+
+    <!-- Suspension (UX-SAFE-004) -->
+    <string name="suspension_banner_until">Your account is limited until %1$s.</string>
+    <string name="suspension_banner_indefinite">Your account is limited.</string>
+    <string name="suspension_title">Your account is limited</string>
+    <string name="suspension_duration_until">You can read everything, but you cannot post, comment or send messages until %1$s.</string>
+    <string name="suspension_duration_indefinite">You can read everything, but you cannot post, comment or send messages for now.</string>
+    <string name="suspension_what_still_works">Reading posts, events and your old conversations all keep working. Nothing has been deleted.</string>
+    <string name="suspension_contact_support">Get in touch about this</string>
+
+    <!-- OD-015 -->
+    <string name="register_terms_unavailable">New accounts cannot be created in this build. The Terms of Service have not been published yet.</string>
+    <!-- Events (UX-EVENT-001..005) -->
+    <string name="events_tab_upcoming">Upcoming</string>
+    <string name="events_tab_mine">Mine</string>
+    <string name="events_create">Create an event</string>
+    <string name="events_browse_upcoming">Browse upcoming events</string>
+    <string name="events_end">That is everything coming up.</string>
+    <string name="events_page_failed">More events could not be loaded.</string>
+    <string name="events_empty_upcoming_title">No events coming up</string>
+    <string name="events_empty_upcoming_body">Nobody has planned anything yet. Community events start with one person.</string>
+    <string name="events_empty_mine_title">You haven\'t created any events</string>
+    <string name="events_empty_mine_body">Events you create will appear here.</string>
+    <string name="events_mine_scope_notice">This shows events you created. Events you responded to are not listed here yet.</string>
+
+    <string name="event_detail_title">Event</string>
+    <string name="event_organiser">Organiser</string>
+    <string name="event_type_online">Online</string>
+    <string name="event_type_physical">In person</string>
+    <string name="event_type_unknown">Details to follow</string>
+    <string name="event_going">Going</string>
+    <string name="event_interested">Interested</string>
+    <string name="event_join">Join the meeting</string>
+    <string name="event_join_opens_at">The joining link opens on %1$s.</string>
+    <string name="event_join_opens_minutes_before">The joining link opens %1$d minutes before the event starts.</string>
+    <string name="event_join_needs_rsvp">Respond to this event to get the joining link.</string>
+    <string name="event_join_too_early">The joining link is not open yet.</string>
+    <string name="event_join_not_online">This event is held in person.</string>
+    <string name="event_join_no_app">Nothing on this device can open the link. You can copy it instead.</string>
+    <string name="event_join_copy_link">Copy the link</string>
+    <string name="event_cancelled_label">Cancelled</string>
+    <string name="event_cancelled_notice">This event has been cancelled.</string>
+    <string name="event_cancelled_no_rsvp">This event has been cancelled, so responses are closed.</string>
+    <string name="event_already_started">This event has already started.</string>
+    <string name="event_under_review">Under review. Only you can see this event.</string>
+
+    <!-- Create and edit (UX-EVENT-004/005) -->
+    <string name="event_edit">Edit the event</string>
+    <string name="event_publish">Publish</string>
+    <string name="event_save_changes">Save changes</string>
+    <string name="event_cancel_event">Cancel this event</string>
+    <string name="event_field_title">Title</string>
+    <string name="event_field_description">What is happening</string>
+    <string name="event_field_starts_at">Date and time</string>
+    <string name="event_field_type">Where is it</string>
+    <string name="event_field_meeting_url">Meeting link</string>
+    <string name="event_field_location">Location</string>
+    <string name="event_pick_date_time">Choose a date and time</string>
+    <string name="event_meeting_url_hint">An http or https link to your meeting. Attendees see it 30 minutes before the start.</string>
+    <string name="event_meeting_url_keep_existing">Leave this empty to keep the current link.</string>
+    <string name="event_location_hint">An address or a landmark neighbours will recognise.</string>
+    <string name="event_type_frozen">The type cannot change once people have responded to this event.</string>
+    <string name="event_rate_limited">You can create up to %1$d events a day.</string>
+    <string name="event_cancelled_result">The event is cancelled. Everyone who responded has been told.</string>
+    <string name="event_deleted_result">The event has been removed. Nobody had responded to it.</string>
+
+    <string name="event_problem_empty">Please fill this in.</string>
+    <string name="event_problem_too_short">That is a little too short.</string>
+    <string name="event_problem_past">Choose a date and time in the future.</string>
+    <string name="event_problem_not_a_link">Enter a link starting with http:// or https://</string>
+    <string name="event_problem_link_required">An online event needs a meeting link.</string>
+    <string name="event_problem_location_required">An in-person event needs a location.</string>
+    <string name="event_problem_both">Choose one: a meeting link for an online event, or a location for an in-person one. For both, choose in person and put the link in the description.</string>
+    <string name="state_restricted_body">Your account cannot do this right now.</string>
+    <string name="action_report">Report</string>
+    <string name="action_more">More options</string>
+    <!-- Media -->
+    <string name="media_unavailable">Image unavailable</string>
+    <string name="media_more_count">+%1$d</string>
+    <string name="a11y_post_image">Attached image</string>
+
+    <!-- Composer (UX-CREATE-001) -->
+    <string name="composer_title">New post</string>
+    <string name="composer_post">Post</string>
+    <string name="composer_close">Close</string>
+    <string name="composer_placeholder">What\'s happening in your area?</string>
+    <string name="composer_counter">%1$d / %2$d</string>
+    <string name="composer_add_category">Add a category</string>
+    <string name="composer_clear_category">Remove the category</string>
+    <string name="composer_image_limit">You can attach up to %1$d images.</string>
+    <string name="composer_blocked_too_long">This post is longer than the limit. Shorten it to publish.</string>
+    <string name="composer_blocked_uploading">One image is still uploading.</string>
+    <string name="composer_blocked_upload_failed">One image didn\'t upload. Tap retry — your other images and text are saved.</string>
+    <string name="composer_blocked_upload_rejected">One image could not be used. Remove it and choose another.</string>
+    <string name="composer_offline">You are offline, so nothing was published. Your text is saved.</string>
+    <string name="composer_media_not_ready">An attachment is still being processed. Try again in a moment.</string>
+    <string name="composer_needs_profile">Set up your profile before posting.</string>
+    <string name="composer_discard_title">Discard this post?</string>
+    <string name="composer_discard_body">Your text and attachments will be lost.</string>
+    <string name="composer_discard_confirm">Discard</string>
+    <string name="composer_keep_writing">Keep writing</string>
+
+    <!-- Upload tile -->
+    <string name="upload_percent">%1$d%%</string>
+    <string name="upload_working">…</string>
+    <string name="upload_retry">Retry</string>
+    <string name="upload_rejected">Not supported</string>
+    <string name="upload_remove">Remove this image</string>
+    <string name="upload_add">Add an image</string>
+
+    <!-- Attachment sheet (UX-CREATE-003) -->
+    <string name="attach_title">Add to your post</string>
+    <string name="attach_images">Photos</string>
+    <string name="attach_link_hint">Paste a link into your post and a preview is added for you. Mohalla fetches it, so the site never sees your device.</string>
+
+    <!-- Category picker (UX-CREATE-004) -->
+    <string name="category_title">Choose a category</string>
+    <string name="category_unavailable">Categories could not be loaded. You can post without one.</string>
+
+    <!-- Shared actions -->
+    <string name="action_next">Next</string>
+    <string name="action_done">Done</string>
+    <!-- Post detail (UX-HOME-003) -->
+    <string name="post_detail_title">Post</string>
+    <string name="post_delete">Delete this post</string>
+    <string name="post_delete_title">Delete this post?</string>
+    <string name="post_delete_body">The post, its comments, its likes and its images are removed for everyone. This cannot be undone, and nobody can restore it.</string>
+    <string name="post_delete_confirm">Delete</string>
+
+    <!-- Comments (ENGAGE-FR-002…005) -->
+    <string name="comment_placeholder">Add a comment</string>
+    <string name="comment_send">Send</string>
+    <string name="comment_reply">Reply</string>
+    <string name="comment_delete">Delete</string>
+    <string name="comment_replying_to">Replying to %1$s</string>
+    <string name="comment_cancel_reply">Stop replying</string>
+    <string name="comment_load_more">Show more comments</string>
+    <string name="comment_load_failed">Comments could not be loaded.</string>
+    <string name="comment_empty_title">Start the conversation</string>
+    <string name="comment_empty_body">No comments yet. Ask a question or add what you know.</string>
+    <string name="comment_post_gone">This post is no longer available, so your comment was not added. Your text is still here if you want to copy it.</string>
+    <string name="comment_offline">You are offline, so your comment was not added. Your text is still here.</string>
+    <string name="comment_delete_title">Delete this comment?</string>
+    <string name="comment_delete_body">This cannot be undone.</string>
+    <string name="comment_delete_body_with_replies">This comment and its %1$d replies will be removed. This cannot be undone.</string>
+    <string name="comment_delete_confirm">Delete</string>
+
+    <!-- Image viewer (UX-HOME-004) -->
+    <string name="viewer_position">%1$d / %2$d</string>
+    <string name="a11y_image_of">Image %1$d of %2$d</string>
+
+    <!-- Sharing (ENGAGE-FR-007) -->
+    <string name="share_post_title">Share this post</string>
+    <string name="share_post_subject">A post on Mohalla</string>
+    <!-- Search (UX-SEARCH-001..003) -->
+    <string name="search_title">Search</string>
+    <string name="search_placeholder">Search people, posts and events</string>
+    <string name="search_clear">Clear the search</string>
+    <string name="search_tab_people">People</string>
+    <string name="search_tab_posts">Posts</string>
+    <string name="search_tab_events">Events</string>
+    <string name="search_load_more">Show more results</string>
+    <string name="search_more_failed">More results could not be loaded.</string>
+
+    <string name="search_hint_title">Find anything said here</string>
+    <string name="search_hint_body">Search works in Urdu script and in Roman Urdu, so \'پانی\' and \'pani\' find the same posts.</string>
+
+    <string name="search_recent_title">Recent</string>
+    <string name="search_recent_clear">Clear all</string>
+    <string name="search_recent_remove">Remove %1$s from recent searches</string>
+    <string name="search_recent_device_only">Recent searches stay on this phone. They are never sent to Mohalla.</string>
+
+    <string name="search_empty_people">No people found</string>
+    <string name="search_empty_posts">No posts found</string>
+    <string name="search_empty_events">No events found</string>
+    <string name="search_empty_spelling_hint">Try the other spelling — Urdu script instead of Roman Urdu, or the other way round. A shorter search often finds more.</string>
+
+    <string name="search_unavailable">Search is temporarily unavailable, so nothing could be looked up. This does not mean there is nothing to find.</string>
+    <string name="search_offline">You are offline, so the search could not run. This does not mean there is nothing to find.</string>
+    <string name="search_query_too_short">Type a little more to search.</string>
+    <!-- Messaging (UX-MSG-001..003) -->
+    <string name="inbox_tab_messages">Messages</string>
+    <string name="inbox_tab_requests">Requests</string>
+    <string name="inbox_load_more">Show more conversations</string>
+    <string name="inbox_preview_photo">Sent a photo</string>
+    <string name="inbox_preview_empty">No messages yet</string>
+    <string name="inbox_preview_own">You: %1$s</string>
+    <string name="inbox_empty_title">No messages yet</string>
+    <string name="inbox_empty_body">You can message anyone here without sharing your phone number.</string>
+    <string name="requests_empty_title">No message requests</string>
+    <string name="requests_empty_body">When someone you don\'t follow messages you, it will wait here.</string>
+
+    <string name="request_accept">Accept</string>
+    <string name="request_decline">Decline</string>
+    <string name="request_explainer">This person doesn\'t follow you. Accept to reply, or decline — they won\'t be told either way.</string>
+
+    <string name="conversation_placeholder">Write a message</string>
+    <string name="conversation_load_older">Show earlier messages</string>
+    <string name="conversation_read_only">This conversation can no longer receive messages. You can still read it.</string>
+    <string name="conversation_read_only_tag">Read only</string>
+    <string name="conversation_empty_title">Say hello</string>
+    <string name="conversation_empty_body">Your phone number is never shared here.</string>
+    <string name="conversation_view_profile">View profile</string>
+
+    <string name="message_sending">Sending</string>
+    <string name="message_sent">Sent</string>
+    <string name="message_read">Read</string>
+    <string name="message_retry">Not sent. Tap to try again</string>
+    <string name="message_image">Image in this conversation</string>
+    <string name="message_send_unavailable">This message could not be sent.</string>
+    <string name="message_send_retryable">Your message wasn\'t sent. Tap it to try again.</string>
+    <string name="message_request_limit">You can start up to %1$d new conversations a day.</string>
+    <!-- Notifications (UX-HOME-007 · UX-SET-003) -->
+    <!--
+      There is deliberately NO string here for a notification's own text. Every
+      sentence in the centre is rendered by the server in the language the
+      request named (LOCALE-FR-002), so a client-side template would be a second
+      copy of thirteen strings that would drift from the server's. What the
+      client owns is the chrome below.
+    -->
+    <string name="notification_unread">Unread</string>
+    <string name="notifications_day_today">Today</string>
+    <string name="notifications_day_yesterday">Yesterday</string>
+    <string name="notifications_day_earlier">Earlier</string>
+    <string name="notifications_just_now">Just now</string>
+    <string name="notifications_empty_title">Nothing yet</string>
+    <string name="notifications_empty_body">When people interact with your posts, you\'ll see it here.</string>
+
+    <string name="settings_notifications_title">Notifications</string>
+    <string name="settings_notifications_explainer">These control alerts on your phone. Everything still appears here in the app, whatever you turn off.</string>
+    <string name="settings_notifications_save_failed">That change wasn\'t saved. Try again.</string>
+    <string name="settings_notifications_likes">Likes</string>
+    <string name="settings_notifications_comments">Comments and replies</string>
+    <string name="settings_notifications_follows">New followers</string>
+    <string name="settings_notifications_mentions">Mentions</string>
+    <string name="settings_notifications_messages">Messages</string>
+    <string name="settings_notifications_events">Events</string>
+    <string name="settings_notifications_announcements">Announcements</string>
+    <!-- Profile and the social graph (UX-PROFILE-001..006) -->
+    <string name="profile_posts">Posts</string>
+    <string name="profile_stat_posts">Posts</string>
+    <string name="profile_stat_followers">Followers</string>
+    <string name="profile_stat_following">Following</string>
+    <string name="profile_no_posts">No posts yet</string>
+    <string name="profile_posts_failed">These posts couldn\'t be loaded.</string>
+    <string name="profile_follow">Follow</string>
+    <string name="profile_following">Following</string>
+    <string name="profile_follow_failed">That didn\'t work. Try again.</string>
+    <string name="profile_message">Message</string>
+    <string name="profile_edit">Edit profile</string>
+    <string name="profile_saved">Saved</string>
+    <string name="profile_no_followers">No followers yet</string>
+    <string name="profile_no_following">Not following anyone yet</string>
+
+    <string name="profile_edit_title">Edit profile</string>
+    <string name="profile_edit_save_failed">Your changes weren\'t saved. Try again.</string>
+    <string name="profile_username_permanent">Your username can\'t be changed.</string>
+    <string name="photo_change">Change photo</string>
+    <string name="photo_uploading">Uploading…</string>
+    <string name="action_save">Save</string>
+
+    <string name="post_save">Save post</string>
+    <string name="post_unsave">Remove from saved</string>
+    <string name="saved_remove">Remove</string>
+    <string name="saved_remove_failed">That couldn\'t be removed. Try again.</string>
+    <string name="saved_empty_title">Nothing saved yet</string>
+    <string name="saved_empty_body">Save a post to find it again later. Only you can see this list, and the author is never told.</string>
+    <!-- Settings (UX-SET-001, 002, 004..008) -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_change_password">Change password</string>
+    <string name="settings_blocked_users">Blocked accounts</string>
+    <string name="settings_guidelines">Community Guidelines</string>
+    <string name="settings_terms">Terms and Privacy Policy</string>
+    <string name="settings_privacy">Privacy Policy</string>
+    <string name="settings_help">Help and support</string>
+    <string name="settings_about">About</string>
+    <string name="settings_sign_out">Log out</string>
+    <string name="settings_language_note">This choice follows your account, so it applies on every device you log in to.</string>
+
+    <string name="password_change_explainer">Changing your password logs you out everywhere else. This device stays logged in.</string>
+    <string name="password_current">Current password</string>
+    <string name="password_new">New password</string>
+    <string name="password_confirm">Confirm new password</string>
+    <string name="password_current_wrong">That isn\'t your current password.</string>
+    <string name="password_same_as_current">Choose a password different from your current one.</string>
+    <string name="password_mismatch">These don\'t match.</string>
+    <string name="password_change_submit">Change password</string>
+    <string name="password_change_failed">Your password wasn\'t changed. Try again.</string>
+
+    <string name="blocked_account">Blocked account</string>
+    <string name="blocked_since">Blocked %1$s</string>
+    <string name="blocked_unblock">Unblock</string>
+    <string name="blocked_unblock_failed">That couldn\'t be undone. Try again.</string>
+    <string name="blocked_no_names">Names aren\'t shown here, because blocking hides the account from you in both directions.</string>
+    <string name="blocked_empty_title">You haven\'t blocked anyone</string>
+    <string name="blocked_empty_body">Blocking is silent — the other person is never told.</string>
+
+    <string name="legal_unavailable_body">It hasn\'t been published yet. Nothing is shown here rather than something that only looks official.</string>
+    <string name="help_body">Write to us and we\'ll get back to you.</string>
+    <string name="help_unavailable">A support address hasn\'t been published yet.</string>
+    <string name="about_version">Version %1$s (%2$d)</string>
+    <!-- Safety (UX-SAFE-001..003) -->
+    <string name="report_title_post">Report this post</string>
+    <string name="report_title_comment">Report this comment</string>
+    <string name="report_title_event">Report this event</string>
+    <string name="report_title_profile">Report this account</string>
+    <string name="report_title_conversation">Report this conversation</string>
+    <string name="report_why">Why are you reporting it?</string>
+    <string name="report_change_reason">Change</string>
+    <string name="report_note_optional">Anything you want to add? (optional)</string>
+    <string name="report_submit">Send report</string>
+    <string name="report_thanks_title">Thank you</string>
+    <string name="report_thanks_body">Our team will review this.</string>
+    <string name="report_also_block">Would you like to block this person as well?</string>
+    <string name="report_failed">This couldn\'t be sent. Try again.</string>
+    <string name="report_offline">You\'re offline, so this hasn\'t been sent. Nothing you typed is lost — try again when you\'re back.</string>
+
+    <!--
+      SAFETY-FR-003's eight reasons, in "plain sentences - not policy
+      language". A reporter choosing between these is describing their own
+      situation, not classifying it against a rulebook they have not read.
+    -->
+    <string name="report_reason_spam">Spam or misleading</string>
+    <string name="report_reason_harassment">Harassment or bullying</string>
+    <string name="report_reason_hate">Hate speech</string>
+    <string name="report_reason_violence">Violence or threats</string>
+    <string name="report_reason_sexual">Sexual or inappropriate content</string>
+    <string name="report_reason_false">False information</string>
+    <string name="report_reason_impersonation">Pretending to be someone else</string>
+    <string name="report_reason_other">Something else</string>
+
+    <string name="block_action">Block</string>
+    <string name="block_title">Block %1$s?</string>
+    <string name="block_title_generic">Block this person?</string>
+    <string name="block_effect_visibility">Neither of you will see the other\'s profile, posts or comments.</string>
+    <string name="block_effect_contact">Neither of you can follow, message or mention the other.</string>
+    <string name="block_effect_follows">If either of you follows the other, that will be undone — unblocking later doesn\'t bring it back.</string>
+    <string name="block_effect_silent">They are never told that you blocked them.</string>
+    <string name="block_failed">That didn\'t work. Try again.</string>
+    <string name="comment_report">Report</string>
+    <!-- Delete account (UX-SET-009) -->
+    <string name="settings_delete_account">Delete account</string>
+    <string name="delete_warning">This is permanent after %1$d days</string>
+    <string name="delete_here_is_what_happens">Here\'s exactly what happens:</string>
+    <string name="delete_password_label">Enter your password to confirm</string>
+    <string name="delete_password_wrong">That password is not correct.</string>
+    <string name="delete_submit">Delete my account</string>
+    <string name="delete_failed">Your account wasn\'t deleted. Try again.</string>
+    <string name="delete_offline">You\'re offline, so nothing has changed. Try again when you\'re back.</string>
+    <string name="delete_consequences_incomplete">This app can\'t show every consequence of deleting. Update it to see the full list before you decide.</string>
+
+    <!--
+      PRIV-006's consequences. The SERVER decides which of these appear and in
+      what ORDER — the line about posts remaining is second, "where it is read,
+      rather than last where it is skipped" — and the client only translates the
+      keys. Wording follows the backend's own copy so the two cannot say
+      different things about the same act.
+    -->
+    <string name="delete_consequence_profile">Your profile, photo and bio are removed from Mohalla.</string>
+    <string name="delete_consequence_posts">Your posts and comments stay where they are, shown as “Deleted User”. They are not removed, because other people replied to them.</string>
+    <string name="delete_consequence_messages">Messages you sent stay in the other person\'s conversation, shown as “Deleted User”.</string>
+    <string name="delete_consequence_sessions">You are signed out on every device straight away.</string>
+    <string name="delete_consequence_restorable">You can bring your account back by logging in within 30 days. Your followers, following and posts return with it.</string>
+    <string name="delete_consequence_permanent">After 30 days this cannot be undone.</string>
+
+    <string name="restore_deadline">Log in before %1$s to bring your account back.</string>
 </resources>

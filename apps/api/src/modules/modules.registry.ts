@@ -22,7 +22,13 @@ export const TIER_RANK: Record<Tier, number> = {
 };
 
 export const MODULES: Record<Tier, readonly string[]> = {
-  platform: ['identity', 'localization', 'media', 'audit', 'notifications'],
+  // `observability` imports nothing and owns no table: it READS ACROSS every
+  // tier to answer "how big is this?" (NFR-OBS-003/004), which the tier rules
+  // permit precisely because it has no imports to point the wrong way. Listed
+  // here anyway, because a module absent from this registry is a build failure
+  // and that is the right default - a metrics module is exactly the kind that
+  // could quietly grow an upward import later.
+  platform: ['identity', 'localization', 'media', 'audit', 'notifications', 'observability'],
   product: [
     'profile',
     'social-graph',

@@ -224,3 +224,53 @@ Authentication · authorization · session management · OTP · **database migra
 🟩 Enforced by CODEOWNERS on those paths, branch protection, and a production approval step no automation can satisfy.
 
 **PR checklist:** requirement and screen IDs named · tests including the relevant mandatory test · **both language directions** where UI is touched · no new dependency without justification · no hardcoded token or literal colour · migration reviewed separately · **`VisibilityPolicy` composed on any new read path**.
+
+---
+
+## 7. Stage 6 delivery status
+
+> 🟦 **Recorded during Stage 6, appended to an approved Stage 4 artefact.**
+> Sections 1–6 above are the approved plan and are unchanged. This section records
+> what was **delivered against** that plan; it does not revise it.
+>
+> Full evidence: [`../implementation/backend/stage-6-completion.md`](../implementation/backend/stage-6-completion.md)
+
+**Stage 6 — Backend Implementation: 🟢 COMPLETE.** Fourteen backend epics delivered on
+`feature/stage-6-backend-v1`. 1,059 tests passing · `smoke:api` 413/413 ·
+`release:gate` 47/47 · `verify` 12 lanes pass, 0 fail, 3 BLOCKED.
+
+**The release itself is 🔴 NOT APPROVED** — seven criteria remain BLOCKED on devices,
+legal content, a named owner and a proven restore. See §7 of the completion report.
+
+| Epic | Backend | Note |
+|---|---|---|
+| EPIC-00 · Foundation | ✅ | Stage 5 |
+| EPIC-01 · Contracts & design tokens | ◐ | Foundation outputs only — **not delivered as an epic** |
+| EPIC-02 · Authentication & sessions | ✅ | **mandatory test B** ✅ |
+| EPIC-03 · Localization & RTL foundation | ◐ | Catalogues + parity guard exist; **RTL across the UI is Android work** |
+| EPIC-04 · Profiles & verification | ✅ | |
+| EPIC-05 · Social graph & blocking | ✅ | **mandatory test A** ✅ |
+| EPIC-06 · Posts & media | ✅ | ADR-013 PDF gated **off**; the decision stays open |
+| EPIC-07 · Feed & engagement | ✅ | |
+| EPIC-08 · Search | ✅ | |
+| EPIC-09 · Messaging & requests | ✅ | **mandatory test E** ✅ |
+| EPIC-10 · Events | ✅ | |
+| EPIC-11 · Notifications | ✅ | |
+| EPIC-12 · Safety & moderation | ✅ | **mandatory test C** ✅ |
+| EPIC-13 · Admin Portal | ✅ **API only** | **mandatory test D** ✅ · front end not built |
+| EPIC-14 · Settings & account deletion | ✅ | **mandatory test F** ✅ |
+| EPIC-15 · Observability, security & recovery | ✅ | REL-007 mechanism built, **never run against a production backup** |
+| EPIC-16 · Release validation | ✅ **gate built** | **mandatory test G** 🔴 blocked — Android |
+
+◐ = partial. Neither EPIC-01 nor EPIC-03 was delivered as an epic; their Stage 5
+foundation outputs exist and should not be read as completion.
+
+**Out of Stage 6's scope by design:** the Android application · the Admin Portal front
+end · any deployment · real SMS or push delivery.
+
+### What §6's operating model still requires
+
+The cycle in §6 is *feature branch → tests → checks → **human reviews the diff** →
+staging validation → merge*. **Only the first three have happened.** Nine of the fourteen
+epics carry ❌ or ⚠️ ratings and six say human review is mandatory (02, 05, 09, 12, 13, 14);
+none of that review has taken place, and 🟦 *no agent may push to main* remains in force.

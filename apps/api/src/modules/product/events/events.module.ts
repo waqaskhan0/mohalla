@@ -1,23 +1,35 @@
 import { Module } from '@nestjs/common';
+import { IdentityModule } from '../../platform/identity/identity.module.js';
+import { NotificationsModule } from '../../platform/notifications/notifications.module.js';
+import { SafetyModule } from '../safety/safety.module.js';
+import { EVENT_REPOSITORY } from './repositories/event.repository.port.js';
+import { PgEventRepository } from './repositories/pg-event.repository.js';
+import { EventService } from './application/event.service.js';
+import { EventController } from './transport/event.controller.js';
 
 /**
- * `events` - product tier.
+ * `events` — product tier. EPIC-10.
  *
- * STAGE 5 FOUNDATION SHELL. Intentionally empty.
+ * Owns `events` and `event_rsvps`.
  *
- * No controller, provider, entity, route or business rule exists here yet.
- * The shell exists so that the module boundary, the tier it belongs to and the
- * dependency-direction check are all in place and enforced *before* any feature
- * is written.
+ * Only two dependencies, which is unusual for a product module and worth
+ * noting: `safety` for the block predicate every read path consults, and
+ * `identity` for the session guard. Events do not depend on `social-graph`,
+ * because BR-043 puts no relationship condition on creating or attending one —
+ * a neighbourhood meeting is open to the neighbourhood, not to a follower list.
  *
- * Requirements owned by this module are listed in
- * `docs/architecture/06-backend-modules.md`. Implementation begins in the epic
- * that owns it - not in Stage 5.
+ * `EventService` is exported for `search` (SEARCH-FR-004, which EPIC-08
+ * deferred here because this module owns the table) and for EPIC-11, whose
+ * reminder job addresses `attendeeIdsForNotice`.
  */
 @Module({
-  imports: [],
-  controllers: [],
-  providers: [],
-  exports: [],
+  imports: [IdentityModule, NotificationsModule, SafetyModule],
+  controllers: [EventController],
+  providers: [
+    PgEventRepository,
+    { provide: EVENT_REPOSITORY, useExisting: PgEventRepository },
+    EventService,
+  ],
+  exports: [EventService, EVENT_REPOSITORY],
 })
 export class EventsModule {}

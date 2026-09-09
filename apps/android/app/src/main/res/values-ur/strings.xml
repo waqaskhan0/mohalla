@@ -5,12 +5,537 @@
   Every key in values/strings.xml must exist here. The CI localization parity
   check treats a missing Urdu key as a build failure (LOCALE-FR-001, REL-002),
   so this file cannot silently fall behind.
+
+  PENDING DEP-011 / OD-016. The ~400 approved Urdu strings are Shehersaaz's to
+  supply. What is here is structurally correct and reads naturally, and it is
+  NOT a substitute for that review — see docs/implementation/mobile/20-mobile-open-issues.md.
+  Nothing below is machine-translated word-for-word from the English; the Urdu
+  is written as Urdu, which is why some lines are not literal renderings.
 -->
 <resources>
     <string name="app_name">محلہ</string>
-    <string name="foundation_title">محلہ — بنیاد</string>
-    <string name="foundation_subtitle">شہرساز کمیونٹی پلیٹ فارم</string>
-    <string name="foundation_body">یہ بلڈ صرف یہ ثابت کرنے کے لیے ہے کہ اینڈرائیڈ پروجیکٹ کمپائل ہوتا ہے اور درست طریقے سے آئینہ دار ہوتا ہے۔ کوئی پروڈکٹ فیچر شامل نہیں ہے۔</string>
-    <string name="foundation_direction_label">لے آؤٹ سمت</string>
-    <string name="foundation_locale_label">زبان</string>
+    <string name="announcement_title">اعلان</string>
+    <string name="feed_filter_title">قسم کے مطابق چھانٹیں</string>
+    <string name="feed_filter_all">تمام اقسام</string>
+    <string name="feed_filter_clear">چھانٹی ہٹائیں</string>
+    <string name="a11y_filter">قسم کے مطابق چھانٹیں</string>
+
+    <!-- ============================================ navigation (UI/UX §14) -->
+    <string name="nav_home">ہوم</string>
+    <string name="nav_events">تقریبات</string>
+    <string name="nav_create">نیا</string>
+    <string name="nav_messages">پیغامات</string>
+    <string name="nav_profile">پروفائل</string>
+
+    <!-- ==================================== UX-AUTH-002 Language selection -->
+    <string name="language_title">اپنی زبان منتخب کریں</string>
+    <string name="language_subtitle">آپ اسے کسی بھی وقت سیٹنگز میں تبدیل کر سکتے ہیں۔</string>
+    <string name="language_english">English</string>
+    <string name="language_urdu">اردو</string>
+    <string name="language_continue">آگے بڑھیں</string>
+
+    <!-- ================================================ UX-AUTH-003 Welcome -->
+    <string name="welcome_tagline">آپ کا محلہ، آن لائن۔</string>
+    <string name="welcome_body">اپنے علاقے کی خبریں شیئر کریں، مقامی تقریبات دیکھیں، اور اپنے پڑوسیوں سے بات کریں۔</string>
+    <string name="welcome_create_account">نیا اکاؤنٹ بنائیں</string>
+    <string name="welcome_log_in">لاگ اِن کریں</string>
+
+    <!-- ============================================== cross-cutting states -->
+    <string name="state_unavailable_title">یہ مواد دستیاب نہیں ہے</string>
+    <string name="state_unavailable_body">ممکن ہے اسے ہٹا دیا گیا ہو، یا آپ کو اس تک رسائی نہ ہو۔</string>
+
+    <string name="state_offline_title">کوئی کنکشن نہیں</string>
+    <string name="state_offline_body">آپ آف لائن ہیں۔ جو چیزیں آپ پہلے کھول چکے ہیں وہ اب بھی پڑھی جا سکتی ہیں۔</string>
+    <string name="state_offline_banner">انٹرنیٹ کنکشن نہیں ہے</string>
+    <string name="state_session_expired">آپ کو سائن آؤٹ کر دیا گیا ہ۔ براہِ کرم دوبارہ لاگ ان کریں۔</string>
+
+    <string name="state_error_title">کچھ غلط ہو گیا</string>
+    <string name="state_error_body">براہِ کرم تھوڑی دیر بعد دوبارہ کوشش کریں۔</string>
+    <string name="state_error_reference">حوالہ: %1$s</string>
+
+    <string name="state_rate_limited_title">بہت زیادہ کوششیں</string>
+    <string name="state_rate_limited_body">دوبارہ کوشش کرنے سے پہلے تھوڑا انتظار کریں۔</string>
+
+    <string name="action_retry">دوبارہ کوشش کریں</string>
+    <string name="action_back">واپس</string>
+    <string name="action_close">بند کریں</string>
+    <string name="action_cancel">منسوخ کریں</string>
+
+    <!-- ================================================ accessibility only -->
+    <string name="a11y_loading">لوڈ ہو رہا ہے</string>
+    <string name="a11y_selected">منتخب شدہ</string>
+    <string name="a11y_unread_count">%1$d غیر پڑھے</string>
+
+    <!-- ============================================ UX-AUTH-004 and 005-008 -->
+    <string name="login_title">لاگ اِن</string>
+    <string name="login_submit">لاگ اِن کریں</string>
+    <string name="login_forgot_password">پاس ورڈ بھول گئے؟</string>
+    <string name="login_failed">یہ نمبر اور پاس ورڈ آپس میں میل نہیں کھاتے۔</string>
+
+    <string name="field_phone">موبائل نمبر</string>
+    <string name="field_phone_not_mobile">پاکستانی موبائل نمبر درج کریں، جو 03 سے شروع ہوتا ہے۔</string>
+    <string name="field_password">پاس ورڈ</string>
+    <string name="field_password_policy">آٹھ سے چونسٹھ حروف، جن میں کم از کم ایک حرف اور ایک عدد ہو۔</string>
+    <string name="field_password_too_short">کم از کم آٹھ حروف استعمال کریں۔</string>
+    <string name="field_password_needs_letter">کم از کم ایک حرف شامل کریں۔</string>
+    <string name="field_password_too_long">64 حروف یا اس سے کم استعمال کریں۔</string>
+    <string name="field_password_needs_digit">کم از کم ایک عدد شامل کریں۔</string>
+
+    <string name="register_phone_title">آپ کا موبائل نمبر کیا ہے؟</string>
+    <string name="register_phone_body">تصدیق کے لیے ہم آپ کو ایک کوڈ بھیجیں گے۔</string>
+    <string name="register_account_type">اکاؤنٹ کی قسم</string>
+    <string name="account_type_individual">انفرادی</string>
+    <string name="account_type_organization">ادارہ</string>
+    <string name="register_account_type_permanent">اسے بعد میں تبدیل نہیں کیا جا سکتا۔ ادارہ منتخب کرنے سے تصدیق کا نشان نہیں ملتا۔</string>
+    <string name="register_dob_title">آپ کی تاریخِ پیدائش کیا ہے؟</string>
+    <string name="register_dob_body">محلہ استعمال کرنے کے لیے آپ کی عمر کم از کم تیرہ سال ہونی چاہی۔</string>
+    <string name="register_dob_underage">محلہ استعمال کرنے کے لیے آپ کی عمر کم از کم تیرہ سال ہونی چاہی۔</string>
+    <string name="register_dob_select">اپنی تاریخِ پیدائش منتخب کریں</string>
+    <string name="register_password_title">پاس ورڈ منتخب کریں</string>
+    <string name="register_terms_title">شرائط اور کمیونٹی ہدایات</string>
+    <string name="register_terms_accept">میں نے شرائط اور کمیونٹی ہدایات پڑھ لی ہیں اور انھیں قبول کرتا ہوں۔</string>
+    <string name="register_submit">اکاؤنٹ بنائیں</string>
+    <string name="action_continue">آگے بڑھیں</string>
+
+    <!-- =============================================== UX-AUTH-009 the OTP -->
+    <string name="otp_title">اپنا کوڈ درج کریں</string>
+    <string name="a11y_otp_field">تصدیقی کوڈ، %1$d ہندسے</string>
+    <string name="otp_sent_to">ہم نے %1$s پر چھ ہندسوں کا کوڈ بھیجا ہے</string>
+    <string name="otp_submit">تصدیق کریں</string>
+    <string name="otp_resend">نیا کوڈ بھیجیں</string>
+    <string name="otp_resend_in">آپ %1$d سیکنڈ بعد نیا کوڈ منگوا سکتے ہیں</string>
+    <string name="otp_resend_exhausted">آپ نے بہت زیادہ بار نیا کوڈ منگوایا ہے۔ کچھ دیر بعد کوشش کریں۔</string>
+    <string name="otp_resent">نیا کوڈ بھیج دیا گیا ہے۔</string>
+    <string name="otp_invalid">یہ کوڈ درست نہیں ہے۔ ہندسے دیکھ کر دوبارہ کوشش کریں۔</string>
+    <string name="otp_expired">اس کوڈ کی مدت ختم ہو گئی ہے۔ نیا کوڈ منگوائیں۔</string>
+    <string name="otp_locked_out">بہت زیادہ کوششیں۔ پندرہ منٹ بعد دوبارہ کوشش کریں۔</string>
+
+    <!-- ================================== UX-AUTH-010 and 011 the password -->
+    <string name="forgot_title">پاس ورڈ دوبارہ مقرر کریں</string>
+    <string name="forgot_body">اپنا موبائل نمبر درج کریں، ہم آپ کو ایک کوڈ بھیجیں گے۔</string>
+    <string name="forgot_submit">کوڈ بھیجیں</string>
+    <string name="reset_title">نیا پاس ورڈ منتخب کریں</string>
+    <string name="reset_submit">نیا پاس ورڈ محفوظ کریں</string>
+    <string name="reset_done">آپ کا پاس ورڈ تبدیل ہو گیا ہے۔ اب آپ لاگ اِن کر سکتے ہیں۔</string>
+
+    <!-- ========================================== UX-AUTH-012 the restore -->
+    <string name="restore_title">خوش آمدید</string>
+    <string name="restore_body">آپ کا اکاؤنٹ حذف ہونے کے لیے مقرر ہے۔ اسے واپس لائیں اور آپ کا پروفائل، فالوورز اور پوسٹس سب واپس آ جائیں گے۔</string>
+    <string name="restore_submit">میرا اکاؤنٹ واپس لائیں</string>
+    <string name="restore_done">آپ کا اکاؤنٹ واپس آ گیا ہے۔</string>
+
+    <!-- ===================================== remaining auth flow strings -->
+    <string name="field_code">چھ ہندسوں کا کوڈ</string>
+    <string name="field_new_password">نیا پاس ورڈ</string>
+    <string name="legal_terms">شرائط پڑھیں</string>
+    <string name="legal_guidelines">کمیونٹی ہدایات پڑھیں</string>
+    <string name="legal_unavailable">یہ دستاویز ابھی دستیاب نہیں ہے۔</string>
+    <string name="restore_sign_out">اس کے بجائے سائن آؤٹ کریں</string>
+
+    <!-- ============================================ UX-SETUP-001..003 -->
+    <string name="username_title">اپنا یوزر نیم منتخب کریں</string>
+    <string name="username_permanent_warning">لوگ اسی سے آپ کو تلاش کریں گے، اور اسے بعد میں تبدیل نہیں کیا جا سکتا۔</string>
+    <string name="username_label">یوزر نیم</string>
+    <string name="username_looks_free">یہ یوزر نیم دستیاب ہے۔</string>
+    <string name="username_unavailable">یہ یوزر نیم دستیاب نہیں۔ کوئی دوسرا آزمائیں۔</string>
+    <string name="username_too_short">کم از کم تین حروف استعمال کریں۔</string>
+    <string name="username_too_long">بیس حروف سے زیادہ نہ ہوں۔</string>
+    <string name="username_must_start_with_letter">حرف سے شروع کریں۔</string>
+    <string name="username_needs_lowercase">صرف چھوٹے انگریزی حروف استعمال کریں۔</string>
+    <string name="username_invalid_characters">صرف حروف، اعداد اور انڈر اسکور استعمال کریں۔</string>
+
+    <string name="profile_setup_title">اپنا پروفائل بنائیں</string>
+    <string name="profile_setup_body">صرف آپ کا نام ضروری ہے۔ باقی ابھی یا بعد میں شامل کر سکتے ہیں۔</string>
+    <string name="field_display_name">آپ کا نام</string>
+    <string name="field_city_optional">شہر (اختیاری)</string>
+    <string name="field_bio_optional">اپنے بارے میں (اختیاری)</string>
+    <string name="field_characters_left">%1$d حروف باقی</string>
+    <string name="field_too_long">یہ بہت لمبا ہے۔</string>
+    <string name="photo_add_optional">تصویر شامل کریں (اختیاری)</string>
+    <string name="photo_remove">تصویر ہٹائیں</string>
+    <string name="photo_upload_failed">تصویر اپ لوڈ نہیں ہوئی۔ آپ دوبارہ کوشش کر سکتے ہیں۔</string>
+    <string name="photo_rejected">یہ تصویر استعمال نہیں ہو سکی۔ براہِ کرم کوئی دوسری منتخب کریں۔</string>
+
+    <string name="suggestions_title">چند پڑوسیوں کو فالو کریں</string>
+    <string name="suggestions_body">لوگوں کو فالو کرنے سے آپ کی فیڈ بھر جاتی ہے۔ آپ یہ کسی بھی وقت تبدیل کر سکتے ہیں۔</string>
+    <string name="suggestions_skip">ابھی رہنے دیں</string>
+    <string name="suggestions_empty">ابھی تجویز کرنے کے لیے کوئی نہیں ہے۔ آپ کی فیڈ میں پھر بھی قریب کی خبریں نظر آئیں گی۔</string>
+    <string name="action_follow">فالو کریں</string>
+    <string name="action_following">فالو کر رہے ہیں</string>
+    <string name="badge_verified">تصدیق شدہ</string>
+    <!-- Post card -->
+    <string name="profile_deleted_user">حذف شدہ صارف</string>
+    <string name="post_under_review">زیرِ جائزہ۔ یہ پوسٹ صرف آپ کو نظر آ رہی ہے۔</string>
+    <string name="post_edited">تدوین شدہ</string>
+    <string name="a11y_like">پسند کریں</string>
+    <string name="a11y_unlike">پسند ہٹائیں</string>
+    <string name="a11y_comments">تبصرے</string>
+    <string name="a11y_share">شیئر کریں</string>
+
+    <!-- Home -->
+    <string name="feed_following">فالوونگ</string>
+    <string name="feed_discover">دریافت</string>
+    <string name="feed_featured">اعلانات</string>
+    <string name="feed_end">آپ آخر تک پہنچ گئے ہیں۔</string>
+    <string name="feed_page_failed">مزید پوسٹیں لوڈ نہیں ہو سکیں۔</string>
+    <string name="feed_empty_following_title">آپ کی فیڈ منتظر ہے</string>
+    <string name="feed_empty_following_body">چند پڑوسیوں کو فالو کریں اور اُن کی پوسٹیں یہاں نظر آنے لگیں گی۔ اُس وقت تک دریافت میں دیکھیں کہ قریب کیا ہو رہا ہے۔</string>
+    <string name="feed_find_people">فالو کرنے کے لیے لوگ ڈھونڈیں</string>
+    <string name="feed_see_discover">دریافت دیکھیں</string>
+    <string name="feed_empty_discover_title">ابھی یہاں کچھ نہیں</string>
+    <string name="feed_empty_discover_body">قریب کے کسی شخص نے حال ہی میں کچھ پوسٹ نہیں کیا۔ کچھ دیر بعد دوبارہ دیکھیں۔</string>
+    <!-- Shell chrome -->
+    <string name="action_search">تلاش کریں</string>
+    <string name="action_notifications">اطلاعات</string>
+    <string name="action_learn_more">مزید جانیں</string>
+    <string name="a11y_create_locked">پوسٹ لکھیں — آپ کا اکاؤنٹ محدود ھونے کی وجھ سے دستیاب نھیں</string>
+    <string name="a11y_profile_attention">پروفائل — کوئی بات آپ کی توجھ کی منتزر ھے</string>
+
+    <!-- Suspension (UX-SAFE-004) -->
+    <string name="suspension_banner_until">آپ کا اکاؤنٹ %1$s تک محدود ھ۔</string>
+    <string name="suspension_banner_indefinite">آپ کا اکاؤنٹ محدود ھ۔</string>
+    <string name="suspension_title">آپ کا اکاؤنٹ محدود ھے</string>
+    <string name="suspension_duration_until">آپ سب کچھ پڑھ سکتے ھیں، مگر %1$s تک پوسٹ ، تبصرہ یا پیغام نھیں بھیج سکتے۔</string>
+    <string name="suspension_duration_indefinite">آپ سب کچھ پڑھ سکتے ھیں، مگر فی الحال پوسٹ، تبصرہ یا پیغام نھیں بھیج سکتے۔</string>
+    <string name="suspension_what_still_works">پوسٹیں، تقاریب اور آپ کی پرانی گفتگو سب پڑھی جا سکتی ھیں۔ کوئی چیز حذف نھیں ھوئی۔</string>
+    <string name="suspension_contact_support">اس بارے میں رابطہ کریں</string>
+
+    <!-- OD-015 -->
+    <string name="register_terms_unavailable">اس بلڈ میں نئے اکاؤنٹ نھیں بن سکتے۔ شرائط و ضوابط ابھی شائع نھیں ھوئے۔</string>
+    <!-- Events (UX-EVENT-001..005) -->
+    <string name="events_tab_upcoming">آنے والے</string>
+    <string name="events_tab_mine">میرے</string>
+    <string name="events_create">تقریب بنائیں</string>
+    <string name="events_browse_upcoming">آنے والی تقاریب دیکھیں</string>
+    <string name="events_end">آنے والی تمام تقاریب دکھا دی گئی ھیں۔</string>
+    <string name="events_page_failed">مزید تقاریب لوڈ نھیں ھو سکیں۔</string>
+    <string name="events_empty_upcoming_title">کوئی تقریب متوقع نھیں</string>
+    <string name="events_empty_upcoming_body">ابھی کسی نے کچھ طے نھیں کیا۔ محلے کی تقاریب ایک شخص سے شروع ھوتی ھیں۔</string>
+    <string name="events_empty_mine_title">آپ نے کوئی تقریب نھیں بنائی</string>
+    <string name="events_empty_mine_body">آپ کی بنائی ھوئی تقاریب یھاں نزر آئیں گی۔</string>
+    <string name="events_mine_scope_notice">یھاں آپ کی بنائی ھوئی تقاریب ھیں۔ جن تقاریب میں آپ نے شرکت کی ھامی بھری، وہ ابھی اس فہرست میں شامل نھیں۔</string>
+
+    <string name="event_detail_title">تقریب</string>
+    <string name="event_organiser">منتزم</string>
+    <string name="event_type_online">آن لائن</string>
+    <string name="event_type_physical">بالمشافہ</string>
+    <string name="event_type_unknown">تفصیل بعد میں</string>
+    <string name="event_going">جا رھے ھیں</string>
+    <string name="event_interested">دلچسپی ھے</string>
+    <string name="event_join">میٹنگ میں شامل ھوں</string>
+    <string name="event_join_opens_at">شرکت کا لنک %1$s کو دستیاب ھو گا۔</string>
+    <string name="event_join_opens_minutes_before">شرکت کا لنک تقریب شروع ھونے سے %1$d منٹ پھلے دستیاب ھوتا ھے۔</string>
+    <string name="event_join_needs_rsvp">لنک حاصل کرنے کے لیے اس تقریب کے بارے میں جواب دیں۔</string>
+    <string name="event_join_too_early">شرکت کا لنک ابھی دستیاب نھیں۔</string>
+    <string name="event_join_not_online">یہ تقریب بالمشافہ ھے۔</string>
+    <string name="event_join_no_app">اس فون میں ایسی کوئی ایپ نھیں جو یہ لنک کھول سکے۔ آپ اسے کاپی کر سکتے ھیں۔</string>
+    <string name="event_join_copy_link">لنک کاپی کریں</string>
+    <string name="event_cancelled_label">منسوخ</string>
+    <string name="event_cancelled_notice">یہ تقریب منسوخ کر دی گئی ھے۔</string>
+    <string name="event_cancelled_no_rsvp">یہ تقریب منسوخ ھو چکی ھے، اس لیے جواب بند ھیں۔</string>
+    <string name="event_already_started">یہ تقریب شروع ھو چکی ھے۔</string>
+    <string name="event_under_review">زیرِ جائزہ۔ یہ تقریب صرف آپ کو نزر آ رھی ھے۔</string>
+
+    <!-- Create and edit (UX-EVENT-004/005) -->
+    <string name="event_edit">تقریب میں ترمیم</string>
+    <string name="event_publish">شائع کریں</string>
+    <string name="event_save_changes">تبدیلیاں محفوظ کریں</string>
+    <string name="event_cancel_event">یہ تقریب منسوخ کریں</string>
+    <string name="event_field_title">عنوان</string>
+    <string name="event_field_description">کیا ھو رھا ھے</string>
+    <string name="event_field_starts_at">تاریخ اور وقت</string>
+    <string name="event_field_type">کھاں ھے</string>
+    <string name="event_field_meeting_url">میٹنگ کا لنک</string>
+    <string name="event_field_location">مقام</string>
+    <string name="event_pick_date_time">تاریخ اور وقت منتخب کریں</string>
+    <string name="event_meeting_url_hint">اپنی میٹنگ کا http یا https لنک۔ شرکاء کو یہ شروع سے تیس منٹ پھلے نزر آئے گا۔</string>
+    <string name="event_meeting_url_keep_existing">موجودہ لنک برقرار رکھنے کے لیے اسے خالی چھوڑ دیں۔</string>
+    <string name="event_location_hint">پتہ یا کوئی ایسی نشانی جو پڑوسی پھچان لیں۔</string>
+    <string name="event_type_frozen">جب لوگ جواب دے دیں، اس کے بعد تقریب کی قسم تبدیل نھیں ھو سکتی۔</string>
+    <string name="event_rate_limited">آپ روز زیادہ سے زیادہ %1$d تقاریب بنا سکتے ھیں۔</string>
+    <string name="event_cancelled_result">تقریب منسوخ ھو گئی۔ جن لوگوں نے جواب دیا تھا انھیں بتا دیا گیا ھے۔</string>
+    <string name="event_deleted_result">تقریب ھٹا دی گئی۔ کسی نے اس پر جواب نھیں دیا تھا۔</string>
+
+    <string name="event_problem_empty">براہِ کرم یہ پر کریں۔</string>
+    <string name="event_problem_too_short">یہ کچھ زیادہ مختصر ھے۔</string>
+    <string name="event_problem_past">مستقبل کی تاریخ اور وقت منتخب کریں۔</string>
+    <string name="event_problem_not_a_link">http:// یا https:// سے شروع ھونے والا لنک درج کریں۔</string>
+    <string name="event_problem_link_required">آن لائن تقریب کے لیے میٹنگ کا لنک ضروری ھے۔</string>
+    <string name="event_problem_location_required">بالمشافہ تقریب کے لیے مقام ضروری ھے۔</string>
+    <string name="event_problem_both">ایک منتخب کریں: آن لائن تقریب کے لیے لنک، یا بالمشافہ کے لیے مقام۔ دونوں کے لیے بالمشافہ منتخب کرکے لنک تفصیل میں لکھ دیں۔</string>
+    <string name="state_restricted_body">آپ کا اکاؤنٹ اس وقت یہ نھیں کر سکتا۔</string>
+    <string name="action_report">رپورٹ کریں</string>
+    <string name="action_more">مزید اختیارات</string>
+    <!-- Media -->
+    <string name="media_unavailable">تصویر دستیاب نھیں</string>
+    <string name="media_more_count">+%1$d</string>
+    <string name="a11y_post_image">منسلک تصویر</string>
+
+    <!-- Composer (UX-CREATE-001) -->
+    <string name="composer_title">نئی پوسٹ</string>
+    <string name="composer_post">پوسٹ کریں</string>
+    <string name="composer_close">بند کریں</string>
+    <string name="composer_placeholder">آپ کے علاقے میں کیا ھو رھا ھے؟</string>
+    <string name="composer_counter">%1$d / %2$d</string>
+    <string name="composer_add_category">زمرہ منتخب کریں</string>
+    <string name="composer_clear_category">زمرہ ھٹائیں</string>
+    <string name="composer_image_limit">آپ زیادہ سے زیادہ %1$d تصاویر منسلک کر سکتے ھیں۔</string>
+    <string name="composer_blocked_too_long">یہ پوسٹ حد سے لمبی ھے۔ شائع کرنے کے لیے مختصر کریں۔</string>
+    <string name="composer_blocked_uploading">ایک تصویر ابھی اپ لوڈ ھو رھی ھے۔</string>
+    <string name="composer_blocked_upload_failed">ایک تصویر اپ لوڈ نھیں ھوئی۔ دوبارہ کوشش پر ٹیپ کریں — آپ کی باقی تصاویر اور متن محفوظ ھیں۔</string>
+    <string name="composer_blocked_upload_rejected">ایک تصویر استعمال نھیں ھو سکی۔ اسے ھٹا کر دوسری منتخب کریں۔</string>
+    <string name="composer_offline">آپ آف لائن ھیں، اس لیے کچھ شائع نھیں ھوا۔ آپ کا متن محفوظ ھے۔</string>
+    <string name="composer_media_not_ready">ایک منسلک فائل ابھی تیار ھو رھی ھے۔ تھوڑی دیر بعد دوبارہ کوشش کریں۔</string>
+    <string name="composer_needs_profile">پوسٹ کرنے سے پھلے اپنی پروفائل بنائیں۔</string>
+    <string name="composer_discard_title">یہ پوسٹ ترک کر دیں؟</string>
+    <string name="composer_discard_body">آپ کا متن اور منسلک تصاویر ضائع ھو جائیں گی۔</string>
+    <string name="composer_discard_confirm">ترک کریں</string>
+    <string name="composer_keep_writing">لکھتے رھیں</string>
+
+    <!-- Upload tile -->
+    <string name="upload_percent">%1$d%%</string>
+    <string name="upload_working">…</string>
+    <string name="upload_retry">دوبارہ</string>
+    <string name="upload_rejected">قابلِ قبول نھیں</string>
+    <string name="upload_remove">یہ تصویر ھٹائیں</string>
+    <string name="upload_add">تصویر شامل کریں</string>
+
+    <!-- Attachment sheet (UX-CREATE-003) -->
+    <string name="attach_title">پوسٹ میں شامل کریں</string>
+    <string name="attach_images">تصاویر</string>
+    <string name="attach_link_hint">اپنی پوسٹ میں لنک لکھ دیں، پیش نزارہ خود شامل ھو جائے گا۔ محلہ اسے خود حاصل کرتا ھے، اس لیے وہ ویب سائٹ آپ کا فون نھیں دیکھ پاتی۔</string>
+
+    <!-- Category picker (UX-CREATE-004) -->
+    <string name="category_title">زمرہ منتخب کریں</string>
+    <string name="category_unavailable">زمرے لوڈ نھیں ھو سکے۔ آپ بغیر زمرے کے بھی پوسٹ کر سکتے ھیں۔</string>
+
+    <!-- Shared actions -->
+    <string name="action_next">اگلا</string>
+    <string name="action_done">ھو گیا</string>
+    <!-- Post detail (UX-HOME-003) -->
+    <string name="post_detail_title">پوسٹ</string>
+    <string name="post_delete">یہ پوسٹ حذف کریں</string>
+    <string name="post_delete_title">یہ پوسٹ حذف کر دیں؟</string>
+    <string name="post_delete_body">پوسٹ، اس کے تبصرے، پسند اور تصاویر سب کے لیے ھٹ جائیں گے۔ یہ واپس نھیں ھو سکتا، اور کوئی اسے بحال نھیں کر سکتا۔</string>
+    <string name="post_delete_confirm">حذف کریں</string>
+
+    <!-- Comments (ENGAGE-FR-002…005) -->
+    <string name="comment_placeholder">تبصرہ لکھیں</string>
+    <string name="comment_send">بھیجیں</string>
+    <string name="comment_reply">جواب دیں</string>
+    <string name="comment_delete">حذف</string>
+    <string name="comment_replying_to">%1$s کو جواب</string>
+    <string name="comment_cancel_reply">جواب رھنے دیں</string>
+    <string name="comment_load_more">مزید تبصرے دیکھیں</string>
+    <string name="comment_load_failed">تبصرے لوڈ نھیں ھو سکے۔</string>
+    <string name="comment_empty_title">گفتگو شروع کریں</string>
+    <string name="comment_empty_body">ابھی کوئی تبصرہ نھیں۔ سوال پوچھیں یا جو آپ جانتے ھیں وہ بتائیں۔</string>
+    <string name="comment_post_gone">یہ پوسٹ اب دستیاب نھیں، اس لیے آپ کا تبصرہ شامل نھیں ھوا۔ اگر آپ کاپی کرنا چاھیں تو متن یھیں موجود ھے۔</string>
+    <string name="comment_offline">آپ آف لائن ھیں، اس لیے تبصرہ شامل نھیں ھوا۔ آپ کا متن یھیں موجود ھے۔</string>
+    <string name="comment_delete_title">یہ تبصرہ حذف کر دیں؟</string>
+    <string name="comment_delete_body">یہ واپس نھیں ھو سکتا۔</string>
+    <string name="comment_delete_body_with_replies">یہ تبصرہ اور اس کے %1$d جوابات ھٹا دیے جائیں گے۔ یہ واپس نھیں ھو سکتا۔</string>
+    <string name="comment_delete_confirm">حذف کریں</string>
+
+    <!-- Image viewer (UX-HOME-004) -->
+    <string name="viewer_position">%1$d / %2$d</string>
+    <string name="a11y_image_of">تصویر %1$d بمقابلہ %2$d</string>
+
+    <!-- Sharing (ENGAGE-FR-007) -->
+    <string name="share_post_title">یہ پوسٹ شیئر کریں</string>
+    <string name="share_post_subject">محلہ پر ایک پوسٹ</string>
+    <!-- Search (UX-SEARCH-001..003) -->
+    <string name="search_title">تلاش</string>
+    <string name="search_placeholder">لوگ، پوسٹیں اور تقاریب تلاش کریں</string>
+    <string name="search_clear">تلاش صاف کریں</string>
+    <string name="search_tab_people">لوگ</string>
+    <string name="search_tab_posts">پوسٹیں</string>
+    <string name="search_tab_events">تقاریب</string>
+    <string name="search_load_more">مزید نتائج دیکھیں</string>
+    <string name="search_more_failed">مزید نتائج لوڈ نھیں ھو سکے۔</string>
+
+    <string name="search_hint_title">یھاں جو کھا گیا، وہ تلاش کریں</string>
+    <string name="search_hint_body">تلاش اردو رسم الخط اور رومن اردو دونوں میں کام کرتی ھے، اس لیے ٰپانیٰ اور ٰpaniٰ ایک ھی پوسٹیں دھونڈ لیتے ھیں۔</string>
+
+    <string name="search_recent_title">حال ھی میں</string>
+    <string name="search_recent_clear">سب صاف کریں</string>
+    <string name="search_recent_remove">%1$s کو حال کی تلاش سے ھٹائیں</string>
+    <string name="search_recent_device_only">حال کی تلاش اسی فون پر رھتی ھے۔ یہ کبھی محلہ کو نھیں بھیجی جاتی۔</string>
+
+    <string name="search_empty_people">کوئی شخص نھیں ملا</string>
+    <string name="search_empty_posts">کوئی پوسٹ نھیں ملی</string>
+    <string name="search_empty_events">کوئی تقریب نھیں ملی</string>
+    <string name="search_empty_spelling_hint">دوسرے انداز میں لکھ کر دیکھیں — رومن اردو کی جگہ اردو رسم الخط، یا اس کے برعکس۔ مختصر تلاش سے عام طور پر زیادہ نتائج ملتے ھیں۔</string>
+
+    <string name="search_unavailable">تلاش فی الحال دستیاب نھیں، اس لیے کچھ تلاش نھیں ھو سکا۔ اس کا مطلب یہ نھیں کہ کچھ موجود نھیں۔</string>
+    <string name="search_offline">آپ آف لائن ھیں، اس لیے تلاش نھیں چل سکی۔ اس کا مطلب یہ نھیں کہ کچھ موجود نھیں۔</string>
+    <string name="search_query_too_short">تلاش کے لیے تھوڑا مزید لکھیں۔</string>
+    <!-- Messaging (UX-MSG-001..003) -->
+    <string name="inbox_tab_messages">پیغامات</string>
+    <string name="inbox_tab_requests">درخواستیں</string>
+    <string name="inbox_load_more">مزید گفتگو دیکھیں</string>
+    <string name="inbox_preview_photo">تصویر بھیجی</string>
+    <string name="inbox_preview_empty">ابھی کوئی پیغام نھیں</string>
+    <string name="inbox_preview_own">آپ: %1$s</string>
+    <string name="inbox_empty_title">ابھی کوئی پیغام نھیں</string>
+    <string name="inbox_empty_body">آپ یھاں کسی کو بھی پیغام بھیج سکتے ھیں — اپنا فون نمبر دیئے بغیر۔</string>
+    <string name="requests_empty_title">کوئی درخواست نھیں</string>
+    <string name="requests_empty_body">جسے آپ فالو نھیں کرتے، اس کا پیغام یھاں منتزر رھے گا۔</string>
+
+    <string name="request_accept">قبول کریں</string>
+    <string name="request_decline">انکار کریں</string>
+    <string name="request_explainer">یہ شخص آپ کو فالو نھیں کرتا۔ جواب دینے کے لیے قبول کریں، یا انکار کر دیں — انھیں دونوں صورتوں میں کچھ معلوم نھیں ھو گا۔</string>
+
+    <string name="conversation_placeholder">پیغام لکھیں</string>
+    <string name="conversation_load_older">پھلے کے پیغام دیکھیں</string>
+    <string name="conversation_read_only">اس گفتگو میں اب پیغام نھیں بھیجے جا سکتے۔ آپ اسے پڑھ سکتے ھیں۔</string>
+    <string name="conversation_read_only_tag">صرف پڑھنے کے لیے</string>
+    <string name="conversation_empty_title">سلام کیجیے</string>
+    <string name="conversation_empty_body">آپ کا فون نمبر یھاں کبھی شیئر نھیں ھوتا۔</string>
+    <string name="conversation_view_profile">پروفائل دیکھیں</string>
+
+    <string name="message_sending">بھیجا جا رھا ھے</string>
+    <string name="message_sent">بھیج دیا</string>
+    <string name="message_read">پڑھ لیا</string>
+    <string name="message_retry">نھیں بھیجا جا سکا۔ دوبارہ کوشش کے لیے ٹیپ کریں</string>
+    <string name="message_image">اس گفتگو میں تصویر</string>
+    <string name="message_send_unavailable">یہ پیغام نھیں بھیجا جا سکا۔</string>
+    <string name="message_send_retryable">آپ کا پیغام نھیں گیا۔ دوبارہ کوشش کے لیے اس پر ٹیپ کریں۔</string>
+    <string name="message_request_limit">آپ روز زیادہ سے زیادہ %1$d نئی گفتگو شروع کر سکتے ھیں۔</string>
+    <!-- Notifications (UX-HOME-007 · UX-SET-003) -->
+    <string name="notification_unread">غیر پڑھا</string>
+    <string name="notifications_day_today">آج</string>
+    <string name="notifications_day_yesterday">کل</string>
+    <string name="notifications_day_earlier">اس سے پہلے</string>
+    <string name="notifications_just_now">ابھی ابھی</string>
+    <string name="notifications_empty_title">ابھی کچھ نہیں</string>
+    <string name="notifications_empty_body">جب لوگ آپ کی پوسٹس پر ردعمل دیں گے، وہ یہاں نظر آئے گا۔</string>
+
+    <string name="settings_notifications_title">اطلاعات</string>
+    <string name="settings_notifications_explainer">یہ آپ کے فون پر آنے والے الرٹس کو کنٹرول کرتے ہیں۔ آپ جو بھی بند کریں، ہر چیز ایپ کے اندر یہاں موجود رہے گی۔</string>
+    <string name="settings_notifications_save_failed">یہ تبدیلی محفوظ نہیں ہوئی۔ دوبارہ کوشش کریں۔</string>
+    <string name="settings_notifications_likes">پسند</string>
+    <string name="settings_notifications_comments">تبصرے اور جوابات</string>
+    <string name="settings_notifications_follows">نئے فالوورز</string>
+    <string name="settings_notifications_mentions">ذکر</string>
+    <string name="settings_notifications_messages">پیغامات</string>
+    <string name="settings_notifications_events">تقریبات</string>
+    <string name="settings_notifications_announcements">اعلانات</string>
+    <!-- Profile and the social graph (UX-PROFILE-001..006) -->
+    <string name="profile_posts">پوسٹس</string>
+    <string name="profile_stat_posts">پوسٹس</string>
+    <string name="profile_stat_followers">فالوورز</string>
+    <string name="profile_stat_following">فالونگ</string>
+    <string name="profile_no_posts">ابھی کوئی پوسٹ نہیں</string>
+    <string name="profile_posts_failed">یہ پوسٹس لوڈ نہیں ہو سکیں۔</string>
+    <string name="profile_follow">فالو کریں</string>
+    <string name="profile_following">فالو کر رہے ہیں</string>
+    <string name="profile_follow_failed">یہ نہیں ہو سکا۔ دوبارہ کوشش کریں۔</string>
+    <string name="profile_message">پیغام</string>
+    <string name="profile_edit">پروفائل تبدیل کریں</string>
+    <string name="profile_saved">محفوظ</string>
+    <string name="profile_no_followers">ابھی کوئی فالوور نہیں</string>
+    <string name="profile_no_following">ابھی کسی کو فالو نہیں کر رہے</string>
+
+    <string name="profile_edit_title">پروفائل تبدیل کریں</string>
+    <string name="profile_edit_save_failed">آپ کی تبدیلیاں محفوظ نہیں ہوئیں۔ دوبارہ کوشش کریں۔</string>
+    <string name="profile_username_permanent">آپ کا یوزر نیم تبدیل نہیں ہو سکتا۔</string>
+    <string name="photo_change">تصویر تبدیل کریں</string>
+    <string name="photo_uploading">اپ لوڈ ہو رہی ہے…</string>
+    <string name="action_save">محفوظ کریں</string>
+
+    <string name="post_save">پوسٹ محفوظ کریں</string>
+    <string name="post_unsave">محفوظ سے ہٹائیں</string>
+    <string name="saved_remove">ہٹائیں</string>
+    <string name="saved_remove_failed">یہ نہیں ہٹایا جا سکا۔ دوبارہ کوشش کریں۔</string>
+    <string name="saved_empty_title">ابھی کچھ محفوظ نہیں</string>
+    <string name="saved_empty_body">کوئی پوسٹ محفوظ کریں تاکہ بعد میں دوبارہ مل جائے۔ یہ فہرست صرف آپ دیکھ سکتے ہیں، اور لکھنے والے کو کبھی پتا نہیں چلتا۔</string>
+    <!-- Settings (UX-SET-001, 002, 004..008) -->
+    <string name="settings_title">ترتیبات</string>
+    <string name="settings_language">زبان</string>
+    <string name="settings_change_password">پاس ورڈ تبدیل کریں</string>
+    <string name="settings_blocked_users">بلاک کیے گئے اکاؤنٹس</string>
+    <string name="settings_guidelines">کمیونٹی ہدایات</string>
+    <string name="settings_terms">شرائط اور پرائیویسی پالیسی</string>
+    <string name="settings_privacy">پرائیویسی پالیسی</string>
+    <string name="settings_help">مدد اور سپورٹ</string>
+    <string name="settings_about">ایپ کے بارے میں</string>
+    <string name="settings_sign_out">لاگ آؤٹ</string>
+    <string name="settings_language_note">یہ انتخاب آپ کے اکاؤنٹ کے ساتھ رہتا ہے، اس لیے ہر اُس ڈیوائس پر لاگو ہوگا جہاں آپ لاگ اِن کریں۔</string>
+
+    <string name="password_change_explainer">پاس ورڈ تبدیل کرنے پر آپ ہر دوسری جگہ سے لاگ آؤٹ ہو جائیں گے۔ یہ ڈیوائس لاگ اِن رہے گی۔</string>
+    <string name="password_current">موجودہ پاس ورڈ</string>
+    <string name="password_new">نیا پاس ورڈ</string>
+    <string name="password_confirm">نئے پاس ورڈ کی تصدیق کریں</string>
+    <string name="password_current_wrong">یہ آپ کا موجودہ پاس ورڈ نہیں ہے۔</string>
+    <string name="password_same_as_current">اپنے موجودہ پاس ورڈ سے مختلف پاس ورڈ منتخب کریں۔</string>
+    <string name="password_mismatch">یہ آپس میں میل نہیں کھاتے۔</string>
+    <string name="password_change_submit">پاس ورڈ تبدیل کریں</string>
+    <string name="password_change_failed">آپ کا پاس ورڈ تبدیل نہیں ہوا۔ دوبارہ کوشش کریں۔</string>
+
+    <string name="blocked_account">بلاک کیا گیا اکاؤنٹ</string>
+    <string name="blocked_since">%1$s کو بلاک کیا</string>
+    <string name="blocked_unblock">اَن بلاک کریں</string>
+    <string name="blocked_unblock_failed">یہ واپس نہیں ہو سکا۔ دوبارہ کوشش کریں۔</string>
+    <string name="blocked_no_names">یہاں نام نہیں دکھائے جاتے، کیونکہ بلاک کرنے پر وہ اکاؤنٹ دونوں طرف سے آپ سے چھپ جاتا ہے۔</string>
+    <string name="blocked_empty_title">آپ نے کسی کو بلاک نہیں کیا</string>
+    <string name="blocked_empty_body">بلاک کرنا خاموش ہوتا ہے — دوسرے شخص کو کبھی پتا نہیں چلتا۔</string>
+
+    <string name="legal_unavailable_body">یہ ابھی شائع نہیں ہوئی۔ یہاں کچھ نہیں دکھایا جا رہا، بجائے اس کے کہ کوئی ایسی چیز دکھائی جائے جو صرف سرکاری لگتی ہو۔</string>
+    <string name="help_body">ہمیں لکھیں، ہم آپ سے رابطہ کریں گے۔</string>
+    <string name="help_unavailable">سپورٹ کا پتا ابھی شائع نہیں ہوا۔</string>
+    <string name="about_version">ورژن %1$s (%2$d)</string>
+    <!-- Safety (UX-SAFE-001..003) -->
+    <string name="report_title_post">اس پوسٹ کی شکایت کریں</string>
+    <string name="report_title_comment">اس تبصرے کی شکایت کریں</string>
+    <string name="report_title_event">اس تقریب کی شکایت کریں</string>
+    <string name="report_title_profile">اس اکاؤنٹ کی شکایت کریں</string>
+    <string name="report_title_conversation">اس گفتگو کی شکایت کریں</string>
+    <string name="report_why">آپ اس کی شکایت کیوں کر رہے ہیں؟</string>
+    <string name="report_change_reason">تبدیل کریں</string>
+    <string name="report_note_optional">کچھ اور بتانا چاہیں گے؟ (اختیاری)</string>
+    <string name="report_submit">شکایت بھیجیں</string>
+    <string name="report_thanks_title">شکریہ</string>
+    <string name="report_thanks_body">ہماری ٹیم اس کا جائزہ لے گی۔</string>
+    <string name="report_also_block">کیا آپ اس شخص کو بلاک بھی کرنا چاہیں گے؟</string>
+    <string name="report_failed">یہ نہیں بھیجی جا سکی۔ دوبارہ کوشش کریں۔</string>
+    <string name="report_offline">آپ آف لائن ہیں، اس لیے یہ نہیں بھیجی گئی۔ آپ نے جو لکھا وہ محفوظ ہے — آن لائن آ کر دوبارہ کوشش کریں۔</string>
+
+    <string name="report_reason_spam">اسپیم یا گمراہ کن</string>
+    <string name="report_reason_harassment">ہراسانی یا دھونس</string>
+    <string name="report_reason_hate">نفرت انگیز باتیں</string>
+    <string name="report_reason_violence">تشدد یا دھمکی</string>
+    <string name="report_reason_sexual">جنسی یا نامناسب مواد</string>
+    <string name="report_reason_false">غلط معلومات</string>
+    <string name="report_reason_impersonation">کسی اور کے نام سے ظاہر ہونا</string>
+    <string name="report_reason_other">کوئی اور بات</string>
+
+    <string name="block_action">بلاک کریں</string>
+    <string name="block_title">%1$s کو بلاک کریں؟</string>
+    <string name="block_title_generic">اس شخص کو بلاک کریں؟</string>
+    <string name="block_effect_visibility">آپ دونوں میں سے کوئی بھی دوسرے کی پروفائل، پوسٹس یا تبصرے نہیں دیکھ سکے گا۔</string>
+    <string name="block_effect_contact">آپ دونوں میں سے کوئی بھی دوسرے کو فالو، پیغام یا ذکر نہیں کر سکے گا۔</string>
+    <string name="block_effect_follows">اگر آپ میں سے کوئی دوسرے کو فالو کرتا ہے تو وہ ختم ہو جائے گا — بعد میں اَن بلاک کرنے سے واپس نہیں آتا۔</string>
+    <string name="block_effect_silent">انہیں کبھی پتا نہیں چلے گا کہ آپ نے انہیں بلاک کیا ہے۔</string>
+    <string name="block_failed">یہ نہیں ہو سکا۔ دوبارہ کوشش کریں۔</string>
+    <string name="comment_report">شکایت</string>
+    <!-- Delete account (UX-SET-009) -->
+    <string name="settings_delete_account">اکاؤنٹ ڈیلیٹ کریں</string>
+    <string name="delete_warning">%1$d دن کے بعد یہ مستقل ہو جائے گا</string>
+    <string name="delete_here_is_what_happens">بالکل یہ ہوگا:</string>
+    <string name="delete_password_label">تصدیق کے لیے اپنا پاس ورڈ درج کریں</string>
+    <string name="delete_password_wrong">یہ پاس ورڈ درست نہیں ہے۔</string>
+    <string name="delete_submit">میرا اکاؤنٹ ڈیلیٹ کریں</string>
+    <string name="delete_failed">آپ کا اکاؤنٹ ڈیلیٹ نہیں ہوا۔ دوبارہ کوشش کریں۔</string>
+    <string name="delete_offline">آپ آف لائن ہیں، اس لیے کچھ تبدیل نہیں ہوا۔ آن لائن آ کر دوبارہ کوشش کریں۔</string>
+    <string name="delete_consequences_incomplete">یہ ایپ ڈیلیٹ کرنے کے تمام نتائج نہیں دکھا سکتی۔ فیصلہ کرنے سے پہلے مکمل فہرست دیکھنے کے لیے ایپ اپ ڈیٹ کریں۔</string>
+
+    <string name="delete_consequence_profile">آپ کی پروفائل، تصویر اور تعارف محلہ سے ہٹا دیے جائیں گے۔</string>
+    <string name="delete_consequence_posts">آپ کی پوسٹس اور تبصرے وہیں رہیں گے، ”ڈیلیٹ شدہ صارف“ کے نام سے۔ انہیں ہٹایا نہیں جاتا، کیونکہ دوسرے لوگوں نے ان پر جواب دیا ہے۔</string>
+    <string name="delete_consequence_messages">آپ کے بھیجے ہوئے پیغامات دوسرے شخص کی گفتگو میں رہیں گے، ”ڈیلیٹ شدہ صارف“ کے نام سے۔</string>
+    <string name="delete_consequence_sessions">آپ فوراً ہر ڈیوائس سے لاگ آؤٹ ہو جائیں گے۔</string>
+    <string name="delete_consequence_restorable">آپ 30 دن کے اندر لاگ اِن کر کے اپنا اکاؤنٹ واپس لا سکتے ہیں۔ آپ کے فالوورز، فالونگ اور پوسٹس بھی ساتھ واپس آ جائیں گی۔</string>
+    <string name="delete_consequence_permanent">30 دن کے بعد اسے واپس نہیں لایا جا سکتا۔</string>
+
+    <string name="restore_deadline">اپنا اکاؤنٹ واپس لانے کے لیے %1$s سے پہلے لاگ اِن کریں۔</string>
 </resources>

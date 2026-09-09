@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Plural quantities.
+
+  Kept OUT of strings.xml deliberately: a count is never safe to build by
+  concatenation, and a separate file makes it obvious which strings carry a
+  quantity and therefore need a table rather than a "%d" glued to a noun.
+
+  Urdu and English both distinguish only ONE and OTHER, so every table here has
+  exactly those two entries. Do not add "few"/"many" - Android would never
+  select them for either locale, and a translator filling them in would be
+  writing text no user ever sees.
+-->
+<resources>
+    <plurals name="a11y_post_images">
+        <item quantity="one">%1$d image</item>
+        <item quantity="other">%1$d images</item>
+    </plurals>
+
+    <plurals name="comment_count">
+        <item quantity="one">%1$d comment</item>
+        <item quantity="other">%1$d comments</item>
+    </plurals>
+
+    <plurals name="event_going_count">
+        <item quantity="one">%1$d person going</item>
+        <item quantity="other">%1$d people going</item>
+    </plurals>
+
+    <plurals name="event_interested_count">
+        <item quantity="one">%1$d interested</item>
+        <item quantity="other">%1$d interested</item>
+    </plurals>
+
+    <plurals name="attach_images_remaining">
+        <item quantity="one">%1$d more can be added</item>
+        <item quantity="other">%1$d more can be added</item>
+    </plurals>
+    <!--
+      Relative times in the notification centre.
+
+      A COUNT AND A UNIT, never a sentence built in Kotlin. "1 hours ago" is the
+      English failure; the Urdu one is subtler and a native reader hears it
+      without being able to point at the word. This table is the platform's
+      mechanism for that, and it only works because `RelativeTime` returns a
+      number.
+    -->
+    <plurals name="notifications_minutes_ago">
+        <item quantity="one">%1$d minute ago</item>
+        <item quantity="other">%1$d minutes ago</item>
+    </plurals>
+
+    <plurals name="notifications_hours_ago">
+        <item quantity="one">%1$d hour ago</item>
+        <item quantity="other">%1$d hours ago</item>
+    </plurals>
+
+    <plurals name="notifications_days_ago">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
+</resources>

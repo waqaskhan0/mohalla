@@ -12,7 +12,15 @@ import { readFileSync, statSync } from 'node:fs';
  * scanning. It is designed to have no false negatives on the patterns it knows
  * and to be quiet otherwise.
  */
-const PATTERNS = [
+/**
+ * High-confidence patterns. Each matches a value whose SHAPE is issued by a
+ * specific provider, so a match is a real credential with near-certainty.
+ *
+ * These are NOT allowlistable. A comment saying "example" next to a live AWS
+ * key does not make it an example, and the one time that assertion is wrong is
+ * the time it matters.
+ */
+const STRONG_PATTERNS = [
   [/-----BEGIN (?:RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----/, 'private key block'],
   [/\bAKIA[0-9A-Z]{16}\b/, 'AWS access key id'],
   [/\bghp_[A-Za-z0-9]{36}\b/, 'GitHub personal access token'],
@@ -21,13 +29,28 @@ const PATTERNS = [
   [/"private_key"\s*:\s*"-----BEGIN/, 'service account JSON'],
   [/\bxox[baprs]-[A-Za-z0-9-]{10,}\b/, 'Slack token'],
   [/\bsk-[A-Za-z0-9]{32,}\b/, 'generic secret key'],
+];
+
+/**
+ * Heuristic patterns. These match a NAME next to a quoted value, which is a
+ * guess about intent rather than a recognisable credential. Only these may be
+ * suppressed by ALLOWED, because only these have genuine false positives.
+ */
+const WEAK_PATTERNS = [
   [
     /(?:password|passwd|secret|api[_-]?key|token)\s*[:=]\s*['"][^'"\s]{12,}['"]/i,
     'hardcoded credential',
   ],
 ];
 
-/** Values that look like credentials but are deliberate templates. */
+/**
+ * Values that trip a HEURISTIC pattern but are deliberate templates or test
+ * fixtures. Each entry requires the author to have stated intent in the line
+ * itself, which is the point: the allowance is a claim someone made on the
+ * record, not a silent exemption.
+ *
+ * These never suppress a STRONG_PATTERNS match.
+ */
 const ALLOWED = [
   /CHANGE_ME/,
   /mohalla_local_dev_only/,
@@ -47,14 +70,49 @@ const ALLOWED = [
   // credential. `password: 'realsecret'` has a space after the colon and is
   // still caught.
   /(?:^|\s):'[A-Za-z_][A-Za-z0-9_]*'/,
+
+  // Test fixtures. The addendum requires deterministic SYNTHETIC test data, so
+  // a fixture password is expected to exist - but it must SAY it is one.
+  //
+  // Narrow on purpose: the marker has to appear inside the quoted VALUE, not in
+  // a nearby comment, so it cannot be attached to a real credential without
+  // altering that credential and breaking it.
+  /['"][^'"\s]*synthetic[^'"\s]*['"]/i,
+
+  // Navigation ROUTE PATHS, not credentials.
+  //
+  // Stage 7's Android route table declares `RESET_PASSWORD = "password/reset"`
+  // and `FORGOT_PASSWORD = "password/forgot"`. The heuristic sees the name
+  // `PASSWORD`, an `=`, and a quoted string, and calls it a hardcoded
+  // credential. It is a URL path.
+  //
+  // NARROWED, NOT REMOVED, and narrowed on the VALUE rather than the name: the
+  // whole quoted value has to be a slash-separated path of lower-case words -
+  // no digits, no punctuation, no mixed case, nothing with the entropy a
+  // credential has. `password = "Tr0ub4dor/3"` is still caught, because of the
+  // digits and the capital; so is `password = "correcthorse"`, because there is
+  // no slash and a path needs one.
+  /['"][a-z]+(?:\/[a-z]+)+['"]/,
 ];
 
 /** Files whose whole job is to describe secrets without containing them. */
 const SKIP_FILES = [/^\.env\.example$/, /^docs\//, /^scripts\/posix\/check-secrets\.mjs$/];
 
+/**
+ * Files git tracks, PLUS new files that are not ignored.
+ *
+ * Tracked-only was the original scope and it was subtly too late: a secret in
+ * a brand-new file passed every check right up until the commit that made it
+ * permanent - which is exactly the moment the check stops being useful. The
+ * whole working tree is the wrong scope in the other direction (node_modules),
+ * so `--exclude-standard` draws the line where .gitignore already draws it.
+ */
 let tracked;
 try {
-  tracked = execFileSync('git', ['ls-files'], { encoding: 'utf8' }).split('\n').filter(Boolean);
+  const ls = (args) => execFileSync('git', args, { encoding: 'utf8' }).split('\n').filter(Boolean);
+  tracked = [
+    ...new Set([...ls(['ls-files']), ...ls(['ls-files', '--others', '--exclude-standard'])]),
+  ];
 } catch {
   console.error('FAIL: not a git repository, or git is unavailable');
   process.exit(2);
@@ -89,11 +147,21 @@ for (const file of tracked) {
 
   const lines = content.split('\n');
   lines.forEach((line, i) => {
-    if (ALLOWED.some((r) => r.test(line))) return;
-    for (const [re, what] of PATTERNS) {
+    // Checked FIRST and without any allowlist: a provider-shaped credential is
+    // a finding no matter what the line claims about itself.
+    for (const [re, what] of STRONG_PATTERNS) {
       if (re.test(line)) {
         findings.push({ file, line: i + 1, what });
-        break;
+        return;
+      }
+    }
+
+    if (ALLOWED.some((r) => r.test(line))) return;
+
+    for (const [re, what] of WEAK_PATTERNS) {
+      if (re.test(line)) {
+        findings.push({ file, line: i + 1, what });
+        return;
       }
     }
   });
@@ -110,4 +178,4 @@ if (findings.length > 0) {
   process.exit(1);
 }
 
-console.log(`OK: ${tracked.length} tracked files scanned, no secrets found`);
+console.log(`OK: ${tracked.length} files scanned (tracked + new), no secrets found`);

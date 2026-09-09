@@ -59,3 +59,11 @@ pgdata/
 # Local database dumps — never commit real data
 .backups/
 *.dump
+
+# Local media storage (development/CI only; production uses object storage per ADR-012).
+.media/
+
+# Emulator run artefacts: screenshots and view dumps from a local test run.
+# Synthetic data, but build output rather than source, and §6 keeps screenshots
+# out of a public repository.
+.emulator-evidence/

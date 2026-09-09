@@ -1,3 +1,5 @@
+import { redact } from '@mohalla/observability';
+
 const ORDER: Record<string, number> = { debug: 10, info: 20, warn: 30, error: 40 };
 
 /**
@@ -11,6 +13,16 @@ const ORDER: Record<string, number> = { debug: 10, info: 20, warn: 30, error: 40
  * `correlationId` is passed explicitly rather than read from async context,
  * because a job's correlation id comes from the payload of whoever enqueued it -
  * it is data, not ambient request state.
+ *
+ * WHAT IT NO LONGER KEEPS A LOCAL COPY OF IS THE REDACTION RULE (NFR-OBS-001).
+ * The comment above anticipated a third consumer; redaction is it, and then
+ * some - §4.9 makes the Android crash reporter a fourth. Two services with
+ * their own idea of what may be written is not a duplicated utility, it is a
+ * safety property that holds in one process and not the other, and the one it
+ * fails in is whichever was changed last.
+ *
+ * Redaction runs in `emit`, at the single point of write, so no job handler can
+ * forget it and a new one inherits it by existing.
  */
 export class StructuredLogger {
   constructor(
@@ -22,10 +34,12 @@ export class StructuredLogger {
     if ((ORDER[level] ?? 20) < (ORDER[this.minLevel] ?? 20)) return;
     process.stdout.write(
       `${JSON.stringify({
+        // Set after redaction, and never passed through it: a timestamp must
+        // never be mistakable for a date of birth.
         time: new Date().toISOString(),
         level,
         service: this.service,
-        ...fields,
+        ...(redact(fields) as Record<string, unknown>),
       })}\n`,
     );
   }

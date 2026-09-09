@@ -4,6 +4,7 @@ plugins {
     // fails the build if it is applied alongside.
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -43,6 +44,22 @@ android {
             isMinifyEnabled = false
             // 10.0.2.2 is the host loopback as seen from the Android emulator.
             buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:3000\"")
+            // OD-015 is unresolved: no Terms document has been published, so
+            // there is no version to name. A debug build records this literal
+            // so the value in the registration audit trail says exactly what
+            // was accepted - nothing - rather than a plausible-looking version
+            // string that would imply a document existed. The release gate
+            // below refuses to build without a real one.
+            buildConfigField("String", "TERMS_VERSION", "\"unpublished-od-015\"")
+            // §42 - the host this app claims links for. `mohalla.invalid`
+            // is reserved by RFC 2606 and can never resolve, so a debug
+            // build cannot accidentally open a link belonging to somebody
+            // who registered a plausible name. DEP-007 supplies the real
+            // one; until then the resolver works and the filters match
+            // nothing anybody can send.
+            buildConfigField("String", "APP_HOST", "\"mohalla.invalid\"")
+            manifestPlaceholders["appHost"] = "mohalla.invalid"
+            buildConfigField("String", "SUPPORT_EMAIL", "\"\"")
         }
         release {
             // Signing config is deliberately absent. Release signing keys are
@@ -51,6 +68,24 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             // Overridden per real environment at release time; never a real host in source.
             buildConfigField("String", "API_BASE_URL", "\"https://api.invalid\"")
+            // Deliberately EMPTY, which makes registration fail closed in a
+            // release build until a Terms document is published and its
+            // version supplied here. `RegisterViewModel` refuses to submit an
+            // empty version, so a release APK cannot record an acceptance of a
+            // document that does not exist (OD-015).
+            buildConfigField("String", "TERMS_VERSION", "\"\"")
+            // §42 - DEP-007's domain has not been provisioned, so there is no
+            // host this build can claim. Empty rather than a guess: the
+            // resolver refuses every link when the host is blank, and an
+            // `autoVerify` filter for a domain we do not control would either
+            // fail verification or, worse, succeed for somebody else's.
+            buildConfigField("String", "APP_HOST", "\"\"")
+            manifestPlaceholders["appHost"] = "mohalla.invalid"
+            // SET-FR-009 asks for "a working support contact". None has
+            // been published, so this is empty and the Help screen says so
+            // rather than mailing an address nobody reads - which matters
+            // most because this is also the suspension appeal channel.
+            buildConfigField("String", "SUPPORT_EMAIL", "\"\"")
         }
     }
 
@@ -108,7 +143,27 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.material.icons)
     implementation(libs.kotlinx.coroutines.android)
+
+    // ---- Stage 7 ---------------------------------------------------------
+    // Each of these is named by the frozen mobile architecture
+    // (04-mobile-architecture.md §2, §4). Nothing here is a preference.
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    // `LocalLifecycleOwner`, which the conversation screen ties its poll to.
+    // DECLARED EXPLICITLY even though navigation-compose happens to bring it in
+    // transitively: an implicit compile dependency is one version bump away
+    // from disappearing, and the compose-ui copy of that composition local is
+    // deprecated in favour of this one.
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    // SEC-004: session tokens in EncryptedSharedPreferences backed by Keystore.
+    implementation(libs.androidx.security.crypto)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.serialization)
+    implementation(libs.okhttp)
+    implementation(libs.coil.compose)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

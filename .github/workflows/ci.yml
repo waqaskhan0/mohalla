@@ -144,7 +144,15 @@ jobs:
 
       - name: Run migrations
         env:
-          DATABASE_URL: postgres://migration_owner:ci_migration_owner@127.0.0.1:5432/mohalla
+          # MIGRATION_DATABASE_URL, not DATABASE_URL. `node-pg-migrate` used to
+          # fall back to DATABASE_URL, so this step handed it a migration_owner
+          # connection under a name that means runtime_app everywhere else —
+          # and runtime_app has USAGE on `public` but not CREATE, so the
+          # ambiguity was one env var away from a confusing failure. The
+          # migrate scripts now name the variable they need (`-d
+          # MIGRATION_DATABASE_URL`), which is what the two steps below were
+          # already doing.
+          MIGRATION_DATABASE_URL: postgres://migration_owner:ci_migration_owner@127.0.0.1:5432/mohalla
         run: npm run db:migrate
 
       - name: Migration status must be clean
@@ -160,7 +168,24 @@ jobs:
         run: npm run test --workspace @mohalla/db
 
       - name: Build the worker (needed to run the queue round-trip)
-        run: npm run build --workspace @mohalla/worker
+        # PACKAGES AND THE API FIRST, not just the worker.
+        #
+        # Two of the worker's jobs reach into the API's COMPILED output —
+        # `notification-drain` and `account-erasure` import
+        # `../../../api/dist/app.module.js` to reuse the Nest container rather
+        # than duplicate wiring — and the worker also imports
+        # `@mohalla/observability`. Neither exists in a fresh checkout, so
+        # building the worker alone fails type resolution with five TS2307s.
+        #
+        # This job never got here before: it was failing at the migrate step
+        # above, which hid the problem. The `Lint, typecheck, build` job passes
+        # because it runs the root `npm run build`, which orders packages
+        # before apps. Same ordering here, narrowed to what the queue
+        # round-trip actually needs.
+        run: |
+          npm run build:packages
+          npm run build --workspace @mohalla/api
+          npm run build --workspace @mohalla/worker
 
       - name: Install the pg-boss schema as migration_owner (DDL — runtime roles cannot)
         env:

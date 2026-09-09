@@ -2,12 +2,36 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!--
+      TWO PERMISSIONS, AND NO MORE.
+
+      INTERNET is not optional: every API call needs it, and without it OkHttp
+      throws a SecurityException on the first request rather than failing
+      gracefully. It was absent until the shell was wired, because nothing had
+      yet run against a real backend on a device (there is no emulator in this
+      project - see 20-mobile-open-issues.md), which is exactly the class of
+      defect an unrunnable app hides.
+
+      ACCESS_NETWORK_STATE is what ConnectivityObserver needs to answer "is
+      there a validated connection" for the offline banner. Both are NORMAL
+      permissions, granted at install with no runtime prompt.
+
+      Nothing else is declared. In particular there is no READ_EXTERNAL_STORAGE
+      or READ_MEDIA_IMAGES: the photo picker returns a URI the app is granted
+      access to for that one file, so asking for the whole gallery would be
+      requesting more than the product needs (SEC-025, and PRIV-001's
+      data-minimisation rule applies to permissions as much as to columns).
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!--
       android:supportsRtl="true" is the switch that makes the entire Urdu
       layout mirror. Without it, every start/end attribute in this project
       silently behaves as left/right and the Urdu interface is wrong.
       Required by LOCALE-FR-003, BR-041 and REL-002.
     -->
     <application
+        android:name=".MohallaApplication"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -15,13 +39,84 @@
         android:localeConfig="@xml/locales_config"
         android:theme="@style/Theme.Mohalla">
 
+        <!--
+          THE WINDOW MUST NOT RESIZE FOR THE KEYBOARD.
+
+          Every screen that takes text applies `imePadding()`, which is the
+          Compose way and what `ComposerScreen` documents: it lifts the toolbar
+          above the keyboard rather than shrinking the text area. But the
+          platform default is `adjustResize`, so the window ALSO shrank -
+          measured at 1520px of 2280 with the keyboard up - and `imePadding`
+          then subtracted the same 760px again from the already-shortened
+          window. Post detail was left with 700px for a header, a scrolling
+          thread and a composer, and rendered as a comment box floating in an
+          empty screen with the post, its author, the engagement row and the
+          header all gone (RUNTIME-017).
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:windowSoftInputMode="adjustNothing"
             android:theme="@style/Theme.Mohalla">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+              §42 - deep links to content.
+
+              ONE ACTIVITY, NOT A SECOND ONE. `MainActivity` already owns the
+              startup resolver that decides where anybody is allowed to land, and
+              a second entry activity would either duplicate that decision or
+              skip it. The link is read in `onNewIntent` and `onCreate`, held,
+              and honoured only once the resolver has put the reader somewhere
+              they are entitled to be.
+
+              `android:autoVerify` IS DELIBERATELY ABSENT, and this is the one
+              thing about this filter that is not finished. Android App Links
+              verify by fetching `/.well-known/assetlinks.json` from the host and
+              matching the signing certificate - which needs DEP-007's domain and
+              DEP-006's release keystore, neither of which exists. Setting
+              `autoVerify="true"` now would fail verification on every install
+              and leave the app in the disambiguation dialog anyway; leaving it
+              off is the same behaviour, honestly declared. GAP-M-015.
+
+              WHICH ALSO MEANS THESE LINKS OPEN A CHOOSER RATHER THAN THE APP
+              directly. Unverified filters make Android ask. That is worse than
+              App Links and better than a custom scheme: `mohalla://` would open
+              without a chooser and could be claimed by ANY other app on the
+              device, which for a link to a private conversation is not a trade
+              worth making.
+
+              The host is a manifest placeholder so the filter and the share
+              link cannot drift apart - both come from the build config.
+            -->
+            <intent-filter android:label="@string/app_name">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <!--
+                  HTTPS ONLY. An `http` filter would accept a downgraded link
+                  arranged on a shared network, and the resolver refuses one
+                  anyway - so declaring it would only add an entry to the
+                  chooser for a link the app then declines to route.
+                -->
+                <data android:scheme="https" />
+                <data android:host="${appHost}" />
+
+                <!--
+                  FOUR PATH PREFIXES, MATCHING THE FOUR THE SERVER PUBLISHES in
+                  its push deep links. A bare `android:host` with no path would
+                  claim every URL on the domain, including the Privacy Policy
+                  that PRIV-017 requires to be readable in a BROWSER before
+                  Google Play will accept the app.
+                -->
+                <data android:pathPrefix="/posts/" />
+                <data android:pathPrefix="/users/" />
+                <data android:pathPrefix="/events/" />
+                <data android:pathPrefix="/conversations/" />
             </intent-filter>
         </activity>
     </application>

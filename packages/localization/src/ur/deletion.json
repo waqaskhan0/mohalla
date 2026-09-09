@@ -1,0 +1,8 @@
+{
+  "deletion.consequence.profileRemoved": "آپ کا پروفائل، تصویر اور تعارف محلہ سے ہٹا دیا جائے گا۔",
+  "deletion.consequence.postsRemainAnonymised": "آپ کی پوسٹس اور تبصرے اپنی جگہ رہیں گے، جن پر ”ڈیلیٹ شدہ صارف“ لکھا ہوگا۔ انہیں ہٹایا نہیں جاتا، کیونکہ دوسرے لوگوں نے ان پر جواب دیا ہے۔",
+  "deletion.consequence.messagesRemainForTheOtherPerson": "آپ کے بھیجے ہوئے پیغامات دوسرے شخص کی گفتگو میں رہیں گے، جن پر ”ڈیلیٹ شدہ صارف“ لکھا ہوگا۔",
+  "deletion.consequence.sessionsEndImmediately": "آپ فوراً ہر ڈیوائس سے سائن آؤٹ ہو جائیں گے۔",
+  "deletion.consequence.restorableForThirtyDays": "تیس دن کے اندر لاگ اِن کر کے آپ اپنا اکاؤنٹ واپس لا سکتے ہیں۔ آپ کے فالوورز، فالوئنگ اور پوسٹس بھی واپس آ جائیں گی۔",
+  "deletion.consequence.permanentAfterThirtyDays": "تیس دن کے بعد اسے واپس نہیں لایا جا سکتا۔"
+}

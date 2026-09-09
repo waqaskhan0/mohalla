@@ -71,7 +71,25 @@ function gradleRun(androidDir, args) {
 
 const results = [];
 
-function run(name, cmd, args, { cwd = repoRoot, env = process.env, allowSkip = false } = {}) {
+/**
+ * `blockedExitCode` — a lane that could not RUN, as distinct from one that ran
+ * and failed.
+ *
+ * The restore rehearsal needs the PostgreSQL client tools, which plenty of
+ * developer machines do not have. Reporting that as a FAILURE would be wrong
+ * twice over: it says the backup is broken when nothing was tested, and it
+ * trains people to ignore a red lane that is red for an unrelated reason.
+ * Reporting it as a PASS would be far worse - a release gate that goes green
+ * when its tooling is missing is exactly the "untested backup" SEC-026 is
+ * about. BLOCKED is the third answer, and the summary already refuses to call
+ * a run complete while any lane holds it.
+ */
+function run(
+  name,
+  cmd,
+  args,
+  { cwd = repoRoot, env = process.env, allowSkip = false, blockedExitCode = null } = {},
+) {
   process.stdout.write(`\n▶ ${name}\n`);
   const r = spawnSync(cmd, args, { cwd, env, stdio: 'inherit', shell: false });
 
@@ -83,6 +101,16 @@ function run(name, cmd, args, { cwd = repoRoot, env = process.env, allowSkip = f
     results.push({ name, status: 'FAIL', detail: r.error.message });
     return;
   }
+
+  if (blockedExitCode !== null && r.status === blockedExitCode) {
+    // Neutral wording, because exit 3 covers two different situations: a lane
+    // whose tooling is absent (nothing ran) and a lane that ran fully and
+    // reported that criteria outside its reach are unmet. Both are BLOCKED;
+    // only the lane's own output can say which, and it does.
+    results.push({ name, status: 'BLOCKED', detail: `exit ${r.status} — reported BLOCKED` });
+    return;
+  }
+
   results.push({ name, status: r.status === 0 ? 'PASS' : 'FAIL', detail: `exit ${r.status}` });
 }
 
@@ -107,7 +135,26 @@ run('guard: secret scan', process.execPath, [resolve(repoRoot, 'scripts/posix/ch
 // ---------------------------------------------------------------- node lanes
 run('format check', ...npmRun('run', 'format:check'));
 run('lint (includes the RTL gate)', ...npmRun('run', 'lint'));
-run('build all apps', ...npmRun('run', 'build:apps'));
+// NODE_ENV IS FORCED, and the reason is not cosmetic.
+//
+// `next build` prerenders, and prerendering under `NODE_ENV=development` mixes
+// React's development and production builds. The result is
+// `TypeError: Cannot read properties of null (reading 'useContext')` on the
+// first static page — a failure with no relationship to the source, which
+// compiles cleanly in the same run ("✓ Compiled successfully", then the export
+// dies).
+//
+// It surfaces because a developer with a local `.env` exported into their shell
+// has `NODE_ENV=development` set, and this harness inherits `process.env`. So
+// the same commit built or failed depending on whether the person running
+// verify had sourced their own `.env` — which is the worst kind of red, the
+// kind that sends somebody looking at code that is fine. Found while running
+// verify against a live stack during the Stage 7 completion pass.
+//
+// A production build is what this lane means, so it says so.
+run('build all apps', ...npmRun('run', 'build:apps'), {
+  env: { ...process.env, NODE_ENV: 'production' },
+});
 run(
   'unit tests (api, worker, validation, admin)',
   ...npmRun('run', 'test', '--workspaces', '--if-present'),
@@ -124,9 +171,72 @@ if (process.env.DATABASE_URL) {
   } else {
     blocked('audit append-only test', 'RUNTIME_APP_DATABASE_URL not set');
   }
+
+  // Every epic's flow over real HTTP against the real database. The unit tests
+  // prove the rules; this proves the routes are mounted, the guards are
+  // applied, the DI graph resolves and the error envelope says what a client
+  // will read - none of which a unit test can fail on. Uses the deterministic
+  // fake SMS provider, so nothing is delivered to a real recipient.
+  run('api smoke test (real HTTP)', ...npmRun('run', 'smoke:api'), { allowSkip: true });
+
+  // ---- EPIC-16: the release gate ----------------------------------------
+  //
+  // RUN ON EVERY VERIFY, not only at release time, because mandatory tests A,
+  // B and E live in it and they are regression protection rather than
+  // ceremony: block privacy across eleven surfaces, revocation on the next
+  // request, and message idempotency under concurrency are exactly the
+  // properties that break silently and are noticed by a user rather than a
+  // test.
+  //
+  // It exits 3 while release criteria remain BLOCKED - which they will until
+  // devices, policy URLs and a named owner exist - so this lane reads BLOCKED
+  // rather than FAILED. A regression inside it still exits 1 and still fails.
+  run('release gate (REL-001…008, tests A/B/E)', ...npmRun('run', 'release:gate'), {
+    allowSkip: true,
+    blockedExitCode: 3,
+  });
+
+  // ---- REL-007: the restore rehearsal -----------------------------------
+  //
+  // SEC-026: "AN UNTESTED BACKUP IS NOT A BACKUP." This lane is what tests it,
+  // and it is BLOCKED rather than skipped when it cannot run, because a
+  // release gate that quietly passes when its tooling is missing is worse than
+  // no gate: it reports the thing was proven when nothing was checked.
+  //
+  // It needs a SEPARATE, DISPOSABLE target database - the script refuses to
+  // restore over anything that matches a live URL - and the PostgreSQL client
+  // tools, which are absent on plenty of developer machines. Neither is a
+  // reason to fail a local verify, and both are a reason not to call REL-007
+  // satisfied.
+  if (process.env.RESTORE_TARGET_URL) {
+    run('backup for the rehearsal (SEC-026)', ...npmRun('run', 'db:backup'), {
+      allowSkip: true,
+      blockedExitCode: 3,
+    });
+    run('restore rehearsal (REL-007)', ...npmRun('run', 'db:restore:rehearsal'), {
+      allowSkip: true,
+      blockedExitCode: 3,
+    });
+  } else {
+    blocked(
+      'backup for the rehearsal (SEC-026)',
+      'RESTORE_TARGET_URL not set — needs a disposable database and pg_dump/pg_restore',
+    );
+    blocked(
+      'restore rehearsal (REL-007)',
+      'RESTORE_TARGET_URL not set — needs a disposable database and pg_dump/pg_restore',
+    );
+  }
 } else {
   blocked('migration status', 'DATABASE_URL not set — no database reachable');
   blocked('audit append-only test', 'DATABASE_URL not set — no database reachable');
+  blocked('api smoke test (real HTTP)', 'DATABASE_URL not set — no database reachable');
+  blocked(
+    'release gate (REL-001…008, tests A/B/E)',
+    'DATABASE_URL not set — no database reachable',
+  );
+  blocked('backup for the rehearsal (SEC-026)', 'DATABASE_URL not set — no database reachable');
+  blocked('restore rehearsal (REL-007)', 'DATABASE_URL not set — no database reachable');
 }
 
 // ---------------------------------------------------------------- android

@@ -16,7 +16,8 @@
   "dependencies": {
     "pg": "8.23.0",
     "pg-boss": "12.29.0",
-    "zod": "4.5.4"
+    "zod": "4.5.4",
+    "@mohalla/observability": "*"
   },
   "devDependencies": {
     "@types/node": "24.7.0",

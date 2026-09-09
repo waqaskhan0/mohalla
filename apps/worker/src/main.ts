@@ -7,12 +7,32 @@ import {
   handleFoundationHealth,
   type FoundationHealthPayload,
 } from './jobs/foundation-health.job.js';
+import {
+  ACCOUNT_ERASURE_DEAD_LETTER,
+  ACCOUNT_ERASURE_JOB,
+  closeEraser,
+  handleAccountErasure,
+  type AccountErasurePayload,
+} from './jobs/account-erasure.job.js';
+import {
+  NOTIFICATION_DRAIN_DEAD_LETTER,
+  NOTIFICATION_DRAIN_JOB,
+  closeDrainer,
+  handleNotificationDrain,
+  type NotificationDrainPayload,
+} from './jobs/notification-drain.job.js';
 
 /**
  * Worker entry point.
  *
- * STAGE 5 FOUNDATION. Registers exactly one job handler - FOUNDATION_HEALTH_JOB
- * - and no product jobs.
+ * Registers the foundation health job and, since EPIC-11, the notification
+ * drain (ADR-014's consumer).
+ *
+ * THE DRAIN IS SCHEDULED, NOT TRIGGERED. The API writes outbox rows inside its
+ * business transactions and enqueues nothing - that is the whole point of an
+ * outbox, since enqueuing after commit reintroduces the window it exists to
+ * close. So the worker polls on a schedule instead, and a tick that finds
+ * nothing is the normal case rather than a wasted one.
  */
 async function main(): Promise<void> {
   const env = loadEnv();
@@ -47,6 +67,82 @@ async function main(): Promise<void> {
     expireInSeconds: env.JOB_EXPIRE_SECONDS,
     deadLetter: FOUNDATION_HEALTH_DEAD_LETTER,
   });
+
+  // The notification drain. Its own dead-letter queue, because a payload that
+  // cannot be turned into a notification is worth keeping: it names a like, a
+  // follow or a message somebody never heard about.
+  await boss.createQueue(NOTIFICATION_DRAIN_DEAD_LETTER);
+  await boss.createQueue(NOTIFICATION_DRAIN_JOB, {
+    retryLimit: env.JOB_RETRY_LIMIT,
+    retryDelay: env.JOB_RETRY_DELAY_SECONDS,
+    retryBackoff: true,
+    expireInSeconds: env.JOB_EXPIRE_SECONDS,
+    deadLetter: NOTIFICATION_DRAIN_DEAD_LETTER,
+    // A drain already running must not be joined by a second one: they would
+    // claim different rows (SKIP LOCKED) but both hold a DI graph and a pool.
+    policy: 'singleton',
+  });
+
+  await boss.work<NotificationDrainPayload>(
+    NOTIFICATION_DRAIN_JOB,
+    async ([job]: Job<NotificationDrainPayload>[]) => {
+      if (!job) return;
+      const result = await handleNotificationDrain(job.data);
+      // Logged even when empty. A drain that stops finding rows and a drain
+      // that stops RUNNING look identical without a line per tick.
+      logger.info({ event: 'notification_drain', jobId: job.id, ...result });
+    },
+  );
+
+  // ADR-014 says the outbox is drained by the worker; nothing enqueues this
+  // job, so the worker schedules it for itself. Every interval, forever.
+  await boss.schedule(NOTIFICATION_DRAIN_JOB, `*/${env.NOTIFICATION_DRAIN_MINUTES} * * * *`, {});
+
+  // THE DAY-30 ERASURE SWEEP (PRIV-007, ADR-019). The only irreversible job in
+  // the system, and the one place in this file where a destructive flag is
+  // written down. Its dead-letter queue matters more than the others': a sweep
+  // that failed halfway is a question about whether an account was erased, and
+  // that question needs the payload to answer.
+  await boss.createQueue(ACCOUNT_ERASURE_DEAD_LETTER);
+  await boss.createQueue(ACCOUNT_ERASURE_JOB, {
+    retryLimit: env.JOB_RETRY_LIMIT,
+    retryDelay: env.JOB_RETRY_DELAY_SECONDS,
+    retryBackoff: true,
+    // Longer than the others. Each account is one transaction across every
+    // anonymising module, and a sweep expiring mid-account would be retried
+    // against rows a committed transaction has already moved.
+    expireInSeconds: Math.max(env.JOB_EXPIRE_SECONDS, 600),
+    deadLetter: ACCOUNT_ERASURE_DEAD_LETTER,
+    // Two sweeps would contend for the same rows. The row lock makes that safe
+    // (mandatory test F proves exactly one of them erases), but both would hold
+    // a DI graph and a pool for nothing.
+    policy: 'singleton',
+  });
+
+  await boss.work<AccountErasurePayload>(
+    ACCOUNT_ERASURE_JOB,
+    async ([job]: Job<AccountErasurePayload>[]) => {
+      if (!job) return;
+      const result = await handleAccountErasure(job.data, {
+        ACCOUNT_ERASURE_DRY_RUN: env.ACCOUNT_ERASURE_DRY_RUN,
+      });
+
+      // Logged every tick, including the empty ones. A sweep that stops finding
+      // due accounts and a sweep that stops RUNNING look identical otherwise,
+      // and the second means a thirty-day promise is quietly not being kept.
+      logger.info({ event: 'account_erasure', jobId: job.id, ...result });
+    },
+  );
+
+  // `dryRun: false` IS WRITTEN HERE AND NOWHERE ELSE. The handler defaults to a
+  // dry run, so this single line is what makes the scheduled sweep real - one
+  // line to read, question, or remove.
+  await boss.schedule(
+    ACCOUNT_ERASURE_JOB,
+    env.ACCOUNT_ERASURE_CRON,
+    { dryRun: false, limit: env.ACCOUNT_ERASURE_LIMIT },
+    { tz: 'Asia/Karachi' },
+  );
 
   await boss.work<FoundationHealthPayload>(
     FOUNDATION_HEALTH_JOB,
@@ -98,7 +194,14 @@ async function main(): Promise<void> {
     environment: env.NODE_ENV,
     version: env.APP_VERSION,
     commit: env.GIT_COMMIT,
-    handlers: [FOUNDATION_HEALTH_JOB],
+    handlers: [FOUNDATION_HEALTH_JOB, NOTIFICATION_DRAIN_JOB, ACCOUNT_ERASURE_JOB],
+    // Stated at startup because it is the difference between a worker that
+    // erases accounts and one that rehearses. Somebody reading the first line
+    // of the log should not have to infer it.
+    accountErasure: {
+      cron: env.ACCOUNT_ERASURE_CRON,
+      forcedDryRun: env.ACCOUNT_ERASURE_DRY_RUN,
+    },
     deadLetterQueue: FOUNDATION_HEALTH_DEAD_LETTER,
     retryLimit: env.JOB_RETRY_LIMIT,
     note: 'foundation only - no product job exists',
@@ -140,6 +243,11 @@ async function main(): Promise<void> {
     logger.info({ event: 'shutdown_started', signal });
     try {
       await boss.stop({ graceful: true, close: true });
+      // The drain holds a NestJS context with its own connection pool. Leaving
+      // it open keeps the process alive past the queue's shutdown, which turns
+      // a graceful restart into a timeout and a SIGKILL.
+      await closeDrainer();
+      await closeEraser();
       logger.info({ event: 'shutdown_complete', signal });
       process.exit(0);
     } catch (e) {
