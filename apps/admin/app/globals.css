@@ -1243,3 +1243,87 @@ h1 .flag-verified {
   font-size: 0.875rem;
   line-height: var(--line-height-latin);
 }
+
+/* ---------------------------------------------------------------- UX-ADM-009
+   The audit log. Read only, and there is nothing in this block that styles a
+   control which could change an entry, because no such control exists. */
+
+.audit-filters {
+  margin-block: var(--space-6);
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  align-items: start;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.audit-filters label {
+  display: block;
+  margin-block-end: var(--space-2);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.audit-filters input {
+  inline-size: 100%;
+  padding: 0.5rem var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font: inherit;
+}
+
+.audit-filters input[aria-invalid='true'] {
+  border-color: #a8332e;
+}
+
+.audit-filters code {
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
+  font-size: 0.8125rem;
+}
+
+.audit-filter-actions {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  align-self: end;
+}
+
+.audit-filter-actions button {
+  padding: 0.5rem var(--space-4);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: var(--color-surface);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.audit-filter-actions button:hover {
+  background: #0f4658;
+}
+
+/* Metadata as key and value rather than as JSON (§40). Kept narrow so a long
+   reason wraps inside its cell instead of widening the table. */
+.metadata {
+  margin: 0;
+  display: grid;
+  gap: 0.25rem;
+  max-inline-size: 22rem;
+}
+
+.metadata dt {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.metadata dd {
+  margin: 0;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}

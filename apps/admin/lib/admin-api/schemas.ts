@@ -304,6 +304,56 @@ export type AnnouncementPublished = z.infer<typeof announcementPublishedSchema>;
  */
 export const noContentSchema = z.void();
 
+// ------------------------------------------------------------- audit log
+
+/**
+ * One audit entry - `auditLog` in `admin-ops.controller.ts`.
+ *
+ * `actorId` AND `entityId` ARE BOTH NULLABLE, and the column definitions agree.
+ * `actorId` is null "for SYSTEM, and for an actor who could not be identified",
+ * which is a meaningful distinction on this screen: an entry with no actor is
+ * not a defect and must not be rendered as a blank where a name should be.
+ *
+ * `metadata` is NOT NULL in the database and always an object. It carries
+ * structured detail and, by the audit service's own rule, MUST NOT contain a
+ * phone number, an email address, a date of birth or a password hash - the log
+ * is retained pseudonymously after erasure (OD-019), so anything identifying
+ * written there outlives the deletion request meant to remove it. The portal
+ * renders it as data either way, never as markup.
+ */
+export const auditEntrySchema = z.object({
+  id,
+  occurredAt: instant,
+  actorType: z.string().min(1),
+  actorId: id.nullable(),
+  action: z.string().min(1),
+  entityType: z.string().min(1),
+  entityId: id.nullable(),
+  metadata: z.record(z.string(), z.unknown()),
+});
+export type AuditEntry = z.infer<typeof auditEntrySchema>;
+
+/**
+ * `GET /admin/audit-log` - ADMIN-FR-012.
+ *
+ * `total` CARRIES THE SAME DEFECT AS THE MODERATION QUEUE. The repository
+ * computes it as `COUNT(*) OVER ()`, which rides on each row, and falls back to
+ * `Number(r.rows[0]?.total ?? 0)` when there are none - so an offset past the
+ * end returns `{"entries":[],"total":0}`. Measured: `?offset=9999` reports zero
+ * against a log of 1,691 entries.
+ *
+ * On a queue that produced ADMIN-RUNTIME-003, a screen telling a moderator
+ * nothing was waiting while 1,397 cases were open. On an AUDIT LOG the same
+ * zero would say "there is no record of this", which is a worse thing to say
+ * wrongly. Recorded against ADMIN-API-GAP-003, and handled the same way: an
+ * empty result is only evidence of an empty log at offset zero.
+ */
+export const auditLogPageSchema = z.object({
+  entries: z.array(auditEntrySchema),
+  total: z.number().int().nonnegative(),
+});
+export type AuditLogPage = z.infer<typeof auditLogPageSchema>;
+
 // --------------------------------------------------------------- dashboard
 
 /**
