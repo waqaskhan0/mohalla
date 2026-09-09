@@ -51,16 +51,26 @@ const readCode = (relative: string) =>
     .join('\n');
 
 describe('ADMIN-RUNTIME-001 — a dead session must not render a protected page', () => {
-  it('every protected page fetches through the guarded client', () => {
-    // The defect was a page that checked the cookie and then rendered without
-    // asking the API. A protected page has to make at least one guarded call,
-    // because that call is the only thing that can discover the session died.
-    const protectedPages = ['app/dashboard/page.tsx'];
+  it('the shell guards every route in the group, in one place', () => {
+    // The session check moved to the layout in Group 03. One place to get
+    // right beats one per page to forget — and a page added without it would
+    // not look wrong, it would simply render to whoever asked.
+    const layout = read('app/(portal)/layout.tsx');
+    expect(layout).toContain('requireAdminSession');
+  });
 
-    for (const page of protectedPages) {
-      const source = read(page);
-      expect(source, `${page} must require a session`).toContain('requireAdminSession');
-      expect(source, `${page} must ask the API, not just check the cookie`).toContain(
+  it('every page that shows API data fetches through the guarded client', () => {
+    // The defect was a page that checked the cookie and then rendered without
+    // asking the API. Only a call can discover that the session died, so any
+    // page displaying server data has to make one through `guardedRequest`.
+    //
+    // The five routes that display nothing yet are excluded deliberately: they
+    // exist so the sidebar links somewhere real, and they have no data to
+    // fetch. The layout's guard still covers them.
+    const dataPages = ['app/(portal)/dashboard/page.tsx'];
+
+    for (const page of dataPages) {
+      expect(read(page), `${page} must ask the API, not just check the cookie`).toContain(
         'guardedRequest',
       );
     }
