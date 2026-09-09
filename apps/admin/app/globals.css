@@ -1078,3 +1078,10 @@ button[disabled] {
   background: #e8f1ec;
   color: #2f6b46;
 }
+
+/* UX-ADM-006. The verified flag sits beside a name in a heading here rather
+   than in a table cell, so it needs its own vertical rhythm. */
+h1 .flag-verified {
+  vertical-align: middle;
+  font-size: 0.75rem;
+}

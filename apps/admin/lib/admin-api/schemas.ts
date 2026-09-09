@@ -216,6 +216,30 @@ export const userSearchResultSchema = z.object({
 });
 export type UserSearchResult = z.infer<typeof userSearchResultSchema>;
 
+/**
+ * `GET /admin/users/:id/sensitive` — PRIV-008 / SEC-022.
+ *
+ * A SEPARATE TYPE FROM THE ACCOUNT VIEW, deliberately, and the API's own
+ * comment gives the reason: "so the two cannot be fetched by accident
+ * together. The ordinary account view carries no identifier at all, and
+ * reaching this one is a deliberate second call that writes an audit row."
+ *
+ * THE REQUEST IS THE AUDITABLE EVENT. The entry is written BEFORE the read and
+ * in the same transaction, so a read that happened cannot lack a record — and
+ * the entry names the FIELDS, never their values, because "an audit log that
+ * recorded the number to prove somebody looked at the number would be a second,
+ * worse copy of it".
+ *
+ * NO EMAIL. PRIV-008 names "phone number, email or date of birth", and this
+ * route returns two of the three. Recorded as ADMIN-API-GAP-006; the portal
+ * shows what exists and does not imply the third is absent from the account.
+ */
+export const sensitiveUserViewSchema = z.object({
+  phone: z.string().nullable(),
+  dateOfBirth: instant.nullable(),
+});
+export type SensitiveUserView = z.infer<typeof sensitiveUserViewSchema>;
+
 // --------------------------------------------------------------- dashboard
 
 /**
