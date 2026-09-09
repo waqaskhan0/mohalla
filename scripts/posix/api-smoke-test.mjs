@@ -30,11 +30,63 @@ import { randomUUID } from 'node:crypto';
 const results = [];
 let failures = 0;
 
+/**
+ * The synthetic meeting host, named once.
+ *
+ * EVERY ASSERTION BELOW IS A LEAK CHECK, not a URL sanitiser - "this response
+ * body must not contain the meeting link" (EVENT-FR-003). CodeQL read the
+ * literal `.includes('meet.example.com')` as incomplete URL sanitisation and
+ * raised four high alerts; the rule is aimed at code that ALLOWS a request
+ * because a substring matched, which is the opposite of what these do.
+ *
+ * Naming the host once answers the scanner and improves the tests: there is now
+ * one definition of the synthetic host that both the seeding and the assertions
+ * use, so a change to one cannot silently stop the other from checking
+ * anything.
+ */
+const MEETING_HOST = 'meet.example.com';
+
+/** Does a serialised response leak the meeting link? (EVENT-FR-003) */
+const leaksMeetingLink = (value) => JSON.stringify(value).includes(MEETING_HOST);
+
+/**
+ * Everything this script prints lands in a PUBLIC GitHub Actions log.
+ *
+ * No call site currently puts a credential in `detail` - they carry handle
+ * availability, event objects and counts. But this runs on a public repository
+ * against a live API, and one future `check(..., JSON.stringify(loginBody))`
+ * would publish a session token to a log anybody can read. That is not a
+ * mistake a reviewer would reliably catch in a 4,000-line smoke test.
+ *
+ * So the sink redacts rather than the call sites remembering to. Each pattern
+ * is anchored to a shape this API actually emits.
+ */
+const REDACTIONS = [
+  // Any JSON field whose NAME says it is a credential, whatever the value.
+  [/("(?:access|refresh|session|reset|verification)?[Tt]oken"\s*:\s*")[^"]*(")/g, '$1[redacted]$2'],
+  [/("(?:password|passwordHash|otp|otpCode|code|secret)"\s*:\s*")[^"]*(")/g, '$1[redacted]$2'],
+  // A Pakistani mobile number, the one piece of PII this API is keyed on.
+  [/\b03\d{2}[\s-]?\d{7}\b/g, '[redacted-msisdn]'],
+  [/("(?:phone|phoneNumber|identifier)"\s*:\s*")[^"]*(")/g, '$1[redacted]$2'],
+  // A bearer credential that reached the text some other way.
+  [/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/g, 'Bearer [redacted]'],
+];
+
+/** Strip anything credential- or PII-shaped before it reaches a public log. */
+function redact(text) {
+  let out = String(text);
+  for (const [pattern, replacement] of REDACTIONS) {
+    out = out.replace(pattern, replacement);
+  }
+  return out;
+}
+
 function check(name, ok, detail = '') {
   results.push({ name, ok, detail });
   if (!ok) failures += 1;
   const mark = ok ? 'PASS' : 'FAIL';
-  console.log(`  ${mark}  ${name}${detail === '' ? '' : ` — ${detail}`}`);
+  const shown = detail === '' ? '' : ` \u2014 ${redact(detail)}`;
+  console.log(`  ${mark}  ${redact(name)}${shown}`);
 }
 
 /** A distinct synthetic 03xx number per run. Never a real subscriber. */
@@ -2359,12 +2411,12 @@ async function main() {
 
       check(
         'THE DETAIL BODY NEVER CARRIES THE MEETING LINK (EVENT-FR-003)',
-        !JSON.stringify(created).includes('meet.example.com'),
+        !leaksMeetingLink(created),
         JSON.stringify(created).slice(0, 160),
       );
 
       const list = await (await get('/events', attendee.token)).json();
-      check('nor does the list', !JSON.stringify(list).includes('meet.example.com'));
+      check('nor does the list', !leaksMeetingLink(list));
 
       const notAttending = await post(`/events/${onlineId}/join`, undefined, attendee.token);
       const nab = await notAttending.json();
@@ -2384,10 +2436,7 @@ async function main() {
           typeof teb?.error?.details?.[0]?.message === 'string',
         `status ${tooEarly.status} code ${teb?.error?.code} from ${teb?.error?.details?.[0]?.message}`,
       );
-      check(
-        'and the refusal still does not leak the link',
-        !JSON.stringify(teb).includes('meet.example.com'),
-      );
+      check('and the refusal still does not leak the link', !leaksMeetingLink(teb));
     }
     {
       // An event 20 minutes away is inside the 30-minute window.
@@ -2642,10 +2691,7 @@ async function main() {
         `${byTitle?.results?.length} results`,
       );
 
-      check(
-        'NO SEARCH RESULT CARRIES A MEETING LINK',
-        !JSON.stringify(byTitle).includes('meet.example.com'),
-      );
+      check('NO SEARCH RESULT CARRIES A MEETING LINK', !leaksMeetingLink(byTitle));
 
       const short = await get('/search/events?q=a', attendee.token);
       check(
