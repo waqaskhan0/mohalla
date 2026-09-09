@@ -79,9 +79,37 @@ export class MetricsController {
 function presentedMatches(authorization: string | undefined, expected: string): boolean {
   if (authorization === undefined) return false;
 
-  const match = /^Bearer\s+(.+)$/i.exec(authorization.trim());
-  const presented = match?.[1];
-  if (presented === undefined) return false;
+  const trimmed = authorization.trim();
+
+  // PARSED BY HAND, NOT BY `/^Bearer\s+(.+)$/i`.
+  //
+  // In that expression `\s` and `.` both match a space, so the two quantifiers
+  // overlap and the engine has to try every split between them before it can
+  // report failure. `Bearer` + n spaces + a newline is therefore quadratic —
+  // and this runs on the Authorization header of an UNAUTHENTICATED request,
+  // which is the one string an attacker fully controls and can send at the
+  // header-size limit. CodeQL flags it as js/polynomial-redos and is right to.
+  //
+  // The scan below is a single left-to-right pass with no backtracking.
+  const SCHEME = 'bearer';
+  if (trimmed.length <= SCHEME.length) return false;
+  if (trimmed.slice(0, SCHEME.length).toLowerCase() !== SCHEME) return false;
+
+  let at = SCHEME.length;
+  while (at < trimmed.length && (trimmed[at] === ' ' || trimmed[at] === '\t')) {
+    at += 1;
+  }
+
+  // `Bearerabc` is not the Bearer scheme: the separator is required.
+  if (at === SCHEME.length) return false;
+
+  const presented = trimmed.slice(at);
+  if (presented.length === 0) return false;
+
+  // The old `(.+)` could not span a newline and `$` was unanchored by `m`, so a
+  // token containing one never matched. Kept, so this is a rewrite and not a
+  // widening of what counts as a credential.
+  if (presented.includes('\n') || presented.includes('\r')) return false;
 
   const a = Buffer.from(presented, 'utf8');
   const b = Buffer.from(expected, 'utf8');
