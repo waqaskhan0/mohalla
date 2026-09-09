@@ -24,6 +24,7 @@ after Flow A and Flow G were executed and six defects were fixed.
 | ~~MOBILE-BACKEND-GAP-003~~ — `profiles.post_count` never maintained | **FIXED** as MOBILE-BACKEND-FIX-002: `0023_post_count_trigger`, backfilled, five database tests |
 | **RUNTIME-010** — a suspended account's blocked writes explain nothing. The server refuses them (verified), but only the Create tab has an explainer | **IMPLEMENTABLE NOW** |
 | **RUNTIME-011** — the delete-account confirm button sits behind the keyboard, and the screen does not scroll to it | **IMPLEMENTABLE NOW** |
+| **DEP-ADVISORY-001** - two high `multer` denial-of-service advisories fail `npm audit --audit-level=high`, and it is the one red check left on PR #14. Unreachable in this codebase, no upstream release yet, and npm will not apply an override in this environment | **NEEDS AN UPSTREAM RELEASE OR AN OWNER DECISION** - see the section below |
 | ~~RUNTIME-006~~ | **FIXED and verified at Urdu × 130%.** `EmptyFeed` had no `verticalScroll`, so at 130% both action buttons fell off the bottom and a swipe bounced back. Found by §26’s large-font run |
 | ~~RUNTIME-006 (original note)~~ — Home's Urdu empty-state button compressed to ≈28dp with a clipped label | **IMPLEMENTABLE NOW** |
 | **GAP-M-016** · **GAP-M-017** · **GAP-M-018** — interests, post editing, mark-all-read | **IMPLEMENTABLE NOW**, and deliberately not built: each is a Could with no designed screen, and §49 forbids adding one |
@@ -541,6 +542,60 @@ it can never resolve.
 **To close it:** the domain, the release keystore, an `assetlinks.json` naming
 the fingerprint, and `android:autoVerify="true"`. One line in the manifest, and
 three things that are not this repository's to supply.
+
+### DEP-ADVISORY-001 · `multer` advisories fail the dependency gate, and there is no fix to apply
+
+**OPEN, and it is the one red check left on PR #14.** Not a regression from
+any change on this branch: the advisories were published upstream between a
+green run at 05:35 and a red one at 05:52 on 2026-09-09.
+
+**What it is.** Two high-severity denial-of-service advisories against
+`multer` at `<= 2.2.0` — one via crafted multipart field names, one a file
+descriptor leak on aborted uploads. `npm audit` reports seven high entries, but
+they are one package: `@nestjs/platform-express` depends on `multer`, and
+`@nestjs/core`, `@nestjs/swagger`, `@nestjs/testing`, `@nestjs/websockets` and
+`@nestjs/platform-socket.io` are each listed only because they depend on
+something that depends on it.
+
+**It is not reachable in this codebase.** Nothing imports `multer`, and there is
+no `FileInterceptor` or `@UploadedFile` anywhere in `apps/api/src` — media
+upload goes through the presigned upload-slot flow (`UploadSlotResponse`), never
+multipart. The vulnerable code ships in the tree and is never called.
+
+**Why it is not simply fixed:**
+
+| Route | Why not |
+|---|---|
+| Upgrade `multer` | `2.3.0` is published and patched, but `@nestjs/platform-express@12.0.1` pins `multer: '2.2.0'` **exactly**, so nothing pulls it in |
+| Upgrade `@nestjs/platform-express` | `12.0.1` **is** the latest; upstream has not released a build that moves off 2.2.0 |
+| `npm audit fix --force` | Its plan is `@nestjs/core@7.5.5` — a **major downgrade of the whole framework**, five majors back. §47 forbids it and so does judgement |
+| An `npm overrides` entry | The correct mechanism, and npm in this environment **will not apply it**. Tried the flat form, the nested `@nestjs/platform-express` form, with the lockfile deleted, with `node_modules/.package-lock.json` cleared, and under the repository's own pinned `npm@11.19.0` via `npx`. In every attempt `multer` stayed at `2.2.0` and — the telling part — `overrides` was **never recorded in the regenerated lockfile at all**, so npm is not reading the field. `package.json` was verified as clean UTF-8 JSON with no BOM, and neither `.npmrc` nor the user config contains anything that would disable overrides |
+| Lower the gate | `npm audit --audit-level=high` is a deliberate, documented policy — "a moderate advisory is reported but does not block a two-person team on every transitive bump; high/critical do". §70 forbids weakening a security check to turn CI green |
+
+**Every attempt was reverted.** `package.json` and `package-lock.json` are as
+committed, and `npm ci` restores `multer@2.2.0` — the tree is exactly the
+reviewed one, not a half-resolved experiment.
+
+**Who can clear it, and how.** Any one of:
+
+1. **Wait for upstream.** A `@nestjs/platform-express` release that moves to
+   `multer@2.3.0` clears all seven entries with a routine bump. Given the
+   advisory is hours old, this is likely days away and is the cleanest answer.
+2. **Land the override from an environment where npm honours it.** The intended
+   change is three lines in the root `package.json` plus the regenerated
+   lockfile. It should be produced on the pinned toolchain — `node@24.20.0` and
+   `npm@>=11.19.0`; this machine has `24.14.1` / `11.11.0`, which is why
+   `engine-strict` had to be bypassed for every command above, and it is a
+   plausible cause of the behaviour even though the pinned npm also failed
+   through `npx`.
+3. **Record a scoped, time-boxed exception** on the grounds that the advisory is
+   unreachable here, with a note to remove it when upstream moves. That is a
+   security-policy decision for the owner and is deliberately not taken in this
+   branch.
+
+**What must not happen:** the downgrade `npm audit fix --force` proposes. It
+would take the API back five major versions of Nest to remove code the
+application never calls.
 
 ### RUNTIME-012 · A required field the server has never sent
 
