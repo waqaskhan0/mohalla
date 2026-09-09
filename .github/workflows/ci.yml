@@ -144,7 +144,15 @@ jobs:
 
       - name: Run migrations
         env:
-          DATABASE_URL: postgres://migration_owner:ci_migration_owner@127.0.0.1:5432/mohalla
+          # MIGRATION_DATABASE_URL, not DATABASE_URL. `node-pg-migrate` used to
+          # fall back to DATABASE_URL, so this step handed it a migration_owner
+          # connection under a name that means runtime_app everywhere else —
+          # and runtime_app has USAGE on `public` but not CREATE, so the
+          # ambiguity was one env var away from a confusing failure. The
+          # migrate scripts now name the variable they need (`-d
+          # MIGRATION_DATABASE_URL`), which is what the two steps below were
+          # already doing.
+          MIGRATION_DATABASE_URL: postgres://migration_owner:ci_migration_owner@127.0.0.1:5432/mohalla
         run: npm run db:migrate
 
       - name: Migration status must be clean
