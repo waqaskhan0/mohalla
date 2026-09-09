@@ -168,7 +168,24 @@ jobs:
         run: npm run test --workspace @mohalla/db
 
       - name: Build the worker (needed to run the queue round-trip)
-        run: npm run build --workspace @mohalla/worker
+        # PACKAGES AND THE API FIRST, not just the worker.
+        #
+        # Two of the worker's jobs reach into the API's COMPILED output —
+        # `notification-drain` and `account-erasure` import
+        # `../../../api/dist/app.module.js` to reuse the Nest container rather
+        # than duplicate wiring — and the worker also imports
+        # `@mohalla/observability`. Neither exists in a fresh checkout, so
+        # building the worker alone fails type resolution with five TS2307s.
+        #
+        # This job never got here before: it was failing at the migrate step
+        # above, which hid the problem. The `Lint, typecheck, build` job passes
+        # because it runs the root `npm run build`, which orders packages
+        # before apps. Same ordering here, narrowed to what the queue
+        # round-trip actually needs.
+        run: |
+          npm run build:packages
+          npm run build --workspace @mohalla/api
+          npm run build --workspace @mohalla/worker
 
       - name: Install the pg-boss schema as migration_owner (DDL — runtime roles cannot)
         env:

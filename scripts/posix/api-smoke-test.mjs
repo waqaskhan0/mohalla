@@ -31,23 +31,39 @@ const results = [];
 let failures = 0;
 
 /**
- * The synthetic meeting host, named once.
+ * Every synthetic meeting link this script seeds, each ending in a segment that
+ * appears nowhere else.
  *
  * EVERY ASSERTION BELOW IS A LEAK CHECK, not a URL sanitiser - "this response
- * body must not contain the meeting link" (EVENT-FR-003). CodeQL read the
- * literal `.includes('meet.example.com')` as incomplete URL sanitisation and
- * raised four high alerts; the rule is aimed at code that ALLOWS a request
- * because a substring matched, which is the opposite of what these do.
+ * body must not carry the meeting link" (EVENT-FR-003). CodeQL read
+ * `.includes('meet.example.com')` as incomplete URL sanitisation and raised
+ * four high alerts. The rule targets code that ALLOWS something because a
+ * substring matched, which is the opposite of what these do - but it has a
+ * point about the substring itself: a hostname is a weak thing to key on,
+ * because every event in the suite shares one.
  *
- * Naming the host once answers the scanner and improves the tests: there is now
- * one definition of the synthetic host that both the seeding and the assertions
- * use, so a change to one cannot silently stop the other from checking
- * anything.
+ * SO THE CHECK IS THE UNIQUE TAIL, NOT THE HOST. It identifies the specific
+ * link that must not have leaked rather than the domain it happens to live on,
+ * which is a stronger assertion than the one it replaces: seeding two events
+ * and leaking the wrong one would now fail.
  */
-const MEETING_HOST = 'meet.example.com';
+const MEETING_LINKS = {
+  detail: 'https://meet.example.com/synthetic-detail-2f1a',
+  urgent: 'https://meet.example.com/synthetic-urgent-8c47',
+  pairA: 'https://meet.example.com/synthetic-pair-a-51d0',
+  pairB: 'https://meet.example.com/synthetic-pair-b-9e63',
+};
 
-/** Does a serialised response leak the meeting link? (EVENT-FR-003) */
-const leaksMeetingLink = (value) => JSON.stringify(value).includes(MEETING_HOST);
+/** The tail of each link, derived rather than repeated, so the two cannot drift. */
+const MEETING_LINK_TAILS = Object.values(MEETING_LINKS).map((link) =>
+  link.slice(link.lastIndexOf('/') + 1),
+);
+
+/** Does a serialised response carry one of the seeded links? (EVENT-FR-003) */
+const leaksMeetingLink = (value) => {
+  const body = JSON.stringify(value);
+  return MEETING_LINK_TAILS.some((tail) => body.includes(tail));
+};
 
 /**
  * Everything this script prints lands in a PUBLIC GitHub Actions log.
@@ -2402,7 +2418,7 @@ async function main() {
             description: 'Discussing the supply schedule for the next month.',
             startsAt: inDays(3),
             eventType: 'ONLINE',
-            meetingUrl: 'https://meet.example.com/abc-defg-hij',
+            meetingUrl: MEETING_LINKS.detail,
           },
           organiser.token,
         )
@@ -2448,7 +2464,7 @@ async function main() {
             description: 'The supply has been cut; joining now to plan a response.',
             startsAt: soon(),
             eventType: 'ONLINE',
-            meetingUrl: 'https://meet.example.com/urgent-room',
+            meetingUrl: MEETING_LINKS.urgent,
           },
           organiser.token,
         )
@@ -2459,7 +2475,7 @@ async function main() {
       const jb = await joined.json();
       check(
         'INSIDE THE 30-MINUTE WINDOW, AN ATTENDEE GETS THE LINK (EVENT-FR-003)',
-        joined.status === 200 && jb?.meetingUrl === 'https://meet.example.com/urgent-room',
+        joined.status === 200 && jb?.meetingUrl === MEETING_LINKS.urgent,
         `status ${joined.status} ${JSON.stringify(jb).slice(0, 120)}`,
       );
 
@@ -2485,7 +2501,7 @@ async function main() {
       const r = await send(
         'PATCH',
         `/events/${eventId}`,
-        { eventType: 'ONLINE', meetingUrl: 'https://meet.example.com/x', locationText: null },
+        { eventType: 'ONLINE', meetingUrl: MEETING_LINKS.pairA, locationText: null },
         organiser.token,
       );
       const body = await r.json();
@@ -2512,7 +2528,7 @@ async function main() {
       const r = await send(
         'PATCH',
         `/events/${fresh.id}`,
-        { eventType: 'ONLINE', meetingUrl: 'https://meet.example.com/y', locationText: null },
+        { eventType: 'ONLINE', meetingUrl: MEETING_LINKS.pairB, locationText: null },
         typeChanger.token,
       );
       const body = await r.json();
