@@ -5,6 +5,7 @@ import { queuePageSchema } from '../../../lib/admin-api/schemas';
 import { messageForCode } from '../../../lib/admin-api/messages';
 import { SeverityIndicator, VisibilityFlag } from '../../../components/severity-indicator';
 import { exactInstant, formatAge } from '../../../lib/format-age';
+import { targetTypeLabel } from '../../../lib/wire-labels';
 
 export const metadata = {
   title: 'Moderation queue · Mohalla Admin',
@@ -156,7 +157,7 @@ export default async function ModerationQueuePage({
                     <td className="numeric" title={exactInstant(item.createdAt)}>
                       {formatAge(item.createdAt)}
                     </td>
-                    <td>{item.targetType}</td>
+                    <td className="capitalise">{targetTypeLabel(item.targetType)}</td>
                     <td>
                       <VisibilityFlag autoHidden={item.autoHidden} />
                     </td>

@@ -71,6 +71,24 @@ export function readLogic(relative: string): string {
 }
 
 /**
+ * The file's text with every run of whitespace collapsed to one space.
+ *
+ * FOR ASSERTIONS ABOUT RENDERED COPY. Prettier reflows JSX text to the print
+ * width, so a sentence in the source is broken at whatever column the
+ * formatter chose. A rule looking for "not a summary of an empty list" failed
+ * on a page that contains exactly that sentence, because the source has a
+ * newline and eleven spaces in the middle of it — and the next reformat would
+ * move the break somewhere else again.
+ *
+ * So a rule about a sentence gets the sentence, not the source's line breaks.
+ * Comments are left in on purpose: this reader is for copy the reader sees, and
+ * `readCode` is the one for rules about what the code does.
+ */
+export function readProse(relative: string): string {
+  return readFile(relative).replace(/\s+/g, ' ');
+}
+
+/**
  * One top-level function's source, bounded by the next one.
  *
  * WHY THIS EXISTS. Slicing with `source.slice(source.indexOf('function X'))`

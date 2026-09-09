@@ -96,6 +96,78 @@ export const queuePageSchema = z.object({
 });
 export type QueuePage = z.infer<typeof queuePageSchema>;
 
+/**
+ * One prior enforcement action against the author — `caseDetail` in
+ * `moderation.controller.ts`.
+ *
+ * WHY THE DETAIL SCREEN CARRIES THIS AT ALL. The API's own description gives
+ * the reason: the history is here "so proportionality can be judged without
+ * navigating away. An administrator deciding whether a first offence warrants
+ * 30 days should not have to open another screen to find out it is the
+ * fourth."
+ */
+export const enforcementHistoryEntrySchema = z.object({
+  id,
+  kind: z.string().min(1),
+  reason: z.string(),
+  expiresAt: instant.nullable(),
+  createdAt: instant,
+});
+export type EnforcementHistoryEntry = z.infer<typeof enforcementHistoryEntrySchema>;
+
+/**
+ * `GET /admin/moderation/cases/:id` — the case, plus what is needed to judge it.
+ *
+ * The queue's case body with two additions, and both are facts for a human to
+ * weigh rather than verdicts:
+ *
+ *   - `repeatOffenderFlag` is BR-037: three admin-confirmed deletions in 30
+ *     days FLAGS the account for a suspension decision. The requirement's very
+ *     next sentence is "it is not auto-suspended", so this is rendered as a
+ *     note beside the history, never as a recommendation.
+ *   - `enforcementHistory` is every prior action against the author, oldest
+ *     first as the API returns it.
+ *
+ * BOTH ARE EMPTY WHEN `targetOwnerId` IS NULL, which is the CONVERSATION case:
+ * a conversation has no single owner, so the API skips both lookups. An empty
+ * history therefore means one of two different things, and the screen has to
+ * say which — "no prior actions" and "the author is not known for this target"
+ * are not the same statement.
+ */
+export const caseDetailSchema = caseSchema.extend({
+  repeatOffenderFlag: z.boolean(),
+  enforcementHistory: z.array(enforcementHistoryEntrySchema),
+});
+export type ModerationCaseDetail = z.infer<typeof caseDetailSchema>;
+
+/**
+ * `GET /admin/moderation/cases/:id/conversation` — MSG-FR-007 / PRIV-009.
+ *
+ * THE ONLY PATH BY WHICH AN ADMINISTRATOR EVER SEES A PRIVATE MESSAGE, and
+ * requesting it WRITES AN AUDIT ENTRY before the read — which is why nothing in
+ * this portal fetches it on page load. See the read-conversation action.
+ *
+ * `readAt` is always null on this route: the API strips receipts because they
+ * "would leak read state into a surface the participants never see". Kept
+ * nullable rather than dropped, so a future change is a visible difference
+ * rather than a silently ignored key.
+ */
+export const conversationExcerptSchema = z.object({
+  messages: z.array(
+    z.object({
+      id,
+      clientMessageId: z.string(),
+      conversationId: id,
+      senderId: id,
+      body: z.string().nullable(),
+      mediaId: id.nullable(),
+      createdAt: instant,
+      readAt: instant.nullable(),
+    }),
+  ),
+});
+export type ConversationExcerpt = z.infer<typeof conversationExcerptSchema>;
+
 // --------------------------------------------------------------- dashboard
 
 /**

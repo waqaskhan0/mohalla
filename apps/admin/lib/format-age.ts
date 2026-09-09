@@ -30,6 +30,16 @@ export function formatAge(iso: string, now: Date = new Date()): string {
   // Saying so is better than "-3h", which reads as a bug in the queue.
   if (seconds < 0) return 'just now';
 
+  return coarse(seconds);
+}
+
+/**
+ * A duration in seconds, in the coarse buckets this file uses everywhere.
+ *
+ * SHARED SO THE TWO CALLERS CANNOT DRIFT. An age of "6d" and an expiry of "6
+ * days" on the same screen would read as two different kinds of measurement.
+ */
+function coarse(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
 
   const minutes = Math.floor(seconds / 60);
@@ -44,6 +54,29 @@ export function formatAge(iso: string, now: Date = new Date()): string {
   // Past a hundred days the exact count stops meaning anything, and a queue
   // item that old is a different conversation from a triage decision.
   return '100d+';
+}
+
+/**
+ * When something ends — or that it already has.
+ *
+ * WHY THIS IS NOT `formatAge`. The enforcement history's `expiresAt` is a
+ * FUTURE instant for a suspension still running, and `formatAge` answers a
+ * future instant with "just now", which on that column would be a plain
+ * falsehood. The first version of the case detail rendered the raw value
+ * instead — a moderator judging proportionality was shown
+ * `2026-09-16T10:16:37.923Z` in a table where every other time was coarse.
+ *
+ * THE TENSE IS THE INFORMATION. "in 6d" is a suspension currently in force;
+ * "ended 3d ago" is one that has lifted. Those lead to different decisions, and
+ * a bare "6d" would not distinguish them — EDGE-028 makes the difference real,
+ * because a suspension lifts automatically with no administrator action.
+ */
+export function formatExpiry(iso: string, now: Date = new Date()): string {
+  const at = Date.parse(iso);
+  if (!Number.isFinite(at)) return 'unknown';
+
+  const seconds = Math.floor((at - now.getTime()) / 1000);
+  return seconds > 0 ? `in ${coarse(seconds)}` : `ended ${coarse(-seconds)} ago`;
 }
 
 /**

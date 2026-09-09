@@ -795,3 +795,222 @@ button[disabled] {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* ---------------------------------------------------------------- UX-ADM-004
+   The queue item detail. Logical properties only, as above.
+
+   THE DECISION ROW IS THE PART THAT MATTERS. Its three buttons share ONE
+   selector, so restore, delete and no-action cannot drift apart visually. §43
+   requires equal weight and no default, and RSK-010 gives the reason -
+   coordinated reporting is used to silence legitimate criticism, and a console
+   that made deletion the easy button would make that worse. There is
+   deliberately no .decision-row button.danger rule to reach for. */
+
+.crumb {
+  margin-block: 0 var(--space-4);
+  font-size: 0.875rem;
+}
+
+.panel {
+  margin-block-start: var(--space-6);
+  padding-block-start: var(--space-6);
+  border-block-start: 1px solid var(--color-border);
+}
+
+.panel h2 {
+  margin-block: 0 var(--space-4);
+  font-size: 1.125rem;
+}
+
+.fact-list {
+  margin: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.fact-grid {
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.fact-list dt {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.fact-list dd {
+  margin: 0;
+  margin-block-start: 0.25rem;
+  overflow-wrap: anywhere;
+}
+
+.notice-info {
+  border-inline-start: 3px solid var(--color-accent);
+  margin-block-start: var(--space-4);
+}
+
+.notice-warn {
+  border-inline-start: 3px solid #9a6a12;
+  margin-block-start: var(--space-4);
+}
+
+.notice-success {
+  border-inline-start: 3px solid #2f6b46;
+  margin-block-start: var(--space-4);
+}
+
+.decision-form {
+  margin-block-start: var(--space-6);
+  padding-block-start: var(--space-6);
+  border-block-start: 1px solid var(--color-border);
+  display: grid;
+  gap: var(--space-4);
+  max-width: 44rem;
+}
+
+.decision-form h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.decision-form > p {
+  margin: 0;
+}
+
+.decision-form textarea {
+  inline-size: 100%;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font: inherit;
+  line-height: var(--line-height-latin);
+  resize: vertical;
+}
+
+.decision-form textarea[aria-invalid='true'] {
+  border-color: #a8332e;
+}
+
+.decision-form textarea[readonly] {
+  background: #f6f4f0;
+  color: var(--color-muted);
+}
+
+.field-note {
+  margin: 0;
+  margin-block-end: var(--space-2);
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+/* Equal weight, no primary, no danger colour. See the note above. */
+.decision-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.decision-row button {
+  flex: 0 0 auto;
+  min-inline-size: 12rem;
+  padding: 0.625rem var(--space-4);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.decision-row button:hover:not(:disabled) {
+  background: #eef4f6;
+}
+
+.decision-row button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.outcome-notes {
+  margin: 0;
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.outcome-notes dt {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.outcome-notes dd {
+  margin: 0;
+  margin-block-start: 0.25rem;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.confirm-delete {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-inline-start: 3px solid var(--color-ink);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.confirm-delete h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.confirm-delete h3:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.confirm-delete p {
+  margin: 0;
+}
+
+/* The audited excerpt (MSG-FR-007). Private correspondence, so it is set apart
+   from the rest of the page rather than blending into it. */
+.message-list {
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-4);
+  max-width: 44rem;
+}
+
+.message-list li {
+  padding: var(--space-2) var(--space-4);
+  border-inline-start: 2px solid var(--color-border);
+}
+
+.message-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: baseline;
+  margin-block-end: 0.25rem;
+}
+
+.message-body {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* The target type reads as a word in a sentence on the detail heading
+   ("Reported post") and as a label in the queue's column, so the shared
+   label function returns lower case and the column capitalises it in CSS
+   rather than the map carrying two spellings of every value. */
+.capitalise {
+  text-transform: capitalize;
+}
