@@ -240,6 +240,26 @@ export const sensitiveUserViewSchema = z.object({
 });
 export type SensitiveUserView = z.infer<typeof sensitiveUserViewSchema>;
 
+/**
+ * The result of an enforcement action - `enforce` in `moderation.controller.ts`.
+ *
+ * `sessionsRevoked` IS THE EVIDENCE FOR BR-035. "All sessions are invalidated"
+ * is a claim; the count is what makes it visible. An administrator told that
+ * two sessions were signed out knows the suspension reached a device somebody
+ * was holding.
+ *
+ * `expiresAt` is null for a ban and for a reinstatement, and an instant for a
+ * suspension - EDGE-028 lifts it with no administrator action, so the portal
+ * shows when rather than implying somebody must do something.
+ */
+export const enforcementResultSchema = z.object({
+  id,
+  kind: z.string().min(1),
+  expiresAt: instant.nullable(),
+  sessionsRevoked: z.number().int().nonnegative(),
+});
+export type EnforcementResult = z.infer<typeof enforcementResultSchema>;
+
 // --------------------------------------------------------------- dashboard
 
 /**

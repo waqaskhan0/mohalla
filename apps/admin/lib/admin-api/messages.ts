@@ -37,6 +37,19 @@ const COPY: Record<string, string> = {
 
   RESOURCE_UNAVAILABLE: 'This is no longer available.',
 
+  // The API refuses enforcement against a deleted account outright, and its
+  // reason is worth carrying into the copy: an action against an account that
+  // is already gone records something nobody can experience, and reinstating it
+  // later would resurrect what that person asked to remove.
+  ACCOUNT_DELETED:
+    'This account has been deleted, so no enforcement action can be taken against it.',
+
+  // ADMIN-FR-010. The refusal STATES the rule rather than being neutral,
+  // because an administrator verifying an individual has made a category error
+  // rather than probed a boundary.
+  NOT_ELIGIBLE_FOR_VERIFICATION:
+    'Only organization accounts can be verified. This is an individual account.',
+
   VALIDATION_FAILED: 'Some of what was entered cannot be accepted. Check the fields marked below.',
 
   RATE_LIMITED: 'Too many requests. Wait a moment and try again.',

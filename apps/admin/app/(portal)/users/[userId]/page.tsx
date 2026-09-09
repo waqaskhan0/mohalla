@@ -5,6 +5,7 @@ import { adminUserViewSchema, type AdminUserView } from '../../../../lib/admin-a
 import { messageForCode } from '../../../../lib/admin-api/messages';
 import { exactInstant, formatAge, formatExpiry } from '../../../../lib/format-age';
 import { accountTypeLabel, userStateLabel } from '../../../../lib/wire-labels';
+import { EnforcementPanel } from './enforcement-panel';
 import { SensitivePanel } from './sensitive-panel';
 
 export const metadata = {
@@ -146,14 +147,11 @@ export default async function AccountPage({ params }: { params: Promise<{ userId
         </p>
       </section>
 
-      <section className="panel" aria-labelledby="enforcement-heading">
-        <h2 id="enforcement-heading">Enforcement</h2>
-        <p className="not-built">
-          Not built yet — suspend, ban and reinstate are implemented in Group 09, each with a
-          mandatory reason recorded in the audit log. The API already refuses every one of them
-          against an administrator account, whether or not this page draws a control.
-        </p>
-      </section>
+      <EnforcementPanel
+        userId={user.userId}
+        state={user.state}
+        suspendedUntil={user.suspendedUntil}
+      />
     </>
   );
 }

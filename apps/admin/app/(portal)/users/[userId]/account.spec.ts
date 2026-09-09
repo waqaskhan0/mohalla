@@ -142,16 +142,21 @@ describe('§28 — an administrator is not reachable, and the UI is not the reas
     expect(copy).toContain('administrator accounts are not reachable through the portal');
   });
 
-  it('offers no enforcement control that the API has not been asked about', () => {
-    // Group 09 adds suspend, ban and reinstate. Until then the section says so
-    // rather than drawing a disabled button, which would imply the control
-    // exists and is merely unavailable to this reader.
+  it('never calls an enforcement route from the page itself', () => {
+    // Group 09 added suspend, ban and reinstate, so the earlier version of
+    // this test — "the page mentions no enforcement route" — became a
+    // description of a placeholder rather than of a rule. The rule that
+    // survives is that the PAGE renders and never acts: every enforcement
+    // route is reached from a server action behind an explicit press, so
+    // rendering an account can never change its state.
     const page = readCode(PAGE);
 
-    expect(page).not.toContain('/suspend');
-    expect(page).not.toContain('/ban');
-    expect(page).not.toContain('/reinstate');
-    expect(readProse(PAGE)).toContain('implemented in Group 09');
+    for (const route of ['/suspend', '/ban', '/reinstate']) {
+      expect(page, `${route} must not be called while rendering`).not.toContain(route);
+    }
+    // It delegates instead, and the panel is where the reason and the
+    // confirmation live.
+    expect(page).toContain('<EnforcementPanel');
   });
 });
 
@@ -189,22 +194,30 @@ describe('the account view itself', () => {
 
 describe('the reveal action', () => {
   it('is the only route to the identifiers and it is the audited one', () => {
-    const actions = readCode(ACTIONS);
-    expect(actions).toContain('/sensitive');
-    expect(actions).toContain('sensitiveUserViewSchema');
+    // SCOPED TO THE FUNCTION, not the file. `actions.ts` also holds Group 09's
+    // enforcement action, so "this file makes one request" stopped being the
+    // rule the moment a second action landed beside it. What must stay true is
+    // that the REVEAL makes one request and reads nothing else — fetching the
+    // account view alongside the identifiers is exactly what the API's two
+    // separate types exist to prevent.
+    const reveal = functionSource(ACTIONS, 'revealIdentifiers');
 
-    // One request, and no second call that might read the account view too —
-    // fetching both together is what the API's separate types exist to
-    // prevent.
-    const calls = actions.match(/guardedRequest\(/g) ?? [];
+    expect(reveal).toContain('/sensitive');
+    expect(reveal).toContain('sensitiveUserViewSchema');
+
+    const calls = reveal.match(/guardedRequest\(/g) ?? [];
     expect(calls).toHaveLength(1);
-    expect(actions).not.toContain('adminUserViewSchema');
+    expect(reveal).not.toContain('adminUserViewSchema');
   });
 
   it('does not log or return the values anywhere but the panel', () => {
-    const actions = readLogic(ACTIONS);
-    expect(actions).not.toContain('console');
-    expect(actions).not.toContain('revalidatePath');
+    // Also scoped to the function. The enforcement action next door DOES
+    // revalidate, and should: it changes the account, so the page must re-read
+    // it. A reveal changes nothing, so it must not.
+    const reveal = functionSource(ACTIONS, 'revealIdentifiers');
+
+    expect(reveal).not.toContain('console');
+    expect(reveal).not.toContain('revalidatePath');
   });
 
   it('is a server action, so no admin credential reaches the browser', () => {

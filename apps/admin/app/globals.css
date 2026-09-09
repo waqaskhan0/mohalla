@@ -1085,3 +1085,31 @@ h1 .flag-verified {
   vertical-align: middle;
   font-size: 0.75rem;
 }
+
+/* Enforcement (ADMIN-FR-006/007/008). The duration choices sit in a real
+   fieldset, so a screen reader announces "Suspend for" before the three
+   options rather than reading three unrelated buttons. */
+.duration-set {
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.duration-set legend {
+  padding-inline: var(--space-2);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.duration-set .decision-row {
+  margin-block-start: var(--space-2);
+}
+
+.duration-set .decision-row button {
+  min-inline-size: 8rem;
+}
+
+.duration-set .field-note {
+  margin-block: var(--space-4) 0;
+}
