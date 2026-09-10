@@ -192,3 +192,34 @@ Retain resolved defects. Close only after regression and runtime retest evidence
   compression is proven); `post_media` row at position 0; the image draws in the
   post on the profile. Zero crashes in logcat.
 - Status: CLOSED locally; CI pending.
+
+## INTEGRATION-008 — a fixture number could land on the fake provider's reserved failure suffix
+
+- Flow: `npm run smoke:api` on a fresh CI database.
+- Symptom: `FAIL  a non-participant reporting it changes nothing about their
+  access — report status 401` on run
+  [34499009443](https://github.com/waqaskhan0/mohalla/actions/runs/34499009443).
+  407 passed, 1 failed. The same suite passed on the previous commit and passes
+  locally, because the trigger is time-dependent.
+- Root cause: `FakeSmsProvider` fails deterministically on the RECIPIENT NUMBER
+  — `0000` permanently, `9999` retryably — which is what makes retry and
+  dead-job behaviour testable without monkey-patching. `syntheticPhone(seed)`
+  derives its number from `Date.now() + offset` and could therefore produce one
+  of those reserved suffixes. That CI run seeded `Date.now() + 21444` into a
+  `9999` number, so `onboard` read no OTP from the outbox, returned an account
+  with no token, and a message-privacy check three lines later failed with an
+  authentication error — a red that pointed at the wrong thing entirely.
+- Owning layer: test fixtures (`scripts/posix/api-smoke-test.mjs`). No product
+  code is implicated; the provider's behaviour is deliberate and correct.
+- Fix: `syntheticPhone` nudges off a reserved suffix (kept a pure function of
+  the seed, so callers that reuse a seed still collide as they intend), and
+  `onboard` now throws if it did not obtain a session — naming the fixture
+  problem where it happens instead of corrupting an unrelated assertion.
+- Regression test: the guard in `onboard` IS the regression test; any future
+  fixture breakage reports itself.
+- Mutation proof: measured against the running backend rather than argued. The
+  reserved number recorded **0** messages in the fake provider's outbox — so
+  `onboard` had no OTP to read, exactly as in CI — while the nudged number
+  recorded a verification code. 200,000 seeds now produce no reserved suffix.
+- Runtime retest: `npm run smoke:api` 415 passed, 0 failed.
+- Status: CLOSED locally; CI pending.

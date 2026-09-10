@@ -107,10 +107,33 @@ function check(name, ok, detail = '') {
 }
 
 /** A distinct synthetic 03xx number per run. Never a real subscriber. */
+/**
+ * The fake SMS provider's RESERVED suffixes.
+ *
+ * `FakeSmsProvider` fails deterministically on the recipient number — `0000`
+ * permanently, `9999` retryably — which is what makes retry and dead-job
+ * behaviour testable without monkey-patching. It also means a general-purpose
+ * fixture number that happens to end in one of them gets no message at all.
+ *
+ * That is not hypothetical: a fresh-database CI run seeded `Date.now() + 21444`
+ * into a `9999` number, so `onboard` read no OTP, produced an account with no
+ * token, and a message-privacy check three lines later failed with
+ * `report status 401` — an authentication error reported against an assertion
+ * about non-participant access, which is the worst kind of red: one that points
+ * at the wrong thing.
+ */
+const RESERVED_FAILURE_SUFFIXES = ['0000', '9999'];
+
 function syntheticPhone(seed) {
   // 0300 is a real prefix, so the SUFFIX is randomised per run and the number
   // is never printed in full by this script.
-  const suffix = String(seed % 10_000_000).padStart(7, '0');
+  let suffix = String(seed % 10_000_000).padStart(7, '0');
+  // Nudged off a reserved suffix rather than re-seeded, so the number stays a
+  // pure function of the seed and callers that reuse a seed still collide the
+  // way they intend to.
+  while (RESERVED_FAILURE_SUFFIXES.some((r) => suffix.endsWith(r))) {
+    suffix = String((Number(suffix) + 1) % 10_000_000).padStart(7, '0');
+  }
   return `+92300${suffix}`;
 }
 
@@ -516,6 +539,17 @@ async function main() {
     await post('/me/profile', { displayName: `Person ${handle}` }, token);
 
     const me = await (await get('/me', token)).json();
+    // LOUD, RATHER THAN RETURNING A BROKEN ACCOUNT. Onboarding here is fixture
+    // setup for whatever check comes next, so a silent failure shows up as that
+    // check failing for a reason it knows nothing about. Throwing names the
+    // real problem at the place it happened.
+    if (token === undefined || me?.userId === undefined) {
+      throw new Error(
+        'onboard() produced no session — the OTP was never recorded, so the ' +
+          'fixture number is unusable and every check built on it would be ' +
+          'reporting an authentication error instead of its own subject',
+      );
+    }
     return { token, userId: me?.userId, handle, phone: number };
   };
 
