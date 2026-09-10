@@ -75,6 +75,11 @@ A separate root typecheck reproduced a stale database tsconfig pointing at an
 empty `src` directory. It now checks the actual database test TypeScript files;
 CI explicitly runs the root typecheck after builds (INTEGRATION-002).
 
+First push: `d27075f`, [Draft PR #16](https://github.com/waqaskhan0/mohalla/pull/16).
+The fresh database CI run exposed INTEGRATION-003 in the existing erasure smoke
+fixture. All other CI jobs passed. Its date calculation is corrected without
+changing the deletion implementation or weakening the two failed assertions.
+
 Success-body parsing is not proof of correct UI behavior or of every omitted
 optional field. Android intentionally supplies defaults for several optional
 fields; both clients ignore additive response fields. Response schemas are not

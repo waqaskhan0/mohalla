@@ -4260,12 +4260,14 @@ async function main() {
       // suite leaves another dry-run account due forever (a dry run completes
       // nothing, by design). Without this the assertion below starts failing
       // once the eleventh run accumulates - a fact about the dev database, not
-      // about the sweep.
+      // about the sweep. Clamp the minimum to now as well: on a fresh database
+      // every request can still be in its grace period, so merely subtracting
+      // one day from the oldest schedule leaves this fixture in the future.
       await db.query(
         `UPDATE deletion_requests AS d
             SET scheduled_erasure_at = oldest.at - interval '1 day',
                 requested_at = oldest.at - interval '31 days'
-           FROM (SELECT coalesce(min(scheduled_erasure_at), now()) AS at
+           FROM (SELECT least(coalesce(min(scheduled_erasure_at), now()), now()) AS at
                    FROM deletion_requests) AS oldest
           WHERE d.user_id = $1`,
         [erasable.userId],

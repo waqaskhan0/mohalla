@@ -20,6 +20,24 @@ Retain resolved defects. Close only after regression and runtime retest evidence
   checks pass, both clients parse freshly generated sanitized responses.
 - Status: CLOSED locally; CI pending.
 
+## INTEGRATION-003 — erasure smoke fixture is not due on a fresh database
+
+- Flow: CI generates client contract examples through the full HTTP smoke suite.
+- Symptom: first Stage 9 CI run fails two day-30 dry-run assertions (404 passed,
+  2 failed, 406 total without the locally configured metrics checks).
+- Root cause: fixture subtracts one day from the earliest deletion schedule.
+  If all schedules are future dates, the shifted account is still not due.
+  Accumulated old local fixtures concealed this pre-existing test defect.
+- Owning layer: synthetic smoke fixture scheduling.
+- Requirement: repeatable integration fixtures on fresh and reused databases.
+- Regression test: a read-only PostgreSQL VALUES query with only future
+  schedules returns false for the original due-date expression and true for
+  the corrected expression. Existing sweep assertions remain unchanged.
+- Fix commit: CI follow-up to the first contract checkpoint.
+- Runtime retest: full real HTTP capture passes all 416 checks and regenerates
+  150 sanitized specimens; fresh-database CI rerun pending.
+- Status: CLOSED locally; CI pending.
+
 ## INTEGRATION-002 — workspace typecheck targets an empty directory
 
 - Flow: root workspace validation before an integration checkpoint.
