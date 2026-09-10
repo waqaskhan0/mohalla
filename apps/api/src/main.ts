@@ -1,12 +1,13 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { SwaggerModule } from '@nestjs/swagger';
 import { writeFileSync } from 'node:fs';
 import { AppModule } from './app.module.js';
 import { configureApp } from './configure-app.js';
 import { loadEnv } from './config/env.js';
 import { StructuredLogger } from './common/logging/structured.logger.js';
+import { createApiDocument } from './openapi.js';
 
 /**
  * API entry point.
@@ -36,17 +37,7 @@ async function bootstrap(): Promise<void> {
   configureApp(app, env, logger);
 
   // ---- OpenAPI ----------------------------------------------------------
-  const doc = SwaggerModule.createDocument(
-    app,
-    new DocumentBuilder()
-      .setTitle('Mohalla API — foundation')
-      .setDescription(
-        'Shehersaaz Community Platform. STAGE 5 FOUNDATION — health endpoints only. ' +
-          'The approved product contract is docs/architecture/contracts/openapi-v1.yaml.',
-      )
-      .setVersion(env.APP_VERSION)
-      .build(),
-  );
+  const doc = createApiDocument(app, env.APP_VERSION);
 
   // Interactive docs in development only. In staging and production the spec is
   // still generated (and written to disk when asked) but not served, because an

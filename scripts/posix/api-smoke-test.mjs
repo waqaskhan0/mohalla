@@ -26,6 +26,7 @@
  * per run, so repeated runs do not collide on the UNIQUE identifier index.
  */
 import { randomUUID } from 'node:crypto';
+import { captureContractResponses, writeContractSpecimens } from './contract-specimens.mjs';
 
 const results = [];
 let failures = 0;
@@ -136,6 +137,11 @@ async function main() {
   await app.listen(0);
   const url = await app.getUrl();
   const base = url.replace('[::1]', '127.0.0.1');
+
+  const contractSamples = [];
+  const fetch = process.env.CONTRACT_OUT
+    ? captureContractResponses(globalThis.fetch, contractSamples)
+    : globalThis.fetch;
 
   const post = async (path, body, token) =>
     fetch(`${base}${path}`, {
@@ -3465,6 +3471,20 @@ async function main() {
     const adminA = await makeAdmin('admin-a');
     const adminB = await makeAdmin('admin-b');
 
+    if (process.env.CONTRACT_OUT) {
+      const search = await get('/admin/users/search?q=Person&limit=20', adminA.token);
+      check('contract capture: Admin user search responds', search.status === 200);
+      const reported = await db.query(
+        "SELECT id FROM moderation_cases WHERE target_type='CONVERSATION' ORDER BY created_at DESC LIMIT 1",
+      );
+      const caseId = reported.rows[0]?.id;
+      check('contract capture: reported conversation fixture exists', Boolean(caseId));
+      if (caseId) {
+        const excerpt = await get(`/admin/moderation/cases/${caseId}/conversation`, adminA.token);
+        check('contract capture: audited conversation endpoint responds', excerpt.status === 200);
+      }
+    }
+
     check(
       'POST /admin/login issues an admin session (AUTH-FR-011)',
       adminA.loginStatus === 200 && typeof adminA.token === 'string',
@@ -4429,6 +4449,12 @@ async function main() {
     );
   }
 
+  if (process.env.CONTRACT_OUT && failures === 0) {
+    const { createApiDocument } = await import('../../apps/api/dist/openapi.js');
+    const openapi = createApiDocument(app);
+    const count = writeContractSpecimens(process.env.CONTRACT_OUT, contractSamples, openapi);
+    console.log(`Contract capture: ${count} sanitized runtime specimens written`);
+  }
   await app.close();
 
   console.log('\n═══════════════════ API SMOKE SUMMARY ═══════════════════');

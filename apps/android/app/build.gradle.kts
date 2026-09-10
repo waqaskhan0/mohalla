@@ -120,6 +120,9 @@ tasks.withType<Test>().configureEach {
         .files(
             fileTree("src/main/res") { include("values*/strings.xml") },
             file("src/main/AndroidManifest.xml"),
+            file(System.getenv("MOHALLA_CONTRACT_FIXTURES")
+                ?: "../../../packages/contracts/fixtures/http-responses.json"),
+            file("src/main/java/org/shehersaaz/mohalla/core/network/MohallaApi.kt"),
         )
         .withPathSensitivity(PathSensitivity.RELATIVE)
         .withPropertyName("localizationGateInputs")

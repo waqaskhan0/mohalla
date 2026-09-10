@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -70,6 +70,7 @@ function gradleRun(androidDir, args) {
 }
 
 const results = [];
+let liveContractPath = null;
 
 /**
  * `blockedExitCode` — a lane that could not RUN, as distinct from one that ran
@@ -131,6 +132,7 @@ run('guard: localization parity', process.execPath, [
   resolve(repoRoot, 'scripts/posix/check-locale-parity.mjs'),
 ]);
 run('guard: secret scan', process.execPath, [resolve(repoRoot, 'scripts/posix/check-secrets.mjs')]);
+run('guard: contract specimen privacy', ...npmRun('run', 'test:contract-safety'));
 
 // ---------------------------------------------------------------- node lanes
 run('format check', ...npmRun('run', 'format:check'));
@@ -159,6 +161,17 @@ run(
   'unit tests (api, worker, validation, admin)',
   ...npmRun('run', 'test', '--workspaces', '--if-present'),
 );
+run(
+  'generated OpenAPI drift',
+  process.execPath,
+  [resolve(repoRoot, 'scripts/posix/generate-openapi.mjs'), '--check'],
+  {
+    env: {
+      ...process.env,
+      DATABASE_URL: process.env.DATABASE_URL ?? 'postgres://unused:unused@127.0.0.1:5432/unused',
+    },
+  },
+);
 
 // ---------------------------------------------------------------- database
 // Only if a database is reachable. Absent one, these are BLOCKED, not failures.
@@ -177,7 +190,33 @@ if (process.env.DATABASE_URL) {
   // applied, the DI graph resolves and the error envelope says what a client
   // will read - none of which a unit test can fail on. Uses the deterministic
   // fake SMS provider, so nothing is delivered to a real recipient.
-  run('api smoke test (real HTTP)', ...npmRun('run', 'smoke:api'), { allowSkip: true });
+  const contractPath = resolve(repoRoot, '.emulator-evidence/live-contract.json');
+  mkdirSync(dirname(contractPath), { recursive: true });
+  rmSync(contractPath, { force: true });
+  run('api smoke test (real HTTP)', ...npmRun('run', 'smoke:api'), {
+    allowSkip: true,
+    env: { ...process.env, CONTRACT_OUT: contractPath },
+  });
+  if (results.at(-1).status === 'PASS' && existsSync(contractPath)) {
+    liveContractPath = contractPath;
+    run(
+      'Admin parses current backend responses',
+      ...npmRun(
+        'exec',
+        '--workspace',
+        '@mohalla/admin',
+        '--',
+        'vitest',
+        'run',
+        'lib/admin-api/live-contract.spec.ts',
+      ),
+      {
+        env: { ...process.env, MOHALLA_CONTRACT_FIXTURES: contractPath },
+      },
+    );
+  } else {
+    blocked('Admin parses current backend responses', 'live API specimen generation did not pass');
+  }
 
   // ---- EPIC-16: the release gate ----------------------------------------
   //
@@ -231,6 +270,7 @@ if (process.env.DATABASE_URL) {
   blocked('migration status', 'DATABASE_URL not set — no database reachable');
   blocked('audit append-only test', 'DATABASE_URL not set — no database reachable');
   blocked('api smoke test (real HTTP)', 'DATABASE_URL not set — no database reachable');
+  blocked('Admin parses current backend responses', 'DATABASE_URL not set — no live specimens');
   blocked(
     'release gate (REL-001…008, tests A/B/E)',
     'DATABASE_URL not set — no database reachable',
@@ -280,7 +320,13 @@ if (existsSync(gradlew) && process.env.ANDROID_HOME && process.env.JAVA_HOME) {
     run(
       'android lint + unit tests',
       ...gradleRun(androidDir, ['test', 'lint', '--no-daemon', '--console=plain']),
-      { cwd: androidDir, allowSkip: true },
+      {
+        cwd: androidDir,
+        allowSkip: true,
+        env: liveContractPath
+          ? { ...process.env, MOHALLA_CONTRACT_FIXTURES: liveContractPath }
+          : process.env,
+      },
     );
   }
 } else {
