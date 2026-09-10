@@ -1,4 +1,5 @@
 import { guardedRequest } from '../../../lib/admin-api/guarded';
+import { apiFailure } from '../../../lib/admin-api/failure';
 import { AdminApiError, AdminApiShapeError } from '../../../lib/admin-api/client';
 import { broadcastAllowanceSchema } from '../../../lib/admin-api/schemas';
 import { messageForCode } from '../../../lib/admin-api/messages';
@@ -40,7 +41,7 @@ export default async function AnnouncementsPage() {
       schema: broadcastAllowanceSchema,
     });
   } catch (error) {
-    return <AllowanceUnavailable error={error} />;
+    return <AllowanceUnavailable error={apiFailure(error)} />;
   }
 
   // Floored rather than trusted: `used` could exceed `limit` if the limit were

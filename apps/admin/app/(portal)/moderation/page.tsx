@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { guardedRequest } from '../../../lib/admin-api/guarded';
+import { apiFailure } from '../../../lib/admin-api/failure';
 import { AdminApiError, AdminApiShapeError } from '../../../lib/admin-api/client';
 import { queuePageSchema } from '../../../lib/admin-api/schemas';
 import { messageForCode } from '../../../lib/admin-api/messages';
@@ -70,7 +71,7 @@ export default async function ModerationQueuePage({
       schema: queuePageSchema,
     });
   } catch (error) {
-    return <QueueUnavailable error={error} />;
+    return <QueueUnavailable error={apiFailure(error)} />;
   }
 
   const shown = page.cases.length;

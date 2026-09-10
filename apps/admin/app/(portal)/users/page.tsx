@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { guardedRequest } from '../../../lib/admin-api/guarded';
+import { apiFailure } from '../../../lib/admin-api/failure';
 import { AdminApiError, AdminApiShapeError } from '../../../lib/admin-api/client';
 import { userSearchResultSchema, type AdminUserView } from '../../../lib/admin-api/schemas';
 import { messageForCode } from '../../../lib/admin-api/messages';
@@ -127,7 +128,7 @@ async function Results({ query }: { query: string }) {
       schema: userSearchResultSchema,
     });
   } catch (error) {
-    return <SearchUnavailable error={error} />;
+    return <SearchUnavailable error={apiFailure(error)} />;
   }
 
   if (result.users.length === 0) {

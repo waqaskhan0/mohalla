@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { guardedRequest } from '../../../lib/admin-api/guarded';
+import { apiFailure } from '../../../lib/admin-api/failure';
 import { AdminApiError, AdminApiShapeError } from '../../../lib/admin-api/client';
 import { auditLogPageSchema, type AuditEntry } from '../../../lib/admin-api/schemas';
 import { messageForCode } from '../../../lib/admin-api/messages';
@@ -96,7 +97,7 @@ export default async function AuditLogPage({
       schema: auditLogPageSchema,
     });
   } catch (error) {
-    return <LogUnavailable error={error} />;
+    return <LogUnavailable error={apiFailure(error)} />;
   }
 
   const shown = page.entries.length;

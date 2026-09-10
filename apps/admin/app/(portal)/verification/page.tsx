@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { guardedRequest } from '../../../lib/admin-api/guarded';
+import { apiFailure } from '../../../lib/admin-api/failure';
 import { AdminApiError, AdminApiShapeError } from '../../../lib/admin-api/client';
 import {
   adminUserViewSchema,
@@ -104,7 +105,7 @@ async function Matches({ query }: { query: string }) {
       schema: userSearchResultSchema,
     });
   } catch (error) {
-    return <Unavailable error={error} what="search" />;
+    return <Unavailable error={apiFailure(error)} what="search" />;
   }
 
   if (result.users.length === 0) {
@@ -195,7 +196,7 @@ async function OneAccount({ userId }: { userId: string }) {
       schema: adminUserViewSchema,
     });
   } catch (error) {
-    return <Unavailable error={error} what="account" />;
+    return <Unavailable error={apiFailure(error)} what="account" />;
   }
 
   return (

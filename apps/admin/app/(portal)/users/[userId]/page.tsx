@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { guardedRequest } from '../../../../lib/admin-api/guarded';
+import { apiFailure } from '../../../../lib/admin-api/failure';
 import { AdminApiError, AdminApiShapeError } from '../../../../lib/admin-api/client';
 import { adminUserViewSchema, type AdminUserView } from '../../../../lib/admin-api/schemas';
 import { messageForCode } from '../../../../lib/admin-api/messages';
@@ -56,7 +57,7 @@ export default async function AccountPage({ params }: { params: Promise<{ userId
       schema: adminUserViewSchema,
     });
   } catch (error) {
-    return <AccountUnavailable userId={userId} error={error} />;
+    return <AccountUnavailable userId={userId} error={apiFailure(error)} />;
   }
 
   return (

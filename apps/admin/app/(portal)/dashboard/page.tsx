@@ -1,4 +1,5 @@
 import { guardedRequest } from '../../../lib/admin-api/guarded';
+import { apiFailure } from '../../../lib/admin-api/failure';
 import { AdminApiError, AdminApiShapeError } from '../../../lib/admin-api/client';
 import { dashboardCountsSchema } from '../../../lib/admin-api/schemas';
 import { messageForCode } from '../../../lib/admin-api/messages';
@@ -42,12 +43,21 @@ export default async function DashboardPage() {
       schema: dashboardCountsSchema,
     });
   } catch (error) {
-    // A 401 never reaches here — `guardedRequest` redirects to sign-in. What
-    // is left is the API being down, refusing, or answering in a shape this
-    // portal cannot read, and §41 wants each of those to be a state rather
-    // than a crashed page. A moderator opening the console during an incident
-    // needs to know whether the tool is broken or the day is quiet.
-    return <DashboardUnavailable error={error} />;
+    // `apiFailure` re-throws anything that is not one of the two API errors.
+    //
+    // THE COMMENT THAT USED TO BE HERE SAID "a 401 never reaches here —
+    // `guardedRequest` redirects to sign-in", and it was wrong in a way worth
+    // recording: `redirect()` works by THROWING, so the 401 did reach here,
+    // this catch swallowed the redirect, and an expired session was shown the
+    // signed-in console with a generic error (ADMIN-RUNTIME-004). The belief
+    // was written down confidently and never tested against an invalid cookie.
+    //
+    // What genuinely remains after narrowing is the API being down, refusing,
+    // or answering in a shape this portal cannot read — and §41 wants each of
+    // those to be a state rather than a crashed page. A moderator opening the
+    // console during an incident needs to know whether the tool is broken or
+    // the day is quiet.
+    return <DashboardUnavailable error={apiFailure(error)} />;
   }
 
   return (

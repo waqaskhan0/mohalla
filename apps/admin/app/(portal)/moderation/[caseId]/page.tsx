@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { guardedRequest } from '../../../../lib/admin-api/guarded';
+import { apiFailure } from '../../../../lib/admin-api/failure';
 import { AdminApiError, AdminApiShapeError } from '../../../../lib/admin-api/client';
 import { caseDetailSchema, type ModerationCaseDetail } from '../../../../lib/admin-api/schemas';
 import { messageForCode } from '../../../../lib/admin-api/messages';
@@ -56,7 +57,7 @@ export default async function QueueItemPage({ params }: { params: Promise<{ case
       schema: caseDetailSchema,
     });
   } catch (error) {
-    return <CaseUnavailable caseId={caseId} error={error} />;
+    return <CaseUnavailable caseId={caseId} error={apiFailure(error)} />;
   }
 
   const isOpen = detail.state === 'OPEN';
