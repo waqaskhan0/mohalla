@@ -1,5 +1,9 @@
 # 20 — Stage 8 Completion Report
 
+Final merge validation and fresh test results are recorded in
+[21-final-merge-validation.md](21-final-merge-validation.md). The report below
+preserves the original Stage 8 completion checkpoint.
+
 **Admin Web Portal** · `feature/stage-8-admin-v1` · PR
 [#15](https://github.com/waqaskhan0/mohalla/pull/15) (Draft, **not merged**).
 
