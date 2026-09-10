@@ -25,7 +25,7 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 | 17 | Organization verification | PASS |
 | 18 | Announcements | PASS (external broadcast BLOCKED_EXTERNAL) |
 | 19 | Account deletion | PASS |
-| 20 | Errors/recovery/security/concurrency | NOT_EXECUTED |
+| 20 | Errors/recovery/security/concurrency | PASS |
 
 ## INT flow results
 
@@ -52,7 +52,14 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 | INT-17 Org verification → Android badge | PASS | [14-enforcement-verification-announcements.md](14-enforcement-verification-announcements.md) |
 | INT-18 Announcement → Android Featured | PASS; external broadcast BLOCKED_EXTERNAL | [14-enforcement-verification-announcements.md](14-enforcement-verification-announcements.md) |
 | INT-19 Account deletion → Restore | PASS | [15-account-deletion.md](15-account-deletion.md) |
-| INT-21, INT-22, INT-23, INT-25 | NOT_EXECUTED | — |
-| INT-21 Session expiry | NOT_EXECUTED | reset-driven revocation is proven; expiry is group 20 |
+| INT-21 Session expiry | PASS | [16-errors-recovery-security.md](16-errors-recovery-security.md) |
+| INT-22 API outage → Recovery | PASS | [16-errors-recovery-security.md](16-errors-recovery-security.md) |
+| INT-23 Media/network retry | PASS | [16-errors-recovery-security.md](16-errors-recovery-security.md) |
+| INT-25 Reported conversation privacy/audited access | PASS | [16-errors-recovery-security.md](16-errors-recovery-security.md) |
 
-Record exact individual results and evidence as each group executes.
+All twenty groups and all twenty-five INT flows are executed. Two results are
+qualified rather than plain passes and the qualification is the point:
+INT-11's Admin **rendered** leg is `BLOCKED_LOCAL` (INTEGRATION-012, an
+environment blocker), and INT-12/INT-13's author notification is
+`BLOCKED_EXTERNAL` on OD-015, an owner decision. Neither is a pass and neither
+is dressed as one.
