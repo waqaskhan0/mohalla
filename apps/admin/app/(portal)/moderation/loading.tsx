@@ -18,6 +18,17 @@ export default function QueueLoading() {
 
       <div className="table-scroll">
         <table className="data-table" aria-busy="true">
+          {/*
+            A CAPTION EVEN ON THE SKELETON. Found by auditing the streamed
+            HTML: this table had `aria-busy` and no caption, so a screen reader
+            reaching it while the queue loaded met an unlabelled table. The
+            real table's caption describes the ordering; this one says only
+            that there is nothing to read yet, which is the true statement at
+            that moment.
+          */}
+          <caption className="table-caption">
+            The moderation queue is loading. No cases are listed yet.
+          </caption>
           <thead>
             <tr>
               <th scope="col">Severity</th>

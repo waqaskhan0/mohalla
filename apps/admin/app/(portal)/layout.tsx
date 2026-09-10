@@ -68,7 +68,17 @@ export default async function PortalLayout({ children }: { children: ReactNode }
 
       <AdminSidebar />
 
-      <main id="admin-main" className="admin-main">
+      {/*
+        `tabIndex={-1}` IS WHAT MAKES THE SKIP LINK WORK.
+        Without it, following `#admin-main` moves the SCROLL POSITION and
+        nothing else: `document.activeElement` stays on `<body>`, so the next
+        Tab carries a keyboard user straight back into the sidebar they just
+        asked to skip. Measured before the fix — the hash changed, the page
+        scrolled, and focus never moved.
+        A landmark is not focusable by default; -1 makes it programmatically
+        focusable without adding it to the tab order.
+      */}
+      <main id="admin-main" className="admin-main" tabIndex={-1}>
         {children}
       </main>
     </div>

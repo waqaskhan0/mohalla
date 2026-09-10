@@ -24,6 +24,17 @@
   --color-ink: #1c2530;
   --color-muted: #566573;
   --color-accent: #145a73;
+  /*
+   * TEXT THAT SITS ON THE ACCENT, as its own token rather than as
+   * `--color-surface`.
+   *
+   * The buttons used to take their label colour from the surface, which is
+   * white in light mode and near-black in dark — so in dark mode a dark-teal
+   * button carried near-black text at a measured contrast of 2.31:1, against
+   * the 4.5 NFR-ACC-005 requires. The accent is a fixed colour; what sits on
+   * it must be too.
+   */
+  --color-on-accent: #ffffff;
   --color-border: #e2ded5;
 
   --space-2: 0.5rem;
@@ -44,6 +55,20 @@
     --color-ink: #eef4f6;
     --color-muted: #9db0b7;
     --color-border: #24383f;
+
+    /*
+     * THE ACCENT HAS TO MOVE WITH THE THEME. The dark block previously
+     * redefined the surface, the ink, the muted text and the border, and left
+     * the accent alone — so a colour picked to be read AGAINST white was still
+     * being used as text ON near-black, and as a button background whose label
+     * had flipped dark. Both measured far below AA.
+     *
+     * Lightened here so the same token keeps its two jobs in this theme: it
+     * reads as text on the dark surface, and it reads as a button behind dark
+     * text. Every ratio below was measured in the browser, not estimated.
+     */
+    --color-accent: #7ec8e3;
+    --color-on-accent: #06222c;
   }
 }
 
@@ -354,6 +379,14 @@ button[disabled] {
   background: color-mix(in srgb, var(--color-accent) 12%, transparent);
   color: var(--color-accent);
   font-weight: 650;
+}
+
+/* A focusable landmark must not draw a focus ring when it is reached by the
+   skip link: the ring belongs to controls, and an outline around the whole
+   content column reads as an error. Focus still MOVES — which is the point —
+   it just is not painted. */
+.admin-main:focus {
+  outline: none;
 }
 
 .admin-main {
@@ -1052,7 +1085,7 @@ button[disabled] {
   border: 1px solid var(--color-accent);
   border-radius: var(--radius-md);
   background: var(--color-accent);
-  color: var(--color-surface);
+  color: var(--color-on-accent);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -1295,7 +1328,7 @@ h1 .flag-verified {
   border: 1px solid var(--color-accent);
   border-radius: var(--radius-md);
   background: var(--color-accent);
-  color: var(--color-surface);
+  color: var(--color-on-accent);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
