@@ -17,6 +17,12 @@ import { NextResponse, type NextRequest } from 'next/server';
  * scripts — which is why this has to be middleware rather than a static header:
  * a nonce that is not per-request is not a nonce.
  *
+ * THE FILE IS `proxy.ts`, NOT `middleware.ts`. Next 16 renamed the convention
+ * and the build warns on the old name — "The 'middleware' file convention is
+ * deprecated." A deprecation warning in a build is the kind of thing that
+ * becomes a break at the next upgrade, and this file is load-bearing for the
+ * portal's XSS posture, so it is not somewhere to discover that later.
+ *
  * `connect-src 'self'` IS TIGHT ON PURPOSE, and the architecture is what makes
  * it possible. Every admin API call runs server-side with the credential
  * attached from an httpOnly cookie; no rendered client component fetches
@@ -79,7 +85,7 @@ function policy(nonce: string, isDev: boolean): string {
   ].join('; ');
 }
 
-export function middleware(request: NextRequest): NextResponse {
+export function proxy(request: NextRequest): NextResponse {
   const isDev = process.env.NODE_ENV !== 'production';
 
   // `crypto.randomUUID` rather than `Math.random`: a guessable nonce is not a

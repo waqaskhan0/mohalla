@@ -131,7 +131,10 @@ describe('SEC-025 — the admin credential cannot reach a browser', () => {
 });
 
 describe('the Content-Security-Policy', () => {
-  const middleware = readCode('middleware.ts');
+  // `proxy.ts`, not `middleware.ts`: Next 16 renamed the convention and warns
+  // on the old name. The variable keeps the word `middleware` because that is
+  // what the thing IS — a request-time hook — regardless of the filename.
+  const middleware = readCode('proxy.ts');
 
   it('never allows inline script', () => {
     // A policy with `'unsafe-inline'` in script-src permits exactly the attack
