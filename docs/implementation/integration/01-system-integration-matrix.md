@@ -6,8 +6,8 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 
 | Group | Scope | Status |
 | --- | --- | --- |
-| 1 | Contract audit | IN PROGRESS |
-| 2 | Android authentication | NOT_EXECUTED |
+| 1 | Contract audit | PASS |
+| 2 | Android authentication | PASS |
 | 3 | Admin authentication | NOT_EXECUTED |
 | 4 | Feed/posts | NOT_EXECUTED |
 | 5 | Likes/comments | NOT_EXECUTED |
@@ -27,5 +27,12 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 | 19 | Account deletion | NOT_EXECUTED |
 | 20 | Errors/recovery/security/concurrency | NOT_EXECUTED |
 
-The required INT-01 through INT-25 flows are all NOT_EXECUTED at baseline.
+## INT flow results
+
+| Flow | Result | Evidence |
+| --- | --- | --- |
+| INT-01 Signup → Profile → Feed | PASS | [03-authentication.md](03-authentication.md) |
+| INT-02…INT-20, INT-22…INT-25 | NOT_EXECUTED | — |
+| INT-21 Session expiry | NOT_EXECUTED | reset-driven revocation is proven; expiry is group 20 |
+
 Record exact individual results and evidence as each group executes.

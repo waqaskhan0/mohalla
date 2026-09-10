@@ -1,7 +1,7 @@
 # Group 1 — contract audit
 
 Baseline: `a16d25bc2de4acdf24998d87225ab17a96cdcd90`.
-Local checkpoint validation passed. CI is pending the first Stage 9 push. This
+Local checkpoint validation and CI passed on `dd374b8`. This
 contract checkpoint does not complete any Android-to-Admin end-to-end flow.
 
 ## What was compared
@@ -79,6 +79,12 @@ First push: `d27075f`, [Draft PR #16](https://github.com/waqaskhan0/mohalla/pull
 The fresh database CI run exposed INTEGRATION-003 in the existing erasure smoke
 fixture. All other CI jobs passed. Its date calculation is corrected without
 changing the deletion implementation or weakening the two failed assertions.
+
+The correction passed all 416 local HTTP checks. Fresh-database CI and both
+client contract checks passed in [34452831956](https://github.com/waqaskhan0/mohalla/actions/runs/34452831956).
+Android build/tests passed in [34452831965](https://github.com/waqaskhan0/mohalla/actions/runs/34452831965)
+and CodeQL passed in [34452829009](https://github.com/waqaskhan0/mohalla/actions/runs/34452829009).
+Group 1 is PASS; the next group is Android authentication.
 
 Success-body parsing is not proof of correct UI behavior or of every omitted
 optional field. Android intentionally supplies defaults for several optional

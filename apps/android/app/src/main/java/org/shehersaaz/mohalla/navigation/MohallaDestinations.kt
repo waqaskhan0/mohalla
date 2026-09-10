@@ -99,6 +99,19 @@ object Routes {
     const val REGISTER_PASSWORD = "register/password"
     const val TERMS = "terms"
     const val OTP = "otp"
+    /**
+     * The nested graph the two password-reset steps live in.
+     *
+     * It exists for the same reason [REGISTER_GRAPH] does, and it was added
+     * because the reason was ignored the first time: the number accepted on
+     * UX-AUTH-010 has to still be there on UX-AUTH-011, and two destination
+     * scoped ViewModels are two different instances. Without this graph the
+     * second screen showed no masked recipient and `submitReset` returned at
+     * its first line — an enabled Save button that issued no request
+     * (INTEGRATION-004). Never navigated to as a screen.
+     */
+    const val PASSWORD_RESET_GRAPH = "password"
+
     const val FORGOT_PASSWORD = "password/forgot"
     const val RESET_PASSWORD = "password/reset"
     const val RESTORE_ACCOUNT = "account/restore"
