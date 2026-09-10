@@ -1332,6 +1332,16 @@ async function main() {
         view?.likeCount === 1,
         `likeCount ${view?.likeCount}`,
       );
+      // INTEGRATION-006. This response was already fetched and its count
+      // already checked; the FIELD was not, and that is exactly how a post
+      // opened at its own screen came to render an empty heart for somebody
+      // who had liked it. The Android field defaults to `false`, so an omitted
+      // key is not a parse error anywhere - only a wrong picture.
+      check(
+        'AND THE VIEWER LIKE STATE COMES WITH IT (INTEGRATION-006)',
+        view?.viewerHasLiked === true,
+        `viewerHasLiked ${JSON.stringify(view?.viewerHasLiked)}`,
+      );
 
       const un = await send('DELETE', `/posts/${target}/like`, undefined, reader.token);
       check('DELETE unlikes', un.status === 204, `status ${un.status}`);
@@ -1340,6 +1350,14 @@ async function main() {
         'and the count goes back down',
         after?.likeCount === 0,
         `likeCount ${after?.likeCount}`,
+      );
+      // Both directions, because `false` is the value a missing field also
+      // produces - asserting only the `true` case would pass against a
+      // response that hard-coded it.
+      check(
+        'and the viewer like state goes back down with it',
+        after?.viewerHasLiked === false,
+        `viewerHasLiked ${JSON.stringify(after?.viewerHasLiked)}`,
       );
 
       const again = await send('DELETE', `/posts/${target}/like`, undefined, reader.token);

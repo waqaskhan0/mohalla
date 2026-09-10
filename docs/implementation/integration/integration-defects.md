@@ -80,3 +80,68 @@ Retain resolved defects. Close only after regression and runtime retest evidence
   password is refused; a real app launch with cleared data logs in on the new
   password and reaches the Home shell.
 - Status: CLOSED locally; CI pending.
+
+## INTEGRATION-005 — FEED-FR-005 has a ViewModel and no gesture
+
+- Flow: Android Home → Following/Discover → pull down to refresh.
+- Symptom: nothing happens. A reader on a populated feed has no way to ask for
+  new posts; a post created in the app does not appear until the screen is
+  rebuilt. Runtime evidence: a drag on the feed produced no HTTP request.
+- Root cause: `HomeScreen` accepts `onRefresh` and never calls it except from
+  the failed-first-page retry button, and nothing renders `state.refreshing`.
+  `FeedViewModel.refresh()` and the state field were both correct.
+- Owning layer: Android UI.
+- Requirement: FEED-FR-005 (Must), recorded `IMPLEMENTED` in
+  `18-mobile-requirement-traceability.md` and covered by `FeedStateTest` — which
+  tests the ViewModel, not the screen.
+- Regression test: `FeedPullToRefreshTest` drives the real `HomeScreen` on a
+  device and asserts a drag on a populated feed reaches `onRefresh`.
+- Mutation proof: pre-fix `HomeScreen` restored → FAIL (`expected:<1> but
+  was:<0>`); fix restored → PASS. Not committed.
+- Fix commit: this Group 4 checkpoint.
+- Runtime retest: a slow drag fires `GET /feed/discover`; pagination still fires
+  its own two further requests.
+- Status: CLOSED locally; CI pending.
+- **Carried**: the identical gap exists on the events, inbox, notifications,
+  saved-posts and user-list screens — all five compute `refreshing` and no
+  screen renders it. Fixed in the group that exercises each, so every fix is
+  verified where it is made. Groups 7, 8, 10 and 19.
+
+## INTEGRATION-006 — a post you had liked showed an empty heart
+
+- Flow: Android feed → like → open the same post at its own screen.
+- Symptom: the detail screen showed "Like" with a count of 1. Tapping it moved
+  the count optimistically to 2 while the database held one row, and nothing
+  reconciled — the client had no reason to think anything had failed. Also on
+  the profile post list.
+- Root cause: `GET /posts/{id}` and `GET /users/{id}/posts` did not return
+  `viewerHasLiked`; every feed endpoint does. The Android field defaults to
+  `false`, so the omission was never a parse error.
+- Owning layer: API response contract (`PostService.render`).
+- Requirement: ENGAGE-FR-001; Stage 9 Group 4 optimistic state reconciling with
+  server truth.
+- Fix: `posts/ports/viewer-likes.port.ts` with an adapter in `engagement`,
+  following `follow-removal.port.ts` — `engagement` already imports `posts`, and
+  this repository inverts the lighter edge rather than using `forwardRef`.
+  `guard:deps` passes.
+- Regression test: two assertions in the API smoke test, at the `/posts/{id}`
+  fetch it already made after liking, one per direction — `false` is also what a
+  missing field produces.
+- Mutation proof: `viewerHasLiked: false` hard-coded, exactly as the field was →
+  API smoke 414 passed / 1 failed; fix restored → 415 passed / 0 failed. Not
+  committed.
+- Fix commit: this Group 4 checkpoint.
+- Runtime retest: `GET /posts/{id}` returns `viewerHasLiked: true`; the detail
+  screen and the profile post list both render "Remove like" with a count of 1,
+  matching the single `likes` row.
+- Status: CLOSED locally; CI pending.
+
+## OPEN QUESTION — detail counts are not block-adjusted
+
+- `/posts/{id}` renders stored counts directly; the feed passes them through
+  `EngagementService.adjustedCounts`, which subtracts engagement from blocked
+  people (ENGAGE-FR-006). The same post may therefore report different counts in
+  a feed and on its own screen.
+- Noticed while fixing INTEGRATION-006. **Not measured**, because no block has
+  been exercised yet. Group 11 creates one and is the honest place to settle it.
+- Status: OPEN — unmeasured, not yet a defect.

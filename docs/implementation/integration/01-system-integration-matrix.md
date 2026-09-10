@@ -9,8 +9,8 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 | 1 | Contract audit | PASS |
 | 2 | Android authentication | PASS |
 | 3 | Admin authentication | PASS |
-| 4 | Feed/posts | NOT_EXECUTED |
-| 5 | Likes/comments | NOT_EXECUTED |
+| 4 | Feed/posts | PASS |
+| 5 | Likes/comments | PASS |
 | 6 | Media | NOT_EXECUTED |
 | 7 | Search/follow/events | NOT_EXECUTED |
 | 8 | Socket.IO/chat/idempotency | NOT_EXECUTED |
@@ -32,7 +32,8 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 | Flow | Result | Evidence |
 | --- | --- | --- |
 | INT-01 Signup → Profile → Feed | PASS | [03-authentication.md](03-authentication.md) |
-| INT-02…INT-20, INT-22…INT-25 | NOT_EXECUTED | — |
+| INT-02 Login → Create Post → Feed → Detail | PASS | [05-feed-posts-engagement.md](05-feed-posts-engagement.md) |
+| INT-03…INT-20, INT-22…INT-25 | NOT_EXECUTED | — |
 | INT-21 Session expiry | NOT_EXECUTED | reset-driven revocation is proven; expiry is group 20 |
 
 Record exact individual results and evidence as each group executes.
