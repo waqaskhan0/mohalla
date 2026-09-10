@@ -319,3 +319,40 @@ unmeasured until Group 11 could create a block. **Measured, confirmed, fixed.**
   the sender's other devices should be echoed on a REST send — and it should be
   answered before a second client type holds a socket, because after that it is
   a user-visible latency bug rather than an asymmetry.
+
+## INTEGRATION-012 — the Admin portal cannot be rendered in this environment
+
+- Flow: any Admin portal page that fetches through `guardedRequest` — the
+  moderation queue and a case detail were the ones measured.
+- Symptom: the page serves its loading skeleton and never resolves.
+  `/moderation` returns 22,177 bytes with exactly **one**
+  `self.__next_f.push` chunk; the resolved segment is never flushed.
+  Reproducible three times running **over plain `curl`**, so it is not the
+  in-app browser's blocked HMR WebSocket, which was the first suspect and is
+  also present.
+- The API is answering: `GET /admin/moderation/queue` and
+  `GET /admin/moderation/cases/{id}` both returned 200 while the page sat on its
+  skeleton. The server-side fetch completes; the render does not.
+- The production path cannot be used as a comparison: `next build` fails
+  locally and deterministically prerendering Next's own `/_global-error` with
+  `TypeError: Cannot read properties of null (reading 'useContext')`.
+- **Not attributed to the source**, on this evidence:
+  - `apps/admin` is unchanged since Stage 8's merge `a16d25b`.
+  - CI builds the portal green on every push, including this commit.
+  - `npm run e2e:admin` passes 12/12 — HTTP and database, not a browser.
+  - The `Admin parses current backend responses` verify lane passes.
+  - **The portal rendered correctly earlier in this same session** (Group 3):
+    sign-in, dashboard with real figures, the queue with 1,510 cases and 20 rows
+    and a working pager, the audit log, sign-out, and an expired session landing
+    on `/login?expired=1`.
+  - A single React 19.2.8 resolves from `apps/admin`; no duplicate copy.
+- Owning layer: local environment (Windows host, Next 16.3.4 dev and build
+  paths). Not a repository defect on the evidence available.
+- Status: **OPEN — environment blocker.** The Admin rendered-UI leg of groups
+  12–18 is reported `BLOCKED_LOCAL` rather than as a pass. Those groups are
+  proven at the API and database levels and through `e2e:admin`, which does
+  exercise the portal's own request and parse paths.
+- Recommendation: re-run the Admin browser legs on a host where `next build`
+  completes, before release validation. Nothing in the repository needs to
+  change for that; the earlier successful browser run in Group 3 is recorded in
+  [04-admin-authentication.md](04-admin-authentication.md).

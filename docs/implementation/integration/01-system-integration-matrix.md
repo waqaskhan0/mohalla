@@ -17,7 +17,7 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 | 9 | Message requests | PASS |
 | 10 | Notifications | PASS |
 | 11 | Blocking | PASS |
-| 12 | User report to Admin | NOT_EXECUTED |
+| 12 | User report to Admin | PASS (API/DB); Admin UI BLOCKED_LOCAL |
 | 13 | Admin restore to Android | NOT_EXECUTED |
 | 14 | Admin delete to Android | NOT_EXECUTED |
 | 15 | Suspension | NOT_EXECUTED |
@@ -42,7 +42,8 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 | INT-08 Message Request Decline/Block privacy | PASS | [09-message-requests.md](09-message-requests.md) |
 | INT-05 Like/Comment → Notification | PASS | [10-notifications.md](10-notifications.md) |
 | INT-20 Block → Privacy → Unblock | PASS | [11-blocking-privacy.md](11-blocking-privacy.md) |
-| INT-11…INT-19, INT-22…INT-25 | NOT_EXECUTED | — |
+| INT-11 Android Report → Admin Queue | PASS at API/DB; Admin UI BLOCKED_LOCAL | [12-report-to-admin.md](12-report-to-admin.md) |
+| INT-12…INT-19, INT-22…INT-25 | NOT_EXECUTED | — |
 | INT-21 Session expiry | NOT_EXECUTED | reset-driven revocation is proven; expiry is group 20 |
 
 Record exact individual results and evidence as each group executes.
