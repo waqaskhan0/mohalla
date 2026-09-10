@@ -29,6 +29,7 @@ import { AdminOpsModule } from './modules/admin/admin-ops/admin-ops.module.js';
 // EPIC-11's cross-tier wiring. See the `providers` block below for why it is
 // here and not inside NotificationsModule.
 import { OutboxDrainService } from './modules/platform/notifications/application/outbox-drain.service.js';
+import { NotificationController } from './modules/platform/notifications/transport/notification.controller.js';
 import { BLOCK_CHECK } from './modules/platform/notifications/ports/block-check.port.js';
 import { ACTOR_NAMES } from './modules/platform/notifications/ports/actor-names.port.js';
 import { BlockCheckAdapter } from './modules/product/safety/adapters/block-check.adapter.js';
@@ -100,6 +101,9 @@ import { ActorNamesAdapter } from './modules/product/profile/adapters/actor-name
    *
    * Nothing else in the application is wired here, and nothing else should be.
    */
+  // Registered here rather than in NotificationsModule: the centre's read
+  // path needs the block predicate, which is product tier. See the class comment.
+  controllers: [NotificationController],
   providers: [
     BlockCheckAdapter,
     { provide: BLOCK_CHECK, useExisting: BlockCheckAdapter },

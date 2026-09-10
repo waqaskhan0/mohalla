@@ -144,15 +144,71 @@ Retain resolved defects. Close only after regression and runtime retest evidence
   matching the single `likes` row.
 - Status: CLOSED locally; CI pending.
 
-## OPEN QUESTION — detail counts are not block-adjusted
+## INTEGRATION-010 — the same post reported different counts on different screens
 
-- `/posts/{id}` renders stored counts directly; the feed passes them through
-  `EngagementService.adjustedCounts`, which subtracts engagement from blocked
-  people (ENGAGE-FR-006). The same post may therefore report different counts in
-  a feed and on its own screen.
-- Noticed while fixing INTEGRATION-006. **Not measured**, because no block has
-  been exercised yet. Group 11 creates one and is the honest place to settle it.
-- Status: OPEN — unmeasured, not yet a defect.
+Raised as an open question while fixing INTEGRATION-006 and deliberately left
+unmeasured until Group 11 could create a block. **Measured, confirmed, fixed.**
+
+- Flow: a blocked person had liked and commented on the reader's post; the
+  reader opens it in the feed, on its own screen, and in their profile list.
+- Measured with one block in place: feed `0/0` (correct), post detail `1/1`,
+  profile post list `1/1`, stored `1/1`. Two things wrong at once — the reader
+  was shown engagement from somebody they had blocked as a number, and the
+  comment THREAD was already filtered, so the screen contradicted itself:
+  "1 comment" above an empty thread.
+- Root cause: `07-database-design.md` lists the read paths the block predicate is
+  applied on and names "post detail" among them. The feed applied it through
+  `EngagementService.adjustedCounts`; `PostService.render` used the stored
+  counters.
+- Owning layer: API (`posts`).
+- Requirement: ENGAGE-FR-006, BR-025, SEC-019.
+- Fix: the arithmetic moved out of `EngagementService` into
+  `engagement/domain/adjusted-counts.ts` so both callers share one
+  implementation — copying it would have reproduced the drift that caused the
+  defect. The `ViewerLikes` port grew `adjustedFor`, and `render` takes the
+  per-viewer projection instead of a bare flag. Stored counters untouched: they
+  remain the platform-wide truth moderation and ranking read.
+- Regression test: API smoke test, engaging BEFORE the block and asserting the
+  stored counters are still 1/1 while the viewer sees 0/0.
+- Mutation proof: stored counters restored → FAIL, `detail 1, stored 1` on both
+  counts. Fix restored → PASS. Not committed.
+- Test-quality note: the first version of the regression engaged AFTER the
+  block, when the blocked person cannot engage at all — so the stored counter
+  was zero and `detail 0` passed against the defect. Rewritten to engage first.
+- Runtime retest: detail 0/0, profile list 0/0, feed 0/0, stored 1/1.
+- Status: CLOSED locally; CI pending.
+
+## INTEGRATION-011 — a block did not reach the notification centre
+
+- Flow: A blocks B after B has already liked and commented on A's post.
+- Measured: **3 of 3** notifications B had caused were still listed to A.
+- Root cause: eligibility rule 2 suppresses the RECORD at write time, which
+  covers everything after a block and nothing before it. The read path applied
+  no block predicate at all. `domain/eligibility.ts` is explicit — "a blocked
+  user's like must not appear in the centre either; BR-025 says neither party
+  sees the other's activity, and a notification centre is a surface like any
+  other" — and `07-database-design.md` names notifications among the read paths
+  the predicate is applied on.
+- Owning layer: API (`notifications` read path).
+- Requirement: BR-025, SEC-019, ADR-014 rule 2.
+- Fix: `BlockCheck` gained `blockCounterparts(userId)` — the set, not a
+  predicate per pair, because a page of twenty would otherwise be twenty round
+  trips. Applied in SQL so a page emptied by blocks still pages correctly, with
+  `actor_id IS NULL` surviving it so system notifications do not vanish. The
+  unread count takes the same exclusion: a badge counting rows the centre will
+  not show is a badge that never clears.
+  `NotificationController` moved to the application root, because the predicate
+  is `safety`'s (PRODUCT) and `notifications` is PLATFORM — the same reason
+  `OutboxDrainService` is already composed there. `guard:deps` stays clean.
+- Regression test: API smoke test, draining the outbox first so the
+  notifications provably existed before the block.
+- Mutation proof: empty exclusion set restored → FAIL, `2 of 2 notifications
+  name them`, `badge 0 vs 2 listed`. Fix restored → PASS. Not committed.
+- Test-quality note: the first version reported "0 of 0", which is vacuous — it
+  never established that there was anything to hide.
+- Runtime retest: 0 of 0 notifications name the blocked person; badge agrees
+  with the list.
+- Status: CLOSED locally; CI pending.
 
 ## INTEGRATION-007 — attaching any image killed the app, twice over
 

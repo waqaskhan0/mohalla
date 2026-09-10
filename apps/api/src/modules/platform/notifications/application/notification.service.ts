@@ -96,6 +96,18 @@ export class NotificationService {
   async list(
     recipientId: string,
     locale: Locale | null,
+    /**
+     * Everyone the reader has a block with, either way — BR-025 on this read
+     * path (INTEGRATION-011).
+     *
+     * A PARAMETER, NOT AN INJECTED PORT. The predicate is `safety`'s, which is
+     * PRODUCT tier, and this module is PLATFORM. `06-backend-modules.md` §3
+     * forbids the upward import, which is why `OutboxDrainService` is composed
+     * at the application root rather than declared here. The same reasoning put
+     * the controller there: it is the piece that needs both, so it is the piece
+     * that moves, and this service stays free of the dependency.
+     */
+    excludeActorIds: readonly string[],
     limit = 20,
     cursor?: { createdAt: Date; id: string },
   ): Promise<{
@@ -103,15 +115,18 @@ export class NotificationService {
     nextCursor: { createdAt: Date; id: string } | null;
   }> {
     const language = locale ?? (await this.repo.languageFor(recipientId)) ?? 'en';
-    const page = await this.repo.list(recipientId, clampLimit(limit), cursor);
+    const page = await this.repo.list(recipientId, clampLimit(limit), cursor, excludeActorIds);
     return {
       notifications: page.notifications.map((n) => this.toView(n, language)),
       nextCursor: page.nextCursor,
     };
   }
 
-  async unreadCount(recipientId: string): Promise<number> {
-    return this.repo.countUnread(recipientId);
+  /** The same exclusion as `list`, and for the same reason it is a parameter. */
+  async unreadCount(recipientId: string, excludeActorIds: readonly string[]): Promise<number> {
+    // A badge counting rows the centre will not show is a badge that never
+    // clears: the reader taps it, sees nothing new, and the number stays.
+    return this.repo.countUnread(recipientId, excludeActorIds);
   }
 
   async markRead(recipientId: string, ids: readonly string[]): Promise<number> {

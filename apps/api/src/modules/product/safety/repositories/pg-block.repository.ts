@@ -50,6 +50,19 @@ export class PgBlockRepository implements BlockRepository {
     return (r.rowCount ?? 0) > 0;
   }
 
+  async blockCounterparts(userId: string, client?: PoolClient): Promise<string[]> {
+    // Both directions in one pass. A block is symmetric in its EFFECT even
+    // though the row is not, which is the whole point of `isBlockedEitherWay`.
+    const r = await this.q<{ other_id: string }>(
+      client,
+      `SELECT blocked_id AS other_id FROM blocks WHERE blocker_id = $1
+       UNION
+       SELECT blocker_id AS other_id FROM blocks WHERE blocked_id = $1`,
+      [userId],
+    );
+    return r.rows.map((row) => row.other_id);
+  }
+
   async listBlockedBy(
     blockerId: string,
     limit: number,

@@ -251,7 +251,7 @@ describe('NotificationService.deliver — the record comes first (ADR-014)', () 
     // their post, THEN the notification is present in the in-app centre."
     expect(outcome.notificationId).not.toBeNull();
     expect(outcome.pushesSent).toBe(0);
-    expect(await ctx.service.unreadCount(recipient)).toBe(1);
+    expect(await ctx.service.unreadCount(recipient, [])).toBe(1);
   });
 
   it('WRITES THE RECORD WHEN THE CATEGORY IS MUTED (NOTIF-FR-007 AC)', async () => {
@@ -263,7 +263,7 @@ describe('NotificationService.deliver — the record comes first (ADR-014)', () 
     expect(outcome.pushesSent).toBe(0);
     expect(ctx.push.all()).toHaveLength(0);
 
-    const centre = await ctx.service.list(recipient, 'en');
+    const centre = await ctx.service.list(recipient, 'en', []);
     expect(centre.notifications).toHaveLength(1);
   });
 
@@ -272,7 +272,7 @@ describe('NotificationService.deliver — the record comes first (ADR-014)', () 
     const outcome = await like({ blockedEitherWay: true });
 
     expect(outcome.notificationId).toBeNull();
-    expect(await ctx.service.unreadCount(recipient)).toBe(0);
+    expect(await ctx.service.unreadCount(recipient, [])).toBe(0);
     expect(ctx.push.all()).toHaveLength(0);
   });
 
@@ -305,8 +305,8 @@ describe('NotificationService.deliver — the record comes first (ADR-014)', () 
 describe('NotificationService — language (LOCALE-FR-006)', () => {
   it('renders the CENTRE in the language the reader asks for', async () => {
     await like();
-    const english = await ctx.service.list(recipient, 'en');
-    const urdu = await ctx.service.list(recipient, 'ur');
+    const english = await ctx.service.list(recipient, 'en', []);
+    const urdu = await ctx.service.list(recipient, 'ur', []);
 
     expect(english.notifications[0]?.text).toBe('Ayesha Khan liked your post');
     expect(urdu.notifications[0]?.text).toContain('Ayesha Khan');
@@ -318,8 +318,8 @@ describe('NotificationService — language (LOCALE-FR-006)', () => {
     // notification, THEN the template text is Urdu and THE OTHER USER'S NAME IS
     // UNALTERED."
     await like({ params: { actor: 'عائشہ خان' } });
-    const urdu = await ctx.service.list(recipient, 'ur');
-    const english = await ctx.service.list(recipient, 'en');
+    const urdu = await ctx.service.list(recipient, 'ur', []);
+    const english = await ctx.service.list(recipient, 'en', []);
 
     expect(urdu.notifications[0]?.text).toContain('عائشہ خان');
     expect(english.notifications[0]?.text).toContain('عائشہ خان');
@@ -330,8 +330,8 @@ describe('NotificationService — language (LOCALE-FR-006)', () => {
     // of pre-rendered text could not do this, which is why the row stores a
     // template key.
     await like();
-    const before = (await ctx.service.list(recipient, 'en')).notifications[0];
-    const after = (await ctx.service.list(recipient, 'ur')).notifications[0];
+    const before = (await ctx.service.list(recipient, 'en', [])).notifications[0];
+    const after = (await ctx.service.list(recipient, 'ur', [])).notifications[0];
     expect(before?.id).toBe(after?.id);
     expect(before?.text).not.toBe(after?.text);
   });
@@ -406,7 +406,7 @@ describe('NotificationService.deliverLike — batching (NOTIF-FR-003)', () => {
     await withDevice();
     for (let i = 0; i < 12; i += 1) await oneLike();
 
-    const centre = await ctx.service.list(recipient, 'en', 50);
+    const centre = await ctx.service.list(recipient, 'en', [], 50);
     // Five individual notifications plus one summary.
     expect(centre.notifications).toHaveLength(6);
 
@@ -428,7 +428,7 @@ describe('NotificationService.deliverLike — batching (NOTIF-FR-003)', () => {
     await withDevice();
     for (let i = 0; i < 6; i += 1) await oneLike();
 
-    const before = (await ctx.service.list(recipient, 'en', 50)).notifications.find(
+    const before = (await ctx.service.list(recipient, 'en', [], 50)).notifications.find(
       (n) => n.batchCount > 1,
     );
     await ctx.service.deliverLike({
@@ -439,7 +439,7 @@ describe('NotificationService.deliverLike — batching (NOTIF-FR-003)', () => {
       deepLink: `/posts/${postId}`,
       blockedEitherWay: true,
     });
-    const after = (await ctx.service.list(recipient, 'en', 50)).notifications.find(
+    const after = (await ctx.service.list(recipient, 'en', [], 50)).notifications.find(
       (n) => n.batchCount > 1,
     );
 
@@ -452,12 +452,12 @@ describe('NotificationService.deliverLike — batching (NOTIF-FR-003)', () => {
     await withDevice();
     for (let i = 0; i < 6; i += 1) await oneLike();
     await ctx.service.markAllRead(recipient);
-    expect(await ctx.service.unreadCount(recipient)).toBe(0);
+    expect(await ctx.service.unreadCount(recipient, [])).toBe(0);
 
     await oneLike();
     // A summary read at 6 that now covers 7 is new information; leaving it read
     // and buried would silently swallow the rest.
-    expect(await ctx.service.unreadCount(recipient)).toBe(1);
+    expect(await ctx.service.unreadCount(recipient, [])).toBe(1);
   });
 });
 
@@ -465,28 +465,28 @@ describe('NotificationService — the centre (NOTIF-FR-002)', () => {
   it('counts unread and marks read', async () => {
     await like();
     await like();
-    expect(await ctx.service.unreadCount(recipient)).toBe(2);
+    expect(await ctx.service.unreadCount(recipient, [])).toBe(2);
 
-    const page = await ctx.service.list(recipient, 'en');
+    const page = await ctx.service.list(recipient, 'en', []);
     const first = page.notifications[0];
     expect(first).toBeDefined();
     await ctx.service.markRead(recipient, [first!.id]);
-    expect(await ctx.service.unreadCount(recipient)).toBe(1);
+    expect(await ctx.service.unreadCount(recipient, [])).toBe(1);
   });
 
   it('cannot mark somebody else’s notification read', async () => {
     await like();
-    const page = await ctx.service.list(recipient, 'en');
+    const page = await ctx.service.list(recipient, 'en', []);
     const stranger = randomUUID();
     expect(await ctx.service.markRead(stranger, [page.notifications[0]!.id])).toBe(0);
-    expect(await ctx.service.unreadCount(recipient)).toBe(1);
+    expect(await ctx.service.unreadCount(recipient, [])).toBe(1);
   });
 
   it('prunes at 90 days', async () => {
     await like();
     ctx.clock.advance(91 * 24 * 60 * 60 * 1000);
     expect(await ctx.service.pruneExpired()).toBe(1);
-    expect(await ctx.service.unreadCount(recipient)).toBe(0);
+    expect(await ctx.service.unreadCount(recipient, [])).toBe(0);
   });
 
   it('reports every preference switch, defaulting to enabled', async () => {

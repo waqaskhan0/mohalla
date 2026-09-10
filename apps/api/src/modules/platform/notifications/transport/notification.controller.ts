@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Inject,
   Param,
   Post,
   Put,
@@ -17,6 +18,7 @@ import { ZodValidationPipe } from '../../../../common/validation/zod-validation.
 import { Principal, RequiresWrite } from '../../identity/transport/session.guard.js';
 import type { AuthenticatedPrincipal } from '../../identity/application/session.service.js';
 import { NotificationService, type NotificationView } from '../application/notification.service.js';
+import { BLOCK_CHECK, type BlockCheck } from '../ports/block-check.port.js';
 import { PREFERENCE_KEYS } from '../domain/notification-category.js';
 
 const listQuery = z
@@ -76,7 +78,22 @@ type DeviceBody = z.infer<typeof deviceBody>;
 @ApiTags('notifications')
 @Controller()
 export class NotificationController {
-  constructor(private readonly notifications: NotificationService) {}
+  /**
+   * COMPOSED AT THE APPLICATION ROOT, not in `NotificationsModule`.
+   *
+   * BR-025 has to reach this read path — `07-database-design.md` lists the
+   * paths the block predicate is applied on and names notifications among them
+   * — and the predicate belongs to `safety`, which is PRODUCT tier while this
+   * module is PLATFORM. `06-backend-modules.md` §3 forbids the upward import,
+   * so this controller is registered where cross-tier wiring is allowed,
+   * exactly as `OutboxDrainService` already is and for exactly the same reason.
+   * `NotificationService` stays free of the dependency and takes the exclusion
+   * set as an argument.
+   */
+  constructor(
+    private readonly notifications: NotificationService,
+    @Inject(BLOCK_CHECK) private readonly blocks: BlockCheck,
+  ) {}
 
   @Get('notifications')
   @ApiOperation({
@@ -100,6 +117,7 @@ export class NotificationController {
     const page = await this.notifications.list(
       principal.userId,
       query.locale ?? null,
+      await this.blocks.blockCounterparts(principal.userId),
       query.limit ?? 20,
       cursor,
     );
@@ -122,7 +140,12 @@ export class NotificationController {
     description: 'One number, read on nearly every screen, so it has its own partial index.',
   })
   async unreadCount(@Principal() principal: AuthenticatedPrincipal) {
-    return { unread: await this.notifications.unreadCount(principal.userId) };
+    return {
+      unread: await this.notifications.unreadCount(
+        principal.userId,
+        await this.blocks.blockCounterparts(principal.userId),
+      ),
+    };
   }
 
   @Post('notifications/read')

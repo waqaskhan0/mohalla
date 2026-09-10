@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { ViewerLikes } from '../../posts/ports/viewer-likes.port.js';
+import { adjustCounts } from '../domain/adjusted-counts.js';
+import type { ViewerEngagement, ViewerLikes } from '../../posts/ports/viewer-likes.port.js';
 import {
   ENGAGEMENT_REPOSITORY,
   type EngagementRepository,
@@ -21,5 +22,17 @@ export class ViewerLikesAdapter implements ViewerLikes {
 
   async likedAmong(viewerId: string, postIds: readonly string[]): Promise<Set<string>> {
     return this.repo.likedPostIds(viewerId, postIds);
+  }
+
+  async adjustedFor(
+    viewerId: string,
+    posts: readonly { id: string; likeCount: number; commentCount: number }[],
+  ): Promise<Map<string, ViewerEngagement>> {
+    const ids = posts.map((p) => p.id);
+    const [hidden, liked] = await Promise.all([
+      this.repo.hiddenEngagementFor(viewerId, ids),
+      this.repo.likedPostIds(viewerId, ids),
+    ]);
+    return adjustCounts(posts, hidden, liked);
   }
 }

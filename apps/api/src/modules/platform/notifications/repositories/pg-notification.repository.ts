@@ -156,6 +156,7 @@ export class PgNotificationRepository implements NotificationRepository {
     recipientId: string,
     limit: number,
     cursor: { createdAt: Date; id: string } | undefined,
+    excludeActorIds: readonly string[],
     client?: PoolClient,
   ): Promise<NotificationPage> {
     const params: unknown[] = [recipientId, limit + 1];
@@ -164,11 +165,18 @@ export class PgNotificationRepository implements NotificationRepository {
       params.push(cursor.createdAt, cursor.id);
       keyset = ' AND (created_at, id) < ($3, $4)';
     }
+    // `actor_id IS NULL` survives: a system notification has no actor to be
+    // blocked and must not vanish because the reader blocked somebody.
+    let blocked = '';
+    if (excludeActorIds.length > 0) {
+      params.push([...excludeActorIds]);
+      blocked = ` AND (actor_id IS NULL OR actor_id <> ALL($${params.length}::uuid[]))`;
+    }
 
     const r = await this.q<NotificationRow>(
       client,
       `SELECT ${NOTIFICATION_COLUMNS} FROM notifications
-        WHERE recipient_id = $1${keyset}
+        WHERE recipient_id = $1${keyset}${blocked}
         ORDER BY created_at DESC, id DESC
         LIMIT $2`,
       params,
@@ -184,11 +192,22 @@ export class PgNotificationRepository implements NotificationRepository {
     };
   }
 
-  async countUnread(recipientId: string, client?: PoolClient): Promise<number> {
+  async countUnread(
+    recipientId: string,
+    excludeActorIds: readonly string[],
+    client?: PoolClient,
+  ): Promise<number> {
+    const params: unknown[] = [recipientId];
+    let blocked = '';
+    if (excludeActorIds.length > 0) {
+      params.push([...excludeActorIds]);
+      blocked = ` AND (actor_id IS NULL OR actor_id <> ALL($${params.length}::uuid[]))`;
+    }
     const r = await this.q<{ n: string }>(
       client,
-      'SELECT COUNT(*) AS n FROM notifications WHERE recipient_id = $1 AND read_at IS NULL',
-      [recipientId],
+      `SELECT COUNT(*) AS n FROM notifications
+        WHERE recipient_id = $1 AND read_at IS NULL${blocked}`,
+      params,
     );
     return Number(r.rows[0]?.n ?? 0);
   }

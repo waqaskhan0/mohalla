@@ -88,15 +88,28 @@ export interface NotificationRepository {
     client: PoolClient,
   ): Promise<NotificationRecord>;
 
-  /** NOTIF-FR-002 — the centre, newest first. */
+  /**
+   * NOTIF-FR-002 — the centre, newest first.
+   *
+   * `excludeActorIds` carries BR-025 into this read path: notifications caused
+   * by somebody the reader has a block with are not shown. Applied in SQL
+   * rather than after the fetch, so a page emptied by blocks still pages
+   * correctly instead of returning short.
+   */
   list(
     recipientId: string,
     limit: number,
     cursor: { createdAt: Date; id: string } | undefined,
+    excludeActorIds: readonly string[],
     client?: PoolClient,
   ): Promise<NotificationPage>;
 
-  countUnread(recipientId: string, client?: PoolClient): Promise<number>;
+  /** The same exclusion, so the badge cannot count what the centre will not show. */
+  countUnread(
+    recipientId: string,
+    excludeActorIds: readonly string[],
+    client?: PoolClient,
+  ): Promise<number>;
 
   markRead(
     recipientId: string,

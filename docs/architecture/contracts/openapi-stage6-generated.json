@@ -1,6 +1,171 @@
 {
   "openapi": "3.0.0",
   "paths": {
+    "/notifications": {
+      "get": {
+        "description": "Newest first, keyset-paginated, rendered in the requested language. Contains everything the user was notified about INCLUDING what was never pushed - a declined push permission or a disabled category costs the buzz, never the record. Notifications whose target was deleted are already absent: they are removed rather than left to navigate nowhere.",
+        "operationId": "NotificationController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "The notification centre (NOTIF-API-001, NOTIF-FR-002).",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/unread-count": {
+      "get": {
+        "description": "One number, read on nearly every screen, so it has its own partial index.",
+        "operationId": "NotificationController_unreadCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "The unread badge (NOTIF-FR-002).",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/read": {
+      "post": {
+        "description": "Scoped to the caller's own notifications in the WHERE clause, so passing somebody else's id changes nothing rather than marking their mail read.",
+        "operationId": "NotificationController_markRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Mark notifications read (NOTIF-API-002).",
+        "tags": [
+          "notifications"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationController_markReadRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/read-all": {
+      "post": {
+        "operationId": "NotificationController_markAllRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Mark everything read (NOTIF-FR-002).",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/preferences": {
+      "get": {
+        "description": "All seven switches, with ENABLED as the default for any the user has never touched - so the settings screen shows the truth rather than an empty list that reads as everything being off. These gate PUSH ONLY.",
+        "operationId": "NotificationController_preferences",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Push preferences (NOTIF-API-003, NOTIF-FR-007, SET-FR-007).",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/notifications/preferences/{key}": {
+      "put": {
+        "description": "Gates PUSH ONLY. The in-app centre keeps recording everything, so disabling a category never loses information - which is the acceptance criterion verbatim.",
+        "operationId": "NotificationController_setPreference",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Enable or disable a push category (NOTIF-FR-007).",
+        "tags": [
+          "notifications"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationController_setPreferenceRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/devices": {
+      "post": {
+        "description": "The LANGUAGE is required, and is the language this device chose at first launch. BR-040 says no default is pre-selected, so at registration the device knows the answer and the server may not - and a push rendered in a language nobody picked is worse than no push. Re-registering a token REASSIGNS it, so a handset that changes hands stops delivering the previous user's notifications.",
+        "operationId": "NotificationController_registerDevice",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Register a device for push (NOTIF-API-004, NOTIF-FR-001).",
+        "tags": [
+          "notifications"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationController_registerDeviceRequest"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Called on logout. Idempotent: a token that was already gone succeeds, because the caller asked for a state and that state holds.",
+        "operationId": "NotificationController_removeDevice",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Unregister a device (ADR-014).",
+        "tags": [
+          "notifications"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationController_removeDeviceRequest"
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "operationId": "HealthController_summary",
@@ -374,171 +539,6 @@
         "tags": [
           "media"
         ]
-      }
-    },
-    "/notifications": {
-      "get": {
-        "description": "Newest first, keyset-paginated, rendered in the requested language. Contains everything the user was notified about INCLUDING what was never pushed - a declined push permission or a disabled category costs the buzz, never the record. Notifications whose target was deleted are already absent: they are removed rather than left to navigate nowhere.",
-        "operationId": "NotificationController_list",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "summary": "The notification centre (NOTIF-API-001, NOTIF-FR-002).",
-        "tags": [
-          "notifications"
-        ]
-      }
-    },
-    "/notifications/unread-count": {
-      "get": {
-        "description": "One number, read on nearly every screen, so it has its own partial index.",
-        "operationId": "NotificationController_unreadCount",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "summary": "The unread badge (NOTIF-FR-002).",
-        "tags": [
-          "notifications"
-        ]
-      }
-    },
-    "/notifications/read": {
-      "post": {
-        "description": "Scoped to the caller's own notifications in the WHERE clause, so passing somebody else's id changes nothing rather than marking their mail read.",
-        "operationId": "NotificationController_markRead",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "summary": "Mark notifications read (NOTIF-API-002).",
-        "tags": [
-          "notifications"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NotificationController_markReadRequest"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/notifications/read-all": {
-      "post": {
-        "operationId": "NotificationController_markAllRead",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "summary": "Mark everything read (NOTIF-FR-002).",
-        "tags": [
-          "notifications"
-        ]
-      }
-    },
-    "/notifications/preferences": {
-      "get": {
-        "description": "All seven switches, with ENABLED as the default for any the user has never touched - so the settings screen shows the truth rather than an empty list that reads as everything being off. These gate PUSH ONLY.",
-        "operationId": "NotificationController_preferences",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "summary": "Push preferences (NOTIF-API-003, NOTIF-FR-007, SET-FR-007).",
-        "tags": [
-          "notifications"
-        ]
-      }
-    },
-    "/notifications/preferences/{key}": {
-      "put": {
-        "description": "Gates PUSH ONLY. The in-app centre keeps recording everything, so disabling a category never loses information - which is the acceptance criterion verbatim.",
-        "operationId": "NotificationController_setPreference",
-        "parameters": [],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "summary": "Enable or disable a push category (NOTIF-FR-007).",
-        "tags": [
-          "notifications"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NotificationController_setPreferenceRequest"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/notifications/devices": {
-      "post": {
-        "description": "The LANGUAGE is required, and is the language this device chose at first launch. BR-040 says no default is pre-selected, so at registration the device knows the answer and the server may not - and a push rendered in a language nobody picked is worse than no push. Re-registering a token REASSIGNS it, so a handset that changes hands stops delivering the previous user's notifications.",
-        "operationId": "NotificationController_registerDevice",
-        "parameters": [],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "summary": "Register a device for push (NOTIF-API-004, NOTIF-FR-001).",
-        "tags": [
-          "notifications"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NotificationController_registerDeviceRequest"
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "description": "Called on logout. Idempotent: a token that was already gone succeeds, because the caller asked for a state and that state holds.",
-        "operationId": "NotificationController_removeDevice",
-        "parameters": [],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "summary": "Unregister a device (ADR-014).",
-        "tags": [
-          "notifications"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NotificationController_removeDeviceRequest"
-              }
-            }
-          }
-        }
       }
     },
     "/username/available": {
@@ -2009,6 +2009,79 @@
   "servers": [],
   "components": {
     "schemas": {
+      "NotificationController_markReadRequest": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "minItems": 1,
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "additionalProperties": false
+      },
+      "NotificationController_setPreferenceRequest": {
+        "type": "object",
+        "properties": {
+          "pushEnabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "pushEnabled"
+        ],
+        "additionalProperties": false
+      },
+      "NotificationController_registerDeviceRequest": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 4096
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "ur"
+            ]
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "ANDROID"
+            ]
+          }
+        },
+        "required": [
+          "token",
+          "language"
+        ],
+        "additionalProperties": false
+      },
+      "NotificationController_removeDeviceRequest": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "additionalProperties": false
+      },
       "AuthController_registerRequest": {
         "type": "object",
         "properties": {
@@ -2226,79 +2299,6 @@
         "required": [
           "kind",
           "declaredBytes"
-        ],
-        "additionalProperties": false
-      },
-      "NotificationController_markReadRequest": {
-        "type": "object",
-        "properties": {
-          "ids": {
-            "minItems": 1,
-            "maxItems": 200,
-            "type": "array",
-            "items": {
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            }
-          }
-        },
-        "required": [
-          "ids"
-        ],
-        "additionalProperties": false
-      },
-      "NotificationController_setPreferenceRequest": {
-        "type": "object",
-        "properties": {
-          "pushEnabled": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "pushEnabled"
-        ],
-        "additionalProperties": false
-      },
-      "NotificationController_registerDeviceRequest": {
-        "type": "object",
-        "properties": {
-          "token": {
-            "type": "string",
-            "minLength": 8,
-            "maxLength": 4096
-          },
-          "language": {
-            "type": "string",
-            "enum": [
-              "en",
-              "ur"
-            ]
-          },
-          "platform": {
-            "type": "string",
-            "enum": [
-              "ANDROID"
-            ]
-          }
-        },
-        "required": [
-          "token",
-          "language"
-        ],
-        "additionalProperties": false
-      },
-      "NotificationController_removeDeviceRequest": {
-        "type": "object",
-        "properties": {
-          "token": {
-            "type": "string",
-            "minLength": 8,
-            "maxLength": 4096
-          }
-        },
-        "required": [
-          "token"
         ],
         "additionalProperties": false
       },

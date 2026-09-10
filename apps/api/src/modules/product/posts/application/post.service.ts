@@ -151,9 +151,16 @@ export class PostService {
         );
 
         this.log('post_created', { postId: created.id, attachments: mediaIds.length });
-        // A post created a moment ago has no likes, least of all the
-        // author's own — no query is worth making to learn that.
-        return { status: 'CREATED', post: this.render(created, author, false, false) } as const;
+        // A post created a moment ago has no likes and no comments, least of
+        // all the author's own — no query is worth making to learn that.
+        return {
+          status: 'CREATED',
+          post: this.render(created, author, false, {
+            likeCount: 0,
+            commentCount: 0,
+            viewerHasLiked: false,
+          }),
+        } as const;
       });
     } catch (e) {
       // ADR-013 step 7 raises when media is not READY, or belongs to someone
@@ -181,11 +188,20 @@ export class PostService {
     const author = await this.authorProjection(viewerId, post.authorId);
     if (author === null) return { status: 'NOT_AVAILABLE' };
 
-    const liked = await this.viewerLikes.likedAmong(viewerId, [post.id]);
+    const adjusted = await this.viewerLikes.adjustedFor(viewerId, [post]);
 
     return {
       status: 'FOUND',
-      post: this.render(post, author, visibility === 'VISIBLE_UNDER_REVIEW', liked.has(post.id)),
+      post: this.render(
+        post,
+        author,
+        visibility === 'VISIBLE_UNDER_REVIEW',
+        adjusted.get(post.id) ?? {
+          likeCount: post.likeCount,
+          commentCount: post.commentCount,
+          viewerHasLiked: false,
+        },
+      ),
     };
   }
 
@@ -213,14 +229,20 @@ export class PostService {
     const page = await this.repo.listByAuthor(viewerId, authorId, clampLimit(limit), cursor);
 
     // ONE QUERY FOR THE PAGE, not one per post — see the port's comment.
-    const liked = await this.viewerLikes.likedAmong(
-      viewerId,
-      page.posts.map((p) => p.id),
-    );
+    const adjusted = await this.viewerLikes.adjustedFor(viewerId, page.posts);
 
     return {
       posts: page.posts.map((p) =>
-        this.render(p, author, p.visibilityState === 'AUTO_HIDDEN', liked.has(p.id)),
+        this.render(
+          p,
+          author,
+          p.visibilityState === 'AUTO_HIDDEN',
+          adjusted.get(p.id) ?? {
+            likeCount: p.likeCount,
+            commentCount: p.commentCount,
+            viewerHasLiked: false,
+          },
+        ),
       ),
       nextCursor:
         page.nextCursor === null
@@ -260,9 +282,14 @@ export class PostService {
     const author = await this.profiles.getOwn(cmd.authorId);
     if (author === null) return { status: 'NOT_AVAILABLE' };
 
-    // Read BEFORE the transaction: an edit does not change who liked the post,
-    // and the author is the viewer here, so this is their own like state.
-    const liked = await this.viewerLikes.likedAmong(cmd.authorId, [cmd.postId]);
+    // Read BEFORE the transaction: an edit changes neither the engagement nor
+    // who is blocked, and the author is the viewer here.
+    const adjusted = await this.viewerLikes.adjustedFor(cmd.authorId, [post]);
+    const engagement = adjusted.get(cmd.postId) ?? {
+      likeCount: post.likeCount,
+      commentCount: post.commentCount,
+      viewerHasLiked: false,
+    };
 
     return this.db.withTransaction(async (client) => {
       const updated = await this.repo.updateBodyAndCategory(
@@ -275,12 +302,7 @@ export class PostService {
       this.log('post_edited', { postId: cmd.postId });
       return {
         status: 'UPDATED',
-        post: this.render(
-          updated,
-          author,
-          updated.visibilityState === 'AUTO_HIDDEN',
-          liked.has(updated.id),
-        ),
+        post: this.render(updated, author, updated.visibilityState === 'AUTO_HIDDEN', engagement),
       } as const;
     });
   }
@@ -370,7 +392,11 @@ export class PostService {
     post: PostRecord,
     author: PublicProfile,
     underReview: boolean,
-    viewerHasLiked: boolean,
+    /**
+     * What THIS viewer should be shown. Absent only where there is nothing to
+     * adjust — a post created a moment ago.
+     */
+    engagement: { likeCount: number; commentCount: number; viewerHasLiked: boolean },
   ): PostView {
     return {
       id: post.id,
@@ -378,9 +404,13 @@ export class PostService {
       body: post.body,
       categorySlug: post.categorySlug,
       mediaIds: post.mediaIds,
-      likeCount: post.likeCount,
-      commentCount: post.commentCount,
-      viewerHasLiked,
+      // ENGAGE-FR-006: the counts the VIEWER should see, not the stored
+      // platform-wide ones. The feed already did this and these paths did not,
+      // so the same post reported different numbers depending on which screen
+      // it was opened from (INTEGRATION-010).
+      likeCount: engagement.likeCount,
+      commentCount: engagement.commentCount,
+      viewerHasLiked: engagement.viewerHasLiked,
       editedAt: post.editedAt?.toISOString() ?? null,
       underReview,
       createdAt: post.createdAt.toISOString(),

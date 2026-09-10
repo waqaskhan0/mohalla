@@ -6,7 +6,6 @@ import { PUSH_SENDER } from './ports/push-sender.port.js';
 import { FakePushSender } from './adapters/fake-push-sender.js';
 import { NotificationService } from './application/notification.service.js';
 import { OutboxService } from './application/outbox.service.js';
-import { NotificationController } from './transport/notification.controller.js';
 
 /**
  * `notifications` — platform tier. EPIC-11, ADR-014.
@@ -24,6 +23,11 @@ import { NotificationController } from './transport/notification.controller.js';
  * `NotificationService` is the delivery pipeline and the in-app centre. It
  * applies ADR-014's eligibility rules in order, in one place.
  *
+ * `NotificationController` is deliberately NOT here either, and for the same
+ * reason: BR-025 has to reach the centre's READ path, the block predicate is
+ * `safety`'s, and a platform module cannot import a product one. It is
+ * registered at the application root beside `OutboxDrainService`.
+ *
  * `OutboxDrainService` — the consumer that joins the two — is deliberately NOT
  * here. It needs the block predicate (`safety`) and display names (`profile`),
  * both PRODUCT tier, and `06-backend-modules.md` §3 forbids platform importing
@@ -39,7 +43,6 @@ import { NotificationController } from './transport/notification.controller.js';
  */
 @Module({
   imports: [IdentityModule],
-  controllers: [NotificationController],
   providers: [
     PgNotificationRepository,
     { provide: NOTIFICATION_REPOSITORY, useExisting: PgNotificationRepository },

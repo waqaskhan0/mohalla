@@ -963,6 +963,104 @@ async function main() {
         alicesBlockList?.blocks?.[0]?.blockedUserId === bob.userId,
         JSON.stringify(alicesBlockList?.blocks),
       );
+
+      // ---- BR-025 on the read paths that were missing it -------------
+      //
+      // A FRESH PAIR, and the engagement happens BEFORE the block. That
+      // ordering is the whole test: once a block exists the blocked person
+      // cannot like or comment at all, so engaging afterwards asserts nothing
+      // — the first version of this check did exactly that and passed against
+      // a stored count of zero.
+      {
+        const author = await onboard(Date.now() + 30111);
+        const engager = await onboard(Date.now() + 30222);
+        const subject = await (
+          await post('/posts', { body: 'counts and notices across a block' }, author.token)
+        ).json();
+
+        await send('PUT', `/posts/${subject.id}/like`, undefined, engager.token);
+        await post(`/posts/${subject.id}/comments`, { body: 'before the block' }, engager.token);
+
+        // The notification for that like has to actually exist before the
+        // block, or the centre check below is vacuous too.
+        const { OutboxDrainService: Drain } =
+          await import('../../apps/api/dist/modules/platform/notifications/application/outbox-drain.service.js');
+        await app.get(Drain, { strict: false }).drain();
+
+        const beforeCentre = await (await get('/notifications', author.token)).json();
+        const beforeFromEngager = (beforeCentre?.notifications ?? []).filter(
+          (n) => (n.actor?.userId ?? n.actorId) === engager.userId,
+        );
+        check(
+          'the engagement and its notifications exist before the block',
+          beforeFromEngager.length > 0,
+          `${beforeFromEngager.length} notification(s) from them`,
+        );
+
+        await send('PUT', `/users/${engager.userId}/block`, undefined, author.token);
+
+        // INTEGRATION-010. `07-database-design.md` lists the read paths the
+        // block predicate is applied on and names "post detail" among them.
+        // The feed did it through `adjustedCounts`; a post's own screen and a
+        // profile's post list rendered the stored counters straight, so the
+        // same post reported different numbers depending on which screen it
+        // was opened from — and what it reported was engagement from somebody
+        // the reader had blocked. The comment THREAD was already filtered, so
+        // the screen contradicted itself: "1 comment" above an empty thread.
+        const { DatabaseService: Db } =
+          await import('../../apps/api/dist/database/database.service.js');
+        const stored = await app
+          .get(Db, { strict: false })
+          .query('SELECT like_count, comment_count FROM posts WHERE id = $1', [subject.id]);
+        const detail = await (await get(`/posts/${subject.id}`, author.token)).json();
+
+        check(
+          "A BLOCKED PERSON'S LIKE IS NOT COUNTED ON THE POST'S OWN SCREEN (ENGAGE-FR-006)",
+          detail?.likeCount === 0,
+          `detail ${detail?.likeCount}, stored ${stored.rows[0]?.like_count}`,
+        );
+        check(
+          'nor their comment',
+          detail?.commentCount === 0,
+          `detail ${detail?.commentCount}, stored ${stored.rows[0]?.comment_count}`,
+        );
+        // The stored counters are the platform-wide truth moderation and
+        // ranking read, and must NOT be rewritten: the adjustment is a
+        // per-viewer projection of them.
+        check(
+          'while the stored counters still hold the platform-wide truth',
+          Number(stored.rows[0]?.like_count) === 1 && Number(stored.rows[0]?.comment_count) === 1,
+          `stored ${stored.rows[0]?.like_count}/${stored.rows[0]?.comment_count}`,
+        );
+
+        const list = await (await get(`/users/${author.userId}/posts`, author.token)).json();
+        const listed = (list?.posts ?? []).find((p) => p.id === subject.id);
+        check(
+          "and not on the author's own post list either",
+          listed?.likeCount === 0 && listed?.commentCount === 0,
+          `list ${listed?.likeCount}/${listed?.commentCount}`,
+        );
+
+        // INTEGRATION-011. Eligibility rule 2 suppresses the RECORD at write
+        // time, which covers everything after a block and nothing before it.
+        // `domain/eligibility.ts` is explicit that "a notification centre is a
+        // surface like any other".
+        const centre = await (await get('/notifications', author.token)).json();
+        const fromEngager = (centre?.notifications ?? []).filter(
+          (n) => (n.actor?.userId ?? n.actorId) === engager.userId,
+        );
+        check(
+          'A BLOCKED PERSON LEAVES THE CENTRE, INCLUDING EVENTS FROM BEFORE THE BLOCK',
+          fromEngager.length === 0,
+          `${fromEngager.length} of ${(centre?.notifications ?? []).length} notifications name them`,
+        );
+        const unread = await (await get('/notifications/unread-count', author.token)).json();
+        check(
+          'and the badge cannot count what the centre will not show',
+          (unread?.unread ?? unread?.count ?? 0) === (centre?.notifications ?? []).length,
+          `badge ${unread?.unread ?? unread?.count} vs ${(centre?.notifications ?? []).length} listed`,
+        );
+      }
     }
 
     // ---- unblocking ---------------------------------------------------

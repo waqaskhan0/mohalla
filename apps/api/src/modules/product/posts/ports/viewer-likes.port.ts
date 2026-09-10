@@ -25,6 +25,13 @@
  */
 export const VIEWER_LIKES = Symbol.for('mohalla.posts.viewerLikes');
 
+/** What a given viewer should be shown for one post. */
+export interface ViewerEngagement {
+  likeCount: number;
+  commentCount: number;
+  viewerHasLiked: boolean;
+}
+
 export interface ViewerLikes {
   /**
    * The subset of `postIds` this viewer has liked.
@@ -34,4 +41,31 @@ export interface ViewerLikes {
    * connection is the thing the feed's own lookup was written to avoid.
    */
   likedAmong(viewerId: string, postIds: readonly string[]): Promise<Set<string>>;
+
+  /**
+   * The counts to DISPLAY to this viewer, and their own like state.
+   *
+   * WHY THE COUNTS COME THROUGH HERE TOO (INTEGRATION-010).
+   *
+   * ENGAGE-FR-006 says a viewer is not shown engagement from people they have
+   * blocked, and `07-database-design.md` lists the read paths the block
+   * predicate is applied on — "feeds, search, profile, **post detail**,
+   * comments, messaging, notifications and events". The feed did it, through
+   * `EngagementService.adjustedCounts`; a post's own screen and a profile's
+   * post list rendered the stored counters straight.
+   *
+   * Measured with one block in place: the feed reported 0 likes and 0
+   * comments, while the same post's own screen reported 1 and 1 — and the only
+   * liker was the person the reader had blocked. Worse, the comment THREAD
+   * correctly showed nothing, so the screen contradicted itself: "1 comment"
+   * above an empty thread.
+   *
+   * The stored counters are deliberately left alone. They remain the
+   * platform-wide truth that moderation and ranking use; this is a per-viewer
+   * projection of them, computed from the same two lookups the feed uses.
+   */
+  adjustedFor(
+    viewerId: string,
+    posts: readonly { id: string; likeCount: number; commentCount: number }[],
+  ): Promise<Map<string, ViewerEngagement>>;
 }
