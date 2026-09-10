@@ -12,7 +12,7 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 | 4 | Feed/posts | PASS |
 | 5 | Likes/comments | PASS |
 | 6 | Media | PASS |
-| 7 | Search/follow/events | NOT_EXECUTED |
+| 7 | Search/follow/events | PASS |
 | 8 | Socket.IO/chat/idempotency | NOT_EXECUTED |
 | 9 | Message requests | NOT_EXECUTED |
 | 10 | Notifications | NOT_EXECUTED |
@@ -34,7 +34,9 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 | INT-01 Signup → Profile → Feed | PASS | [03-authentication.md](03-authentication.md) |
 | INT-02 Login → Create Post → Feed → Detail | PASS | [05-feed-posts-engagement.md](05-feed-posts-engagement.md) |
 | INT-03 Media Upload → Post Render | PASS | [06-media.md](06-media.md) |
-| INT-04…INT-20, INT-22…INT-25 | NOT_EXECUTED | — |
+| INT-04 Follow → state propagation | PASS | [07-search-social-events.md](07-search-social-events.md) |
+| INT-10 Event RSVP | PASS | [07-search-social-events.md](07-search-social-events.md) |
+| INT-05…INT-09, INT-11…INT-20, INT-22…INT-25 | NOT_EXECUTED | — |
 | INT-21 Session expiry | NOT_EXECUTED | reset-driven revocation is proven; expiry is group 20 |
 
 Record exact individual results and evidence as each group executes.

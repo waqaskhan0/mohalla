@@ -102,10 +102,14 @@ Retain resolved defects. Close only after regression and runtime retest evidence
 - Runtime retest: a slow drag fires `GET /feed/discover`; pagination still fires
   its own two further requests.
 - Status: CLOSED locally; CI pending.
-- **Carried**: the identical gap exists on the events, inbox, notifications,
-  saved-posts and user-list screens — all five compute `refreshing` and no
-  screen renders it. Fixed in the group that exercises each, so every fix is
-  verified where it is made. Groups 7, 8, 10 and 19.
+- **Carried**: the identical gap existed on five more screens — events, inbox,
+  notifications, saved posts and user lists — all computing `refreshing` with
+  nothing rendering it. Fixed in the group that exercises each, so every fix is
+  verified where it is made.
+  - Events: FIXED in Group 7. A drag on the events list took `GET /events` from
+    15 requests to 16 on the device.
+  - Inbox (group 8), notifications (group 10), saved posts and user lists
+    (group 19): still OPEN.
 
 ## INTEGRATION-006 — a post you had liked showed an empty heart
 
