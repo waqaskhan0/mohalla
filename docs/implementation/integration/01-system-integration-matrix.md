@@ -8,7 +8,7 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 | --- | --- | --- |
 | 1 | Contract audit | PASS |
 | 2 | Android authentication | PASS |
-| 3 | Admin authentication | NOT_EXECUTED |
+| 3 | Admin authentication | PASS |
 | 4 | Feed/posts | NOT_EXECUTED |
 | 5 | Likes/comments | NOT_EXECUTED |
 | 6 | Media | NOT_EXECUTED |
