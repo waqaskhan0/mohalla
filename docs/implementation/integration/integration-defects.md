@@ -110,8 +110,10 @@ Retain resolved defects. Close only after regression and runtime retest evidence
     15 requests to 16 on the device.
   - Inbox: FIXED in Group 8. A drag on the inbox took `GET /conversations`
     from 3 requests to 4 on the device.
-  - Notifications (group 10), saved posts and user lists (group 19): still
-    OPEN.
+  - Notifications: FIXED in Group 10, and the sharpest of the six — the screen
+    takes `onRetry`, the same call, but reachable only from the failure branch.
+    A drag took `GET /notifications` from 13 requests to 14 on the device.
+  - Saved posts and user lists (group 19): still OPEN.
 
 ## INTEGRATION-006 — a post you had liked showed an empty heart
 

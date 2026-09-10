@@ -15,7 +15,7 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 | 7 | Search/follow/events | PASS |
 | 8 | Socket.IO/chat/idempotency | PASS |
 | 9 | Message requests | PASS |
-| 10 | Notifications | NOT_EXECUTED |
+| 10 | Notifications | PASS |
 | 11 | Blocking | NOT_EXECUTED |
 | 12 | User report to Admin | NOT_EXECUTED |
 | 13 | Admin restore to Android | NOT_EXECUTED |
@@ -40,7 +40,8 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 | INT-09 Reconnect / idempotent message | PASS | [08-realtime-chat.md](08-realtime-chat.md) |
 | INT-07 Message Request Accept | PASS | [09-message-requests.md](09-message-requests.md) |
 | INT-08 Message Request Decline/Block privacy | PASS | [09-message-requests.md](09-message-requests.md) |
-| INT-05, INT-11…INT-20, INT-22…INT-25 | NOT_EXECUTED | — |
+| INT-05 Like/Comment → Notification | PASS | [10-notifications.md](10-notifications.md) |
+| INT-11…INT-20, INT-22…INT-25 | NOT_EXECUTED | — |
 | INT-21 Session expiry | NOT_EXECUTED | reset-driven revocation is proven; expiry is group 20 |
 
 Record exact individual results and evidence as each group executes.
