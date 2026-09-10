@@ -108,8 +108,10 @@ Retain resolved defects. Close only after regression and runtime retest evidence
   verified where it is made.
   - Events: FIXED in Group 7. A drag on the events list took `GET /events` from
     15 requests to 16 on the device.
-  - Inbox (group 8), notifications (group 10), saved posts and user lists
-    (group 19): still OPEN.
+  - Inbox: FIXED in Group 8. A drag on the inbox took `GET /conversations`
+    from 3 requests to 4 on the device.
+  - Notifications (group 10), saved posts and user lists (group 19): still
+    OPEN.
 
 ## INTEGRATION-006 — a post you had liked showed an empty heart
 
@@ -227,3 +229,35 @@ Retain resolved defects. Close only after regression and runtime retest evidence
   recorded a verification code. 200,000 seeds now produce no reserved suffix.
 - Runtime retest: `npm run smoke:api` 415 passed, 0 failed.
 - Status: CLOSED locally; CI pending.
+
+## INTEGRATION-009 — a REST send does not reach a connected socket
+
+- Flow: any client sends over `POST /conversations/{id}/messages` while the
+  recipient holds a live Socket.IO connection.
+- Measured: `POST .../messages` 201, recipient socket `connected: true`, **0
+  `message:new` events in 5 seconds**. A socket-originated send to the same
+  recipient is delivered in under a second.
+- Root cause: the fan-out lives only in `MessagingGateway.onSend`. The REST
+  route calls the same `messaging.send(...)` and never emits `message:new`, so
+  whether a recipient is pushed depends on how the sender happened to send. The
+  same asymmetry applies to the sender's own other devices, which the gateway
+  fans out to explicitly and the REST route does not.
+- Owning layer: API messaging transport.
+- Requirement: `12-messaging-notifications.md` — "REST is the source of truth.
+  Realtime is an accelerator"; ADR-009; NFR-PERF-007.
+- **No current user impact.** The only client is Android, Android holds no
+  socket (it polls `messages/since` about every two seconds, which satisfies
+  NFR-PERF-007), so every participant is polling and every message arrives
+  inside the poll interval. Nothing a user can do today exposes this.
+- Status: **OPEN — deliberately not fixed in Stage 9.** Emitting from the REST
+  path changes realtime contract semantics rather than repairing a defect: it
+  raises whether a REST send should also echo to the sender's other devices, and
+  how that interacts with EDGE-021's "a duplicate renders once". Stage 9 is
+  integration, not feature expansion.
+- Recommendation for the owner: move the fan-out from the gateway handler into
+  the messaging service, behind the same `result.created` guard the gateway
+  already uses, so both transports accelerate identically and the guard stays in
+  one place. That is a small change with one design question attached — whether
+  the sender's other devices should be echoed on a REST send — and it should be
+  answered before a second client type holds a socket, because after that it is
+  a user-visible latency bug rather than an asymmetry.
