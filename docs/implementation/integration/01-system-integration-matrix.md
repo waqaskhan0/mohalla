@@ -18,8 +18,8 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 | 10 | Notifications | PASS |
 | 11 | Blocking | PASS |
 | 12 | User report to Admin | PASS (API/DB); Admin UI BLOCKED_LOCAL |
-| 13 | Admin restore to Android | NOT_EXECUTED |
-| 14 | Admin delete to Android | NOT_EXECUTED |
+| 13 | Admin restore to Android | PASS (author notice BLOCKED_EXTERNAL) |
+| 14 | Admin delete to Android | PASS (author notice BLOCKED_EXTERNAL) |
 | 15 | Suspension | NOT_EXECUTED |
 | 16 | Ban/reinstate | NOT_EXECUTED |
 | 17 | Organization verification | NOT_EXECUTED |
@@ -43,7 +43,10 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 | INT-05 Like/Comment → Notification | PASS | [10-notifications.md](10-notifications.md) |
 | INT-20 Block → Privacy → Unblock | PASS | [11-blocking-privacy.md](11-blocking-privacy.md) |
 | INT-11 Android Report → Admin Queue | PASS at API/DB; Admin UI BLOCKED_LOCAL | [12-report-to-admin.md](12-report-to-admin.md) |
-| INT-12…INT-19, INT-22…INT-25 | NOT_EXECUTED | — |
+| INT-12 Admin Restore → Android restored | PASS; author notice BLOCKED_EXTERNAL | [13-admin-decisions.md](13-admin-decisions.md) |
+| INT-13 Admin Delete → Android removal | PASS; author notice BLOCKED_EXTERNAL | [13-admin-decisions.md](13-admin-decisions.md) |
+| INT-24 Admin collision | PASS | [13-admin-decisions.md](13-admin-decisions.md) |
+| INT-14…INT-19, INT-21…INT-23, INT-25 | NOT_EXECUTED | — |
 | INT-21 Session expiry | NOT_EXECUTED | reset-driven revocation is proven; expiry is group 20 |
 
 Record exact individual results and evidence as each group executes.

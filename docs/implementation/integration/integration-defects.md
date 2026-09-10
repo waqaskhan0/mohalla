@@ -356,3 +356,23 @@ unmeasured until Group 11 could create a block. **Measured, confirmed, fixed.**
   completes, before release validation. Nothing in the repository needs to
   change for that; the earlier successful browser run in Group 3 is recorded in
   [04-admin-authentication.md](04-admin-authentication.md).
+
+## BLOCKED_EXTERNAL — ADMIN-FR-004's author notification waits on OD-015
+
+- Flow: an administrator restores or deletes reported content; the author should
+  be told, with the reason.
+- Measured: **zero notifications** to the author after both decisions.
+- `13-moderation-audit.md` requires it twice: "mandatory reason -> append-only
+  audit -> author notified", and "Delete | Permanent; author notified with the
+  reason (ADMIN-FR-004)".
+- **Not a defect found here.** `enforcement.service.ts` carries it as
+  `TODO(EPIC-14)`: "notify the target with the reason ... The pipeline exists;
+  the enforcement templates and the SAFETY-FR-008 guideline citation wait on
+  OD-015's content."
+- OD-015 is the unpublished Terms and Community Guidelines - the same open
+  decision that keeps `TERMS_VERSION` empty in a release build. SAFETY-FR-008
+  requires the notification to cite the guideline breached, and a citation
+  cannot be written before the guideline exists.
+- Status: **BLOCKED_EXTERNAL** on an owner decision, not on engineering. Every
+  other leg of INT-12 and INT-13 passes. First thing to revisit once OD-015 is
+  resolved.
