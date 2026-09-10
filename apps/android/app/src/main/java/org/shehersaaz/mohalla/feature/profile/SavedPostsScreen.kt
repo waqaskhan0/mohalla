@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,6 +51,7 @@ import org.shehersaaz.mohalla.core.ui.PostCard
  * of the post detail screen, where nothing in the response says whether the post
  * is saved (GAP-M-012) and the toggle's resting position is a guess.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SavedPostsScreen(
     state: SavedPostsUiState,
@@ -85,6 +88,16 @@ fun SavedPostsScreen(
             )
         }
 
+        // The fifth of INTEGRATION-005's six screens. `SavedPostsViewModel`
+        // maintains `refreshing` and nothing rendered it. `onRetry` is the same
+        // call, reachable only from the failure branch - so a reader whose
+        // saved list had loaded once could not ask again after saving
+        // something on another device.
+        PullToRefreshBox(
+            isRefreshing = state.refreshing,
+            onRefresh = onRetry,
+            modifier = Modifier.fillMaxSize(),
+        ) {
         when {
             state.firstPageFailure != null && state.posts.isEmpty() ->
                 SavedFailure(failure = state.firstPageFailure, onRetry = onRetry)
@@ -136,6 +149,7 @@ fun SavedPostsScreen(
                     }
                 }
             }
+        }
         }
     }
 }

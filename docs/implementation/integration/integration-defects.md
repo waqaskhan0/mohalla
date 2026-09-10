@@ -113,7 +113,13 @@ Retain resolved defects. Close only after regression and runtime retest evidence
   - Notifications: FIXED in Group 10, and the sharpest of the six — the screen
     takes `onRetry`, the same call, but reachable only from the failure branch.
     A drag took `GET /notifications` from 13 requests to 14 on the device.
-  - Saved posts and user lists (group 19): still OPEN.
+  - Saved posts and user lists: FIXED in Group 19. Followers took
+    `GET /users/{id}/followers` from 4 requests to 5, and saved posts took its
+    own from 2 to 3, both on the device.
+- **CLOSED - all six screens.** The saved-posts gesture first reported NO
+  against an EMPTY list: `PullToRefreshBox` needs a scrollable child and an
+  empty-state column is not one, so the check was measuring the empty branch
+  rather than the fix. Saving three posts and retrying fired the request.
 
 ## INTEGRATION-006 — a post you had liked showed an empty heart
 

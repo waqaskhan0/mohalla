@@ -24,7 +24,7 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 | 16 | Ban/reinstate | PASS |
 | 17 | Organization verification | PASS |
 | 18 | Announcements | PASS (external broadcast BLOCKED_EXTERNAL) |
-| 19 | Account deletion | NOT_EXECUTED |
+| 19 | Account deletion | PASS |
 | 20 | Errors/recovery/security/concurrency | NOT_EXECUTED |
 
 ## INT flow results
@@ -51,7 +51,8 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 | INT-16 Admin Reinstate → Android restored | PASS | [14-enforcement-verification-announcements.md](14-enforcement-verification-announcements.md) |
 | INT-17 Org verification → Android badge | PASS | [14-enforcement-verification-announcements.md](14-enforcement-verification-announcements.md) |
 | INT-18 Announcement → Android Featured | PASS; external broadcast BLOCKED_EXTERNAL | [14-enforcement-verification-announcements.md](14-enforcement-verification-announcements.md) |
-| INT-19, INT-21, INT-22, INT-23, INT-25 | NOT_EXECUTED | — |
+| INT-19 Account deletion → Restore | PASS | [15-account-deletion.md](15-account-deletion.md) |
+| INT-21, INT-22, INT-23, INT-25 | NOT_EXECUTED | — |
 | INT-21 Session expiry | NOT_EXECUTED | reset-driven revocation is proven; expiry is group 20 |
 
 Record exact individual results and evidence as each group executes.
