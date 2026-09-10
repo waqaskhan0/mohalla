@@ -145,3 +145,50 @@ Retain resolved defects. Close only after regression and runtime retest evidence
 - Noticed while fixing INTEGRATION-006. **Not measured**, because no block has
   been exercised yet. Group 11 creates one and is the honest place to settle it.
 - Status: OPEN — unmeasured, not yet a defect.
+
+## INTEGRATION-007 — attaching any image killed the app, twice over
+
+- Flow: Android composer → Add an image → Photos → Done.
+- Symptom: the process died. Two distinct fatal crashes in the same six lines,
+  the second only visible once the first was fixed. Media had never worked from
+  the app at all.
+- Root cause (a): `media-storage.port.ts` says its two adapters answer
+  differently — S3 presigns an absolute URL, the local adapter returns the API
+  path `/media/upload/{key}` — and the client passed the target straight to
+  `Request.Builder().url()`, which throws `IllegalArgumentException` on a path.
+  Not an `IOException`, so the catch did not hold it.
+  `FATAL EXCEPTION: main ... Expected URL scheme 'http' or 'https'`.
+- Root cause (b): with the URL resolved, `http.newCall(request).execute()` is
+  OkHttp's blocking call and ran inside `viewModelScope`, which is
+  `Dispatchers.Main` -> `NetworkOnMainThreadException`, also not an
+  `IOException`. Every other network path in the app already dispatches to IO
+  (`apiCall`, `ImagePicker.read`, `UrlConnectionHttpClient`); this one place did
+  not, which is why only media crashed.
+- Owning layer: Android (`ImageUploader`). The API contract is correct and
+  deliberate.
+- Requirement: MEDIA-FR-001..005, ADR-013; Stage 9 Group 6.
+- Fix: resolve a relative target against the API base; run the PUT under
+  `withContext(Dispatchers.IO)`; treat an unusable target or an unexpected
+  network-layer throw as `UploadResult.Failed` rather than a crash, re-throwing
+  `CancellationException`.
+- Regression tests: `ImageUploadTargetTest` (JVM, the URL half) and
+  `ImageUploadThreadingTest` (device, the threading half — StrictMode is an
+  Android runtime policy and a JVM test would pass against the defect).
+- Mutation proof: target passed straight through -> `ImageUploadTargetTest` FAIL
+  on 2 of 3 cases with the original `IllegalArgumentException`; PUT back on the
+  caller's thread -> `ImageUploadThreadingTest` FAIL, `Actual: main`. Both PASS
+  with the fixes. Neither mutation committed.
+- Test-quality note: the threading test's FIRST version asserted only "it did
+  not crash" and PASSED against the restored defect, because the widened catch
+  turns a StrictMode violation into the same `Failed` a refused connection
+  produces. It now asserts the thread the request is issued on, through an
+  OkHttp interceptor. Separately, `installDebugAndroidTest` installs only the
+  test APK — a mutation on production code needs `installDebug` too, and the
+  first mutation run reported a false OK because of it.
+- Runtime retest: `POST /media/upload-slot` 201 -> `PUT` 204 ->
+  `POST /media/{id}/complete` 200; `media.state = READY`,
+  `mime_verified = image/jpeg` decided from the bytes, 106,771 bytes, 757x1600
+  (longest edge exactly the section 7 cap, from a 1080x2280 source, so
+  compression is proven); `post_media` row at position 0; the image draws in the
+  post on the profile. Zero crashes in logcat.
+- Status: CLOSED locally; CI pending.

@@ -188,7 +188,7 @@ class AppContainer private constructor(
 
     val authRepository: AuthRepository = AuthRepository(api, sessionRepository)
 
-    val imageUploader: ImageUploader = ImageUploader(api, httpClient)
+    val imageUploader: ImageUploader = ImageUploader(api, httpClient, apiBaseUrl)
 
     val setupRepository: SetupRepository = SetupRepository(api)
 
