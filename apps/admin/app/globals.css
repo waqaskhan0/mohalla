@@ -24,6 +24,17 @@
   --color-ink: #1c2530;
   --color-muted: #566573;
   --color-accent: #145a73;
+  /*
+   * TEXT THAT SITS ON THE ACCENT, as its own token rather than as
+   * `--color-surface`.
+   *
+   * The buttons used to take their label colour from the surface, which is
+   * white in light mode and near-black in dark — so in dark mode a dark-teal
+   * button carried near-black text at a measured contrast of 2.31:1, against
+   * the 4.5 NFR-ACC-005 requires. The accent is a fixed colour; what sits on
+   * it must be too.
+   */
+  --color-on-accent: #ffffff;
   --color-border: #e2ded5;
 
   --space-2: 0.5rem;
@@ -44,6 +55,20 @@
     --color-ink: #eef4f6;
     --color-muted: #9db0b7;
     --color-border: #24383f;
+
+    /*
+     * THE ACCENT HAS TO MOVE WITH THE THEME. The dark block previously
+     * redefined the surface, the ink, the muted text and the border, and left
+     * the accent alone — so a colour picked to be read AGAINST white was still
+     * being used as text ON near-black, and as a button background whose label
+     * had flipped dark. Both measured far below AA.
+     *
+     * Lightened here so the same token keeps its two jobs in this theme: it
+     * reads as text on the dark surface, and it reads as a button behind dark
+     * text. Every ratio below was measured in the browser, not estimated.
+     */
+    --color-accent: #7ec8e3;
+    --color-on-accent: #06222c;
   }
 }
 
@@ -130,4 +155,1208 @@ button {
   /* 48px minimum touch target - the same accessibility floor the Android
      foundation uses, applied here so an admin on a tablet is not underserved. */
   min-block-size: 44px;
+}
+
+/* ------------------------------------------------------------------------ *
+ * UX-ADM-001 — sign-in
+ *
+ * Logical properties only, as everywhere in this file. The portal interface is
+ * English in V1 (ADR-002), but the RTL lint rule applies to the whole codebase
+ * and the Urdu announcement field on UX-ADM-007 will need real bidi support in
+ * this same stylesheet.
+ * ------------------------------------------------------------------------ */
+
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* `min-block-size` rather than `height`, so the card is never taller than the
+     viewport at a large font scale and pushes its own submit button off. */
+  min-block-size: 80vh;
+  max-inline-size: 100%;
+}
+
+.login-card {
+  inline-size: 100%;
+  max-inline-size: 26rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+}
+
+.login-note {
+  margin-block-start: var(--space-6);
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid var(--color-border);
+}
+
+.small {
+  font-size: 0.875rem;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-block-start: var(--space-6);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.field label {
+  font-weight: 600;
+}
+
+.field input {
+  padding-block: var(--space-2);
+  padding-inline: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: inherit;
+  text-align: start;
+  min-block-size: 44px;
+}
+
+.field input[aria-invalid='true'] {
+  /* Not colour alone — the message below carries the meaning (§44, NFR-ACC-005),
+     and the thicker border is a second, non-colour signal. */
+  border-color: #a8332e;
+  border-inline-start-width: 3px;
+}
+
+.field-error {
+  margin: 0;
+  color: #a8332e;
+  font-size: 0.875rem;
+}
+
+.notice {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.notice p {
+  margin: 0;
+}
+
+.notice p + p {
+  margin-block-start: var(--space-2);
+}
+
+.notice-error {
+  border-inline-start: 3px solid #a8332e;
+}
+
+/* A visible focus ring everywhere. Removing the default outline without
+   replacing it is the single most common way a keyboard-only workflow becomes
+   unusable, and §44 requires visible focus on every interactive element. */
+:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--color-accent);
+}
+
+button[disabled] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ------------------------------------------------------------------------ *
+ * The authenticated shell — UI/UX §27
+ *
+ * Sidebar 240px (64px icon rail between 768 and 1024) · top bar 64px ·
+ * content fluid capped at 1200px and LEFT-ALIGNED against the sidebar ·
+ * page capped at 1440px.
+ *
+ * Logical properties throughout, as everywhere in this file. The portal is
+ * English in V1, but the RTL lint rule covers the whole repository and the
+ * Urdu announcement field on UX-ADM-007 lives in this same stylesheet.
+ * ------------------------------------------------------------------------ */
+
+.admin-shell {
+  display: grid;
+  /* The sidebar column is the spec's 240px; `auto` lets the rail media query
+     below change it without restating the grid. */
+  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-rows: 64px minmax(0, 1fr);
+  grid-template-areas:
+    'brand topbar'
+    'sidebar main';
+  min-block-size: 100vh;
+  max-inline-size: 1440px;
+  /* Not `auto` on both sides: the page sits against the start edge so the
+     sidebar is where the eye expects it, and the ground extends past 1440px. */
+  margin-inline: 0;
+}
+
+.admin-topbar {
+  grid-area: brand / brand / topbar / topbar;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-inline: var(--space-4);
+  background: var(--color-surface);
+  border-block-end: 1px solid var(--color-border);
+}
+
+.admin-brand {
+  font-weight: 700;
+  font-size: 1.0625rem;
+  /* Aligns with the sidebar's own inline padding so the two read as one edge. */
+  min-inline-size: calc(240px - var(--space-4) * 2);
+}
+
+.admin-topbar-end {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.topbar-button {
+  /* Overrides the global button, which is a filled primary. A sign-out control
+     should not compete with anything on the page it sits above. */
+  margin-block-start: 0;
+  min-block-size: 36px;
+  padding-block: var(--space-2);
+  background: transparent;
+  color: var(--color-accent);
+  border-color: var(--color-border);
+}
+
+.admin-sidebar {
+  grid-area: sidebar;
+  padding-block: var(--space-4);
+  padding-inline: var(--space-2);
+  border-inline-end: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.admin-sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-block: var(--space-2);
+  padding-inline: var(--space-2);
+  border-radius: var(--radius-md);
+  color: var(--color-ink);
+  text-decoration: none;
+  /* 44px, the same target floor the rest of the product uses. */
+  min-block-size: 44px;
+  /* A transparent bar on every item, so the active one does not shift the
+     text by 3px when it gains its accent. */
+  border-inline-start: 3px solid transparent;
+}
+
+.nav-item:hover {
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+
+/* Active: an accent bar AND a weight change AND `aria-current` in the markup.
+   Three signals, none of them colour alone (§44 · NFR-ACC-005). */
+.nav-item-active {
+  border-inline-start-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  color: var(--color-accent);
+  font-weight: 650;
+}
+
+/* A focusable landmark must not draw a focus ring when it is reached by the
+   skip link: the ring belongs to controls, and an outline around the whole
+   content column reads as an error. Focus still MOVES — which is the point —
+   it just is not painted. */
+.admin-main:focus {
+  outline: none;
+}
+
+.admin-main {
+  grid-area: main;
+  /* Capped and START-aligned, not centred — §27: "left-aligned against the
+     sidebar ... so the eye returns to a consistent left edge when scanning
+     tables". Centring this is the mistake that looks tidier and makes every
+     table in the portal begin at a different position.
+     
+     `margin-inline: 0` IS LOAD-BEARING, not tidiness. The Stage 5 foundation
+     styles carry `main { max-width: 60rem; margin-inline: auto }`, and this
+     element is a `<main>` — so it inherited auto margins and rendered with a
+     260px gap between the sidebar and the content, centred inside its column.
+     Measured in the browser at 1400px before this line existed. The class
+     beats the type selector on `max-inline-size`, so the 1200px cap applied
+     and only the centring survived, which is the kind of half-applied
+     override that is easy to look straight past. */
+  margin-inline: 0;
+  max-inline-size: 1200px;
+  padding-inline: var(--space-6);
+  padding-block: var(--space-6);
+}
+
+.skip-link {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* `:focus`, NOT `:focus-visible`.
+   A skip link should reveal itself on ANY focus. `:focus-visible` is a
+   heuristic, and while keyboard Tab does match it, programmatic focus and some
+   assistive technologies' ways of moving focus do not — so the link could be
+   reachable and stay invisible. Nothing mouse-focuses a skip link, so the
+   looser selector costs nothing.
+
+   NOT YET VERIFIED IN A BROWSER, and the reason is worth writing down because
+   it produced a false alarm. Focusing this from script in the automation pane
+   left a 1x1 clipped box, which looked like a defect. It was not: the pane had
+   no OS window focus, `document.hasFocus()` was false, and under that condition
+   `:focus` does not match AT ALL — `element.matches(':focus')` returned false
+   while `document.activeElement` was the element. Neither selector could have
+   worked, so the observation said nothing about either. Group 14's keyboard
+   pass has to confirm this on a window that actually holds focus. */
+.skip-link:focus {
+  position: fixed;
+  inset-block-start: var(--space-2);
+  inset-inline-start: var(--space-2);
+  inline-size: auto;
+  block-size: auto;
+  clip-path: none;
+  z-index: 10;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-accent);
+  color: #ffffff;
+  border-radius: var(--radius-md);
+}
+
+/* 768–1024px: the sidebar becomes a 64px icon rail (§27). The labels go, the
+   icons and the targets stay, and `aria-label` on each link means a screen
+   reader is unaffected by the change. */
+@media (max-width: 1023px) {
+  .admin-shell {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .admin-brand {
+    min-inline-size: auto;
+  }
+
+  .nav-label {
+    /* Not `display: none` — clipped instead, so the text is still in the
+       accessibility tree for anything that reads the link's contents. */
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .nav-item {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .admin-main {
+    padding-inline: var(--space-4);
+  }
+}
+
+/* Section heading and lead paragraph, shared by every portal page. */
+.page-lead {
+  color: var(--color-muted);
+  max-inline-size: 68ch;
+}
+
+.not-built {
+  margin-block-start: var(--space-6);
+  padding: var(--space-4);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-muted);
+  max-inline-size: 68ch;
+}
+
+/* ------------------------------------------------------------------------ *
+ * Metric tiles — UX-ADM-002
+ *
+ * §27: "Four tiles: Open reports first and largest." At 768–1023px the spec
+ * says they go "4-across → 2×2".
+ * ------------------------------------------------------------------------ */
+
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-block-start: var(--space-6);
+}
+
+.metric-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  /* Equal heights across the row without stretching the content: the value
+     sits under the label and the note pins to the bottom. */
+  justify-content: start;
+}
+
+.tile-label {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.tile-value {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+  /* So a figure going 9 → 10 does not shift anything, and a column of values
+     lines up on the digits. */
+  font-variant-numeric: tabular-nums;
+}
+
+.tile-note {
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+  margin-block-start: auto;
+}
+
+/*
+ * The primary tile — "first and largest ... the only figure that demands
+ * action". Larger figure, an accent edge, and the accent colour on the value.
+ * Three signals rather than colour alone.
+ */
+.metric-tile-primary {
+  border-inline-start: 3px solid var(--color-accent);
+}
+
+.metric-tile-primary .tile-value {
+  font-size: 2.75rem;
+  color: var(--color-accent);
+}
+
+.metric-tile-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.metric-tile-link:hover {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 6%, var(--color-surface));
+}
+
+.tile-action {
+  color: var(--color-accent);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.section-heading {
+  margin-block-start: var(--space-6);
+  font-size: 1.0625rem;
+}
+
+.secondary-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.secondary-figures dt {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.secondary-figures dd {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Skeleton — shape only, never a number that could be mistaken for a figure. */
+.skeleton-line {
+  display: block;
+  background: color-mix(in srgb, var(--color-muted) 22%, transparent);
+  border-radius: 4px;
+}
+
+.skeleton-label {
+  inline-size: 55%;
+  block-size: 0.875rem;
+}
+
+.skeleton-value {
+  inline-size: 35%;
+  block-size: 2rem;
+}
+
+/* The spec's tablet rule: 4-across becomes 2×2 (§27). */
+@media (max-width: 1023px) {
+  .tile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .tile-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.figure-note {
+  margin: 0;
+  margin-block-start: 2px;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  max-inline-size: 22ch;
+}
+
+/* ------------------------------------------------------------------------ *
+ * Data table + severity indicator — UX-ADM-003
+ *
+ * §27: "Tables scroll horizontally inside their container; the page never
+ * scrolls sideways." A page that scrolls sideways loses the sidebar, which is
+ * how somebody ends up unable to navigate back.
+ * ------------------------------------------------------------------------ */
+
+.table-scroll {
+  overflow-x: auto;
+  margin-block-start: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.data-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  /* Rows are scanned, so the text sits close to the top of a tall cell. */
+  vertical-align: top;
+}
+
+.table-caption {
+  /* Present for screen readers, not painted: the visible page already states
+     the ordering in the headers, and repeating it above the table would be
+     noise for a sighted reader and useful for everyone else. */
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.data-table th,
+.data-table td {
+  padding-block: var(--space-2);
+  padding-inline: var(--space-4);
+  text-align: start;
+  border-block-end: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.data-table th {
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+  font-weight: 650;
+  background: color-mix(in srgb, var(--color-muted) 6%, transparent);
+}
+
+.data-table tbody tr:last-child td {
+  border-block-end: none;
+}
+
+.data-table tbody tr:hover {
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+}
+
+/* The ordering rank, next to the header it applies to. */
+.rank {
+  display: inline-block;
+  margin-inline-start: var(--space-2);
+  padding-inline: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  color: var(--color-accent);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+.row-link {
+  color: var(--color-accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.row-link:hover {
+  text-decoration: underline;
+}
+
+/* Severity: a dot AND a label, never colour alone (NFR-ACC-005). */
+.severity {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.severity-dot {
+  inline-size: 10px;
+  block-size: 10px;
+  border-radius: 50%;
+  flex: none;
+  /* A ring as well as a fill, so the dot is still distinguishable from the
+     background in a high-contrast mode that flattens colour. */
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+.severity-dot-critical {
+  background: #b3261e;
+}
+
+.severity-dot-high {
+  background: #c2410c;
+}
+
+.severity-dot-medium {
+  background: #a16207;
+}
+
+.severity-dot-low {
+  background: #4d7c8a;
+}
+
+/* An unrecognised value still gets a dot, deliberately neutral — see the
+   component's note on why it renders the raw value rather than guessing. */
+.severity-dot-unknown {
+  background: var(--color-muted);
+}
+
+.severity-label {
+  font-weight: 600;
+}
+
+.flag {
+  display: inline-block;
+  padding-inline: var(--space-2);
+  padding-block: 2px;
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.flag-hidden {
+  background: color-mix(in srgb, #b3261e 16%, transparent);
+  color: #f2b8b5;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-block-start: var(--space-4);
+}
+
+.pager-controls {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.pager-controls a {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+/* An empty queue is good news, and reads as good news (§16). */
+.queue-clear {
+  margin-block-start: var(--space-6);
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-inline-start: 3px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  max-inline-size: 60ch;
+}
+
+.queue-clear-headline {
+  margin: 0;
+  margin-block-end: var(--space-2);
+  font-size: 1.125rem;
+  font-weight: 650;
+}
+
+.skeleton-cell {
+  inline-size: 70%;
+  block-size: 1rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- UX-ADM-004
+   The queue item detail. Logical properties only, as above.
+
+   THE DECISION ROW IS THE PART THAT MATTERS. Its three buttons share ONE
+   selector, so restore, delete and no-action cannot drift apart visually. §43
+   requires equal weight and no default, and RSK-010 gives the reason -
+   coordinated reporting is used to silence legitimate criticism, and a console
+   that made deletion the easy button would make that worse. There is
+   deliberately no .decision-row button.danger rule to reach for. */
+
+.crumb {
+  margin-block: 0 var(--space-4);
+  font-size: 0.875rem;
+}
+
+.panel {
+  margin-block-start: var(--space-6);
+  padding-block-start: var(--space-6);
+  border-block-start: 1px solid var(--color-border);
+}
+
+.panel h2 {
+  margin-block: 0 var(--space-4);
+  font-size: 1.125rem;
+}
+
+.fact-list {
+  margin: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.fact-grid {
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.fact-list dt {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.fact-list dd {
+  margin: 0;
+  margin-block-start: 0.25rem;
+  overflow-wrap: anywhere;
+}
+
+.notice-info {
+  border-inline-start: 3px solid var(--color-accent);
+  margin-block-start: var(--space-4);
+}
+
+.notice-warn {
+  border-inline-start: 3px solid #9a6a12;
+  margin-block-start: var(--space-4);
+}
+
+.notice-success {
+  border-inline-start: 3px solid #2f6b46;
+  margin-block-start: var(--space-4);
+}
+
+.decision-form {
+  margin-block-start: var(--space-6);
+  padding-block-start: var(--space-6);
+  border-block-start: 1px solid var(--color-border);
+  display: grid;
+  gap: var(--space-4);
+  max-width: 44rem;
+}
+
+.decision-form h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.decision-form > p {
+  margin: 0;
+}
+
+.decision-form textarea {
+  inline-size: 100%;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font: inherit;
+  line-height: var(--line-height-latin);
+  resize: vertical;
+}
+
+.decision-form textarea[aria-invalid='true'] {
+  border-color: #a8332e;
+}
+
+.decision-form textarea[readonly] {
+  background: #f6f4f0;
+  color: var(--color-muted);
+}
+
+.field-note {
+  margin: 0;
+  margin-block-end: var(--space-2);
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+/* Equal weight, no primary, no danger colour. See the note above. */
+.decision-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.decision-row button {
+  flex: 0 0 auto;
+  min-inline-size: 12rem;
+  padding: 0.625rem var(--space-4);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.decision-row button:hover:not(:disabled) {
+  background: #eef4f6;
+}
+
+.decision-row button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.outcome-notes {
+  margin: 0;
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.outcome-notes dt {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.outcome-notes dd {
+  margin: 0;
+  margin-block-start: 0.25rem;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.confirm-delete {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-inline-start: 3px solid var(--color-ink);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.confirm-delete h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.confirm-delete h3:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.confirm-delete p {
+  margin: 0;
+}
+
+/* The audited excerpt (MSG-FR-007). Private correspondence, so it is set apart
+   from the rest of the page rather than blending into it. */
+.message-list {
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-4);
+  max-width: 44rem;
+}
+
+.message-list li {
+  padding: var(--space-2) var(--space-4);
+  border-inline-start: 2px solid var(--color-border);
+}
+
+.message-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: baseline;
+  margin-block-end: 0.25rem;
+}
+
+.message-body {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* The target type reads as a word in a sentence on the detail heading
+   ("Reported post") and as a label in the queue's column, so the shared
+   label function returns lower case and the column capitalises it in CSS
+   rather than the map carrying two spellings of every value. */
+.capitalise {
+  text-transform: capitalize;
+}
+
+/* ---------------------------------------------------------------- UX-ADM-005
+   Account lookup. A search box rather than a list, because there is no route
+   that lists accounts and this screen should not become a register of every
+   citizen on the platform. */
+
+.search-form {
+  margin-block: var(--space-6);
+  max-width: 34rem;
+}
+
+.search-form label {
+  display: block;
+  margin-block-end: var(--space-2);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.search-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.search-row input {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  padding: 0.5rem var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font: inherit;
+}
+
+.search-row button {
+  flex: 0 0 auto;
+  padding: 0.5rem var(--space-4);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.search-row button:hover {
+  background: #0f4658;
+}
+
+.search-form .field-note {
+  margin-block-start: var(--space-2);
+  margin-block-end: 0;
+}
+
+.account-name {
+  font-weight: 600;
+}
+
+/* Verified is a statement about an organization, so it reads as a word. The
+   badge in the app is a mark; here it is a fact in a table. */
+.flag-verified {
+  margin-inline-start: var(--space-2);
+  background: #e8f1ec;
+  color: #2f6b46;
+}
+
+/* UX-ADM-006. The verified flag sits beside a name in a heading here rather
+   than in a table cell, so it needs its own vertical rhythm. */
+h1 .flag-verified {
+  vertical-align: middle;
+  font-size: 0.75rem;
+}
+
+/* Enforcement (ADMIN-FR-006/007/008). The duration choices sit in a real
+   fieldset, so a screen reader announces "Suspend for" before the three
+   options rather than reading three unrelated buttons. */
+.duration-set {
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.duration-set legend {
+  padding-inline: var(--space-2);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.duration-set .decision-row {
+  margin-block-start: var(--space-2);
+}
+
+.duration-set .decision-row button {
+  min-inline-size: 8rem;
+}
+
+.duration-set .field-note {
+  margin-block: var(--space-4) 0;
+}
+
+/* ---------------------------------------------------------------- UX-ADM-007
+   The announcement form. Both languages side by side and identical, because
+   ADMIN-FR-009 requires both "because a single-language announcement fails
+   half the audience" — and a layout that put English full-width with Urdu
+   tucked underneath would teach the opposite of the rule it implements. */
+
+.announcement-form {
+  margin-block-start: var(--space-6);
+  display: grid;
+  gap: var(--space-6);
+  max-width: 62rem;
+}
+
+.bilingual {
+  display: grid;
+  gap: var(--space-6);
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  /* STRETCH, not start. Urdu Naskh takes 1.85 leading against Latin's 1.5, so
+     two textareas with the same `rows` are not the same height — measured at
+     1440px, the Urdu box stood taller than its English pair. Stretching the
+     cells and letting each control fill one makes the pair equal without
+     hardcoding a height, and the Urdu text keeps its leading inside. */
+  align-items: stretch;
+}
+
+.bilingual > .field {
+  display: flex;
+  flex-direction: column;
+}
+
+.bilingual > .field textarea {
+  flex: 1 1 auto;
+}
+
+/* And the same for the single-line pair: the Urdu control carries a larger
+   size and leading, so an intrinsic height leaves one box taller than the
+   other. An explicit height makes the two read as one object. */
+.bilingual > .field input[type='text'] {
+  block-size: 2.75rem;
+}
+
+.announcement-form input[type='text'],
+.announcement-form textarea,
+.announcement-form input[type='date'] {
+  inline-size: 100%;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font: inherit;
+  line-height: var(--line-height-latin);
+}
+
+.announcement-form textarea {
+  resize: vertical;
+}
+
+.announcement-form [aria-invalid='true'] {
+  border-color: #a8332e;
+}
+
+.announcement-form [readonly] {
+  background: #f6f4f0;
+  color: var(--color-muted);
+}
+
+/* The Urdu fields. `dir` and `lang` are set on the controls themselves in the
+   component — this only supplies the leading, because Urdu Naskh needs more of
+   it than Latin at the same size. */
+.field-urdu input[type='text'],
+.field-urdu textarea {
+  line-height: var(--line-height-urdu);
+  font-size: 1.0625rem;
+}
+
+.field-urdu label {
+  font-size: 1.0625rem;
+}
+
+.broadcast-set {
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.broadcast-set legend {
+  padding-inline: var(--space-2);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.checkbox-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  font-weight: 600;
+}
+
+.checkbox-row input {
+  margin-block-start: 0.2rem;
+  flex: 0 0 auto;
+}
+
+.broadcast-set .field-note,
+.broadcast-set .notice {
+  margin-block: var(--space-2) 0;
+}
+
+/* Each field's label carries a gloss on its own line, in both columns, so the
+   English and Urdu inputs of a pair share a baseline. See the note in
+   announcement-form.tsx: giving the gloss only to the Urdu side pushed its box
+   one line lower than its pair. */
+.announcement-form label {
+  display: block;
+  margin-block-end: var(--space-2);
+}
+
+.announcement-form .label-main {
+  display: block;
+  font-weight: 600;
+}
+
+.announcement-form .label-gloss {
+  display: block;
+  color: var(--color-muted);
+  font-weight: 400;
+  font-size: 0.875rem;
+  line-height: var(--line-height-latin);
+}
+
+/* ---------------------------------------------------------------- UX-ADM-009
+   The audit log. Read only, and there is nothing in this block that styles a
+   control which could change an entry, because no such control exists. */
+
+.audit-filters {
+  margin-block: var(--space-6);
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  align-items: start;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.audit-filters label {
+  display: block;
+  margin-block-end: var(--space-2);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.audit-filters input {
+  inline-size: 100%;
+  padding: 0.5rem var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font: inherit;
+}
+
+.audit-filters input[aria-invalid='true'] {
+  border-color: #a8332e;
+}
+
+.audit-filters code {
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
+  font-size: 0.8125rem;
+}
+
+.audit-filter-actions {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  align-self: end;
+}
+
+.audit-filter-actions button {
+  padding: 0.5rem var(--space-4);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.audit-filter-actions button:hover {
+  background: #0f4658;
+}
+
+/* Metadata as key and value rather than as JSON (§40). Kept narrow so a long
+   reason wraps inside its cell instead of widening the table. */
+.metadata {
+  margin: 0;
+  display: grid;
+  gap: 0.25rem;
+  max-inline-size: 22rem;
+}
+
+.metadata dt {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.metadata dd {
+  margin: 0;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
 }

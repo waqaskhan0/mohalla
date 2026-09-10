@@ -239,6 +239,23 @@ if (process.env.DATABASE_URL) {
   blocked('restore rehearsal (REL-007)', 'DATABASE_URL not set — no database reachable');
 }
 
+// ------------------------------------------------- Stage 8: the admin portal
+//
+// THE FLOWS A UNIT TEST CANNOT SEE. Every defect worth finding in Stage 8 was
+// found by running the portal and none was visible to the suite: a queue that
+// reported itself empty with 1,397 cases open, an expired session that
+// rendered the signed-in console, a skip link that moved the scroll position
+// and not the focus.
+//
+// It needs the API, the portal and a synthetic administrator's credentials in
+// `ADMIN_E2E_EMAIL` / `ADMIN_E2E_PASSWORD`. Without any of those it exits 3 and
+// this lane reads BLOCKED — never PASS, because a gate that quietly passes when
+// its subject is not running reports something proven that was never checked.
+run('admin portal E2E (flows A-L)', ...npmRun('run', 'e2e:admin'), {
+  allowSkip: true,
+  blockedExitCode: 3,
+});
+
 // ---------------------------------------------------------------- android
 // The wrapper is committed; the JDK/SDK may or may not be present locally.
 const gradlew = resolve(repoRoot, 'apps/android', isWindows ? 'gradlew.bat' : 'gradlew');
