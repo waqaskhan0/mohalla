@@ -20,10 +20,10 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 | 12 | User report to Admin | PASS (API/DB); Admin UI BLOCKED_LOCAL |
 | 13 | Admin restore to Android | PASS (author notice BLOCKED_EXTERNAL) |
 | 14 | Admin delete to Android | PASS (author notice BLOCKED_EXTERNAL) |
-| 15 | Suspension | NOT_EXECUTED |
-| 16 | Ban/reinstate | NOT_EXECUTED |
-| 17 | Organization verification | NOT_EXECUTED |
-| 18 | Announcements | NOT_EXECUTED |
+| 15 | Suspension | PASS |
+| 16 | Ban/reinstate | PASS |
+| 17 | Organization verification | PASS |
+| 18 | Announcements | PASS (external broadcast BLOCKED_EXTERNAL) |
 | 19 | Account deletion | NOT_EXECUTED |
 | 20 | Errors/recovery/security/concurrency | NOT_EXECUTED |
 
@@ -46,7 +46,12 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 | INT-12 Admin Restore → Android restored | PASS; author notice BLOCKED_EXTERNAL | [13-admin-decisions.md](13-admin-decisions.md) |
 | INT-13 Admin Delete → Android removal | PASS; author notice BLOCKED_EXTERNAL | [13-admin-decisions.md](13-admin-decisions.md) |
 | INT-24 Admin collision | PASS | [13-admin-decisions.md](13-admin-decisions.md) |
-| INT-14…INT-19, INT-21…INT-23, INT-25 | NOT_EXECUTED | — |
+| INT-14 Admin Suspend → Android state | PASS | [14-enforcement-verification-announcements.md](14-enforcement-verification-announcements.md) |
+| INT-15 Admin Ban → Android/login/content | PASS | [14-enforcement-verification-announcements.md](14-enforcement-verification-announcements.md) |
+| INT-16 Admin Reinstate → Android restored | PASS | [14-enforcement-verification-announcements.md](14-enforcement-verification-announcements.md) |
+| INT-17 Org verification → Android badge | PASS | [14-enforcement-verification-announcements.md](14-enforcement-verification-announcements.md) |
+| INT-18 Announcement → Android Featured | PASS; external broadcast BLOCKED_EXTERNAL | [14-enforcement-verification-announcements.md](14-enforcement-verification-announcements.md) |
+| INT-19, INT-21, INT-22, INT-23, INT-25 | NOT_EXECUTED | — |
 | INT-21 Session expiry | NOT_EXECUTED | reset-driven revocation is proven; expiry is group 20 |
 
 Record exact individual results and evidence as each group executes.
