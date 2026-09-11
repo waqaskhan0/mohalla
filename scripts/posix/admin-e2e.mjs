@@ -82,6 +82,40 @@ async function portal(path, { cookie } = {}) {
   return { status: res.status, location: res.headers.get('location'), text: await res.text() };
 }
 
+/**
+ * THE PORTAL'S COOKIE NAME IS DECIDED BY THE BUILD, SO IT IS DISCOVERED HERE
+ * RATHER THAN ASSUMED (QA-001).
+ *
+ * `lib/admin-session.ts` picks `__Host-mohalla_admin_session` for a production
+ * deployment and the unprefixed `mohalla_admin_session` for development — and
+ * because Next inlines `process.env.NODE_ENV` at build time, which one a
+ * running portal wants is a property of how it was BUILT, not of the
+ * environment this script runs in. A harness that hardcodes either name is
+ * right about one build and silently wrong about the other.
+ *
+ * "Silently" is the problem. Every authenticated fetch with the wrong name is a
+ * 307 to `/login`, and an assertion of the form "the page does NOT say X" then
+ * passes against a sign-in page it never intended to load. The harness reported
+ * evidence for a screen it had not rendered.
+ *
+ * So the name is probed against a route that requires a session, and whichever
+ * one the portal actually honours is used for the rest of the run.
+ */
+const PORTAL_COOKIE_NAMES = ['__Host-mohalla_admin_session', 'mohalla_admin_session'];
+
+async function resolvePortalCookieName(sessionToken) {
+  for (const name of PORTAL_COOKIE_NAMES) {
+    const r = await portal('/dashboard', { cookie: `${name}=${sessionToken}` });
+    if (r.status === 200) return name;
+  }
+  return null;
+}
+
+/** The cookie header for an authenticated portal request. */
+function authCookie(name, sessionToken) {
+  return `${name}=${sessionToken}`;
+}
+
 // ---------------------------------------------------------------- reachability
 async function reachable(url) {
   try {
@@ -104,6 +138,8 @@ const portalUp = await reachable(PORTAL + '/login');
 }
 
 let token = null;
+/** Resolved in flow B once there is a session to probe with (QA-001). */
+let portalCookieName = null;
 {
   flow('B', 'An administrator signs in');
   if (!apiUp) blocked('the API is not running');
@@ -117,6 +153,18 @@ let token = null;
     check('a session token is returned', typeof r.body?.token === 'string');
     check('an absolute expiry is returned (SEC-024)', typeof r.body?.expiresAt === 'string');
     token = r.body?.token ?? null;
+
+    // QA-001. Recorded as a check rather than resolved quietly: if neither name
+    // is honoured, every later portal assertion would be measuring a redirect,
+    // and this is the one place that can say so plainly.
+    if (portalUp && token) {
+      portalCookieName = await resolvePortalCookieName(token);
+      check(
+        'the portal accepts that session, under a cookie name this run identified',
+        portalCookieName !== null,
+        portalCookieName ?? 'neither the production nor the development name was accepted',
+      );
+    }
   }
 }
 
@@ -183,8 +231,13 @@ let token = null;
   // ADMIN-RUNTIME-004. `redirect()` throws, and the page catches used to
   // swallow it — so a dead session was shown the full signed-in shell.
   if (!portalUp) blocked('the portal is not running');
+  else if (portalCookieName === null) blocked('the portal cookie name was not resolved (QA-001)');
   else {
-    const cookie = 'mohalla_admin_session=not-a-real-token';
+    // The name the portal actually reads. With the wrong one the portal sees no
+    // cookie at all and bounces to `/login`, which is a DIFFERENT behaviour from
+    // the one this flow exists to prove — a dead session must reach
+    // `/session-expired`, not merely fail to be a session.
+    const cookie = authCookie(portalCookieName, 'not-a-real-token');
     for (const route of ['/moderation', '/audit-log', '/dashboard']) {
       const r = await portal(route, { cookie });
       const redirected =
@@ -245,18 +298,33 @@ let token = null;
         `total ${past.body?.total}`,
       );
 
-      if (portalUp && token) {
+      if (portalUp && token && portalCookieName !== null) {
         const r = await portal('/moderation?offset=5000', {
-          cookie: `mohalla_admin_session=${token}`,
+          cookie: authCookie(portalCookieName, token),
         });
+
+        // POSITIVE CONTROL, ASSERTED FIRST (QA-001). The two checks below are
+        // both about what the page says, and one of them is phrased as an
+        // absence — which a `/login` redirect satisfies just as well as a
+        // correctly rendered queue does. Proving the page rendered at all is
+        // what stops "the text is not there" from being mistaken for evidence.
+        const rendered = r.status === 200;
         check(
-          'the portal does NOT say the queue is clear at that offset',
-          !r.text.includes('Nothing is waiting for review'),
+          'the moderation page rendered for an administrator',
+          rendered,
+          `status ${r.status}${r.location ? ` -> ${r.location}` : ''}`,
         );
-        check(
-          'the portal says the page is past the end',
-          r.text.includes('past the end of the queue'),
-        );
+
+        if (rendered) {
+          check(
+            'the portal does NOT say the queue is clear at that offset',
+            !r.text.includes('Nothing is waiting for review'),
+          );
+          check(
+            'the portal says the page is past the end',
+            r.text.includes('past the end of the queue'),
+          );
+        }
       }
     }
   }
