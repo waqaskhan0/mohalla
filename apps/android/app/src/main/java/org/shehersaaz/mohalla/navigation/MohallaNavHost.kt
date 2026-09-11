@@ -1897,12 +1897,20 @@ internal fun NavGraphBuilder.authGraph(
         RegisterTermsScreen(
             state = state,
             onAcceptedChanged = vm::onTermsAcceptedChanged,
-            // OD-015: the documents do not exist yet. Nothing opens a browser
-            // at a URL that would 404, and nothing ships placeholder legal
-            // text — accepting terms that are not written is worse than a
-            // control that does nothing yet.
-            onOpenTerms = {},
-            onOpenGuidelines = {},
+            // OD-015: the documents do not exist yet, so nothing here opens a
+            // browser at a URL that would 404 and nothing ships placeholder
+            // legal text.
+            //
+            // BUT NOT NOTHING (QA-004). These were empty lambdas, which made
+            // both controls tappable and completely inert at the exact moment
+            // the reader is asked to affirm they have read them. The app
+            // already has the honest answer — `LegalDocumentScreen` says "This
+            // document is not available yet" and explains why — and Settings
+            // has been routing to it all along. Registration now does the same,
+            // so the two places give the same answer instead of one of them
+            // silently giving none.
+            onOpenTerms = { navController.navigate(Routes.legal(Routes.LEGAL_TERMS)) },
+            onOpenGuidelines = { navController.navigate(Routes.legal(Routes.LEGAL_GUIDELINES)) },
             onSubmit = vm::submit,
             onRegistered = { navController.navigate(Routes.OTP) },
             onBack = { navController.popBackStack() },

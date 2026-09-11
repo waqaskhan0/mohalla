@@ -272,3 +272,186 @@ So the failure is tied to a cold or dev-dirtied `.next`, not to the source or
 to worker count. Stage 9's `--debug-prerender` finding is consistent with that
 — the flag also changes how the directory is populated. No fix is warranted;
 the Stage 9 observation is narrowed rather than carried forward as-is.
+
+---
+
+## QA-004 — the registration consent step's legal links did nothing
+
+| | |
+| --- | --- |
+| **Severity** | MEDIUM |
+| **Area** | Android — registration (`MohallaNavHost`, `RegisterTermsScreen`) |
+| **Requirement** | SET-FR-008, PRIV-018; OD-015 context |
+| **Environment** | Emulator API 36, debug build, real local backend |
+| **Status** | CLOSED |
+
+### Reproduction
+
+Fresh install → language → Create account → number → date of birth → password →
+the *Terms and Community Guidelines* step. Tap **Read the Terms**, or **Read the
+Community Guidelines**.
+
+### Expected
+
+Something. The reader is being asked to tick *"I have read and accept the Terms
+and the Community Guidelines"*, so a control offering to show them must either
+show them or say why it cannot.
+
+### Actual
+
+Nothing at all. No navigation, no message, no error, no crash — the screen did
+not change. Measured on the device: identical accessibility tree before and
+after the tap, and a clean crash buffer.
+
+### Root cause
+
+Both callbacks were literally empty:
+
+```kotlin
+onOpenTerms = {},
+onOpenGuidelines = {},
+```
+
+with a comment explaining the reasoning — OD-015 means the documents do not
+exist, so nothing should open a browser at a URL that would 404 and nothing
+should ship placeholder legal text.
+
+**Both of those points are right.** What the reasoning missed is that the app
+had already solved this exact problem elsewhere. `LegalDocumentScreen` exists,
+renders *"This document is not available yet."* with the explanation *"It hasn't
+been published yet. Nothing is shown here rather than something that only looks
+official."*, and **Settings had been routing to it all along**. The choice was
+never "a 404, invented text, or nothing" — there was a fourth option already
+built and reachable, and registration was the one place that did not use it.
+
+### Why the existing wiring test did not catch it
+
+`IntegrationWiringTest` exists for precisely this class of defect; its own
+header says *"a callback nothing passes looks exactly like a callback that
+works."* It missed this one because here the callback **was** passed. It was
+passed as a no-op, which from one layer up is indistinguishable from a working
+one.
+
+### Fix
+
+`MohallaNavHost.kt` — route both controls to the screen Settings already uses:
+
+```kotlin
+onOpenTerms = { navController.navigate(Routes.legal(Routes.LEGAL_TERMS)) },
+onOpenGuidelines = { navController.navigate(Routes.legal(Routes.LEGAL_GUIDELINES)) },
+```
+
+No legal content is invented. The destination's entire job is to say that no
+document has been published.
+
+### Regression test
+
+`apps/android/app/src/test/.../LegalLinkWiringTest.kt` — five checks: each link
+navigates to its legal route, neither is an empty lambda again, the destination
+route is actually declared, and the legal screen still refuses to invent text.
+
+A source check, for the reason `PasswordResetNavigationTest` records: the
+destination lives in the top-level `NavHost` while the register screens live in
+`authGraph`, so a behavioural test would have to hand-assemble a graph — and a
+hand-assembled graph is exactly what passes while the real one is broken.
+
+### Runtime evidence, before and after
+
+| | Tap "Read the Terms" | Tap "Read the Community Guidelines" |
+| --- | --- | --- |
+| Before | screen unchanged, no crash | screen unchanged |
+| After | `Terms and Privacy Policy` → *"This document is not available yet."* | `Community Guidelines` → same honest screen |
+
+Back-navigation returns to the consent step with the checkbox state intact, and
+the crash buffer stayed clean throughout.
+
+### Retest
+
+Full Android functional suite: **36 passed · 0 failed**. Android unit tests
+including the new regression: green.
+
+---
+
+## QA-005 — OTP codes are stored as an unsalted SHA-256 of six digits
+
+| | |
+| --- | --- |
+| **Severity** | MEDIUM |
+| **Area** | API — `apps/api/src/modules/platform/identity/domain/otp.ts` |
+| **Requirement** | SEC-003; compare the project's own reasoning in `identifier-hash.ts` |
+| **Environment** | Local Postgres 18.6 |
+| **Status** | OPEN — recommendation recorded, no code change made |
+
+### What was found
+
+`hashOtpCode` is a bare digest of the code:
+
+```ts
+export function hashOtpCode(code: string): Buffer {
+  return createHash('sha256').update(code, 'utf8').digest();
+}
+```
+
+A six-digit code has 10^6 possibilities, so the entire space can be precomputed
+and reversed in well under a second. This was not inferred — the Stage 10 QA
+driver **does exactly that** to read live verification codes out of
+`otp_challenges` for its own device-driven signup tests. It works every time.
+
+### Why this is worth raising, given the code argues the opposite
+
+The module states its reasoning:
+
+> A plain SHA-256 is correct here, unlike for passwords: the code lives for ten
+> minutes, is single-use, and is capped at five attempts, so the slow-hash
+> property Argon2id provides buys nothing while costing latency on every
+> verification.
+
+Every clause of that is true, and the conclusion still does not follow. The
+argument answers *"should this be a slow hash?"* — and no, slowness buys
+nothing. It does not answer *"should this be a **keyed** hash?"*, which is a
+different question, and the codebase already answers it, in the opposite
+direction, three files away:
+
+> a phone number has only ~10^9 possibilities, so an unkeyed SHA-256 of the
+> whole space is enumerable in seconds. **The pepper is what makes a stolen
+> database dump useless** for recovering identifiers.
+> — `identifier-hash.ts`
+
+A phone number's space is 10^9. An OTP's is 10^6 — **a thousand times smaller**.
+The same argument that justified peppering identifiers applies to OTP codes with
+far greater force, and the project has already accepted "a stolen database dump"
+as an in-scope threat by engineering against it.
+
+### Impact, stated precisely
+
+The TTL, the five-attempt cap and the lockout are all real, and none of them
+helps here: an attacker who can read the table does not guess. They compute the
+code offline and use it once, on the first attempt.
+
+- Requires **read access to `otp_challenges`** — a leaked backup, a replica, a
+  read-only support role, or an injection with read. It is not a standalone
+  remote bypass, which is why this is MEDIUM and not HIGH.
+- What it yields is not small: `PASSWORD_RESET` challenges are in the same
+  table, so recovering one is account takeover for that identifier.
+
+### Recommended fix
+
+Key the hash, exactly as identifiers already are — HMAC-SHA256 under a pepper
+held outside the database, with a distinct context string so the two uses cannot
+be interchanged. The verification path is unchanged in shape and the cost stays
+negligible.
+
+Two things the owner should weigh, which is why Stage 10 did not simply do it:
+
+1. It changes an **explicitly documented, approved** security decision. The
+   comment is not an oversight; somebody thought about it and wrote down a
+   conclusion. Overriding that is the owner's call, not QA's.
+2. Deploying it invalidates every in-flight challenge — a ten-minute window in
+   which pending users must request a new code. Harmless, but it is a
+   deployment note, not a silent change.
+
+### Not claimed
+
+No exploit against a deployed system was attempted or demonstrated. The
+enumeration was performed against the local QA database, on synthetic
+challenges created by this stage's own fixtures.
