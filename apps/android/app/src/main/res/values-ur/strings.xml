@@ -538,4 +538,8 @@
     <string name="delete_consequence_permanent">30 دن کے بعد اسے واپس نہیں لایا جا سکتا۔</string>
 
     <string name="restore_deadline">اپنا اکاؤنٹ واپس لانے کے لیے %1$s سے پہلے لاگ اِن کریں۔</string>
+    <string name="notification_channel_name">محلے کی سرگرمی</string>
+    <string name="notification_channel_description">آپ کے محلے سے جوابات، پسندیدگیاں، فالوز، پیغامات اور اعلانات۔</string>
+    <string name="notification_permission_rationale">اطلاعات آن کریں تاکہ آپ کو پتہ چلے جب کوئی پڑوسی جواب دے، فالو کرے یا پیغام بھیجے۔ آپ یہ کسی بھی وقت ترتیبات میں بدل سکتے ہیں۔</string>
+    <string name="notification_permission_enable">اطلاعات آن کریں</string>
 </resources>

@@ -25,6 +25,17 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!--
+      QA-009 / NOTIF-FR-001. Runtime permission from Android 13; on 8 to 12 the
+      system grants notifications at install and this declaration is inert.
+
+      REQUESTED CONTEXTUALLY, never at launch. PRIV-015 and the mobile
+      architecture both say the prompt appears where notifications make sense,
+      and declining "degrades ONLY notifications" — the in-app centre keeps
+      working and nothing else changes.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!--
       android:supportsRtl="true" is the switch that makes the entire Urdu
       layout mirror. Without it, every start/end attribute in this project
       silently behaves as left/right and the Urdu interface is wrong.
@@ -119,6 +130,32 @@
                 <data android:pathPrefix="/conversations/" />
             </intent-filter>
         </activity>
+
+        <!--
+          QA-009. Firebase delivers here. `exported="false"` because only the
+          Play Services binder starts it, and the intent filter is the one FCM
+          looks for.
+        -->
+        <service
+            android:name=".core.push.MohallaMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!--
+          The status-bar icon and tint FCM uses when it, rather than this app,
+          draws a notification. Set so a system-drawn notification cannot fall
+          back to the launcher icon, which renders as a grey square.
+        -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="mohalla.notifications" />
+
     </application>
 
 </manifest>

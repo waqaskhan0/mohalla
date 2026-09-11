@@ -7,6 +7,42 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+/**
+ * Firebase is configured only where its configuration exists.
+ *
+ * `google-services.json` is git-ignored — it is DEP-003, supplied per
+ * environment, and this repository is public. Applying the plugin
+ * unconditionally therefore fails every build that is not the owner's machine,
+ * including CI, with "File google-services.json is missing". That is not a
+ * useful failure: nothing about CI needs a Firebase project.
+ *
+ * So the plugin is applied when the file is present and skipped when it is not,
+ * and the difference is made VISIBLE in two places rather than left to be
+ * discovered:
+ *
+ *   - a warning at configuration time, so nobody builds a push-less APK
+ *     believing otherwise;
+ *   - `BuildConfig.PUSH_CONFIGURED`, so the app itself can tell. It uses this
+ *     to skip the notification-permission prompt entirely — asking somebody to
+ *     allow notifications that physically cannot arrive is the prompt-with-
+ *     nothing-behind-it that QA-009 argued against.
+ *
+ * `firebase-messaging` stays on the classpath either way; it is an ordinary
+ * library, and `FirebasePushTokenSource` already returns null rather than
+ * throwing when Firebase is not initialised.
+ */
+val googleServicesConfig = file("google-services.json")
+val pushConfigured = googleServicesConfig.exists()
+if (pushConfigured) {
+    apply(plugin = libs.plugins.google.services.get().pluginId)
+} else {
+    logger.warn(
+        "google-services.json not found at ${googleServicesConfig.path} — building WITHOUT " +
+            "push. BuildConfig.PUSH_CONFIGURED is false and the app will not ask for " +
+            "POST_NOTIFICATIONS. This is expected on CI and on any machine without DEP-003.",
+    )
+}
+
 android {
     namespace = "org.shehersaaz.mohalla"
 
@@ -37,6 +73,9 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        // Whether this build has a Firebase project behind it. See the note
+        // above the conditional plugin application.
+        buildConfigField("boolean", "PUSH_CONFIGURED", pushConfigured.toString())
     }
 
     buildTypes {
@@ -137,6 +176,11 @@ java {
 }
 
 dependencies {
+    // QA-009 / NOTIF-FR-001. The BOM pins the Firebase artifacts together, so
+    // firebase-messaging is declared without a version of its own.
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

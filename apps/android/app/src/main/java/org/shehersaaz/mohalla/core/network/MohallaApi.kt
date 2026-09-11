@@ -667,6 +667,30 @@ interface MohallaApi {
      * user has never touched - so the settings screen shows the truth rather
      * than an empty map that would read as everything being off.
      */
+    /**
+     * Register this device for push (NOTIF-API-004, NOTIF-FR-001 · QA-009).
+     *
+     * THE LANGUAGE IS REQUIRED AND IS THIS DEVICE'S CHOICE, not a server guess.
+     * BR-040 pre-selects no default, so at registration the handset knows the
+     * answer and the server does not — and a push rendered in a language nobody
+     * picked is worse than no push.
+     *
+     * Re-registering the same token REASSIGNS it to the caller. That is the
+     * behaviour a shared handset needs: when a second person signs in on the
+     * same phone, the first person's notifications must stop arriving on it.
+     */
+    @POST("notifications/devices")
+    suspend fun registerDevice(@Body body: RegisterDeviceRequest): Response<Unit>
+
+    /**
+     * Unregister this device (ADR-014). Called on logout.
+     *
+     * Idempotent by contract: a token that was already gone still succeeds,
+     * because the caller asked for a state and that state holds.
+     */
+    @HTTP(method = "DELETE", path = "notifications/devices", hasBody = true)
+    suspend fun unregisterDevice(@Body body: UnregisterDeviceRequest): Response<Unit>
+
     @GET("notifications/preferences")
     suspend fun notificationPreferences(): Response<NotificationPreferencesResponse>
 
@@ -1511,6 +1535,18 @@ data class MarkedResponse(val marked: Int = 0)
  * copy for and ignores the rest, because a toggle with no label is worse than a
  * toggle that is not shown.
  */
+/** `POST /notifications/devices` — token, and the language THIS device chose. */
+@Serializable
+data class RegisterDeviceRequest(
+    val token: String,
+    val language: String,
+    val platform: String = "ANDROID",
+)
+
+/** `DELETE /notifications/devices` — the token to retire. */
+@Serializable
+data class UnregisterDeviceRequest(val token: String)
+
 @Serializable
 data class NotificationPreferencesResponse(
     val preferences: Map<String, Boolean> = emptyMap(),

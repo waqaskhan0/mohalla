@@ -41,10 +41,36 @@ export const SEARCH_KEY_MIN_LENGTH = 1;
 
 export type SearchQueryRejection = 'NOT_A_STRING' | 'TOO_SHORT' | 'TOO_LONG';
 
+/**
+ * Remove characters no keyboard produces and PostgreSQL will not store.
+ *
+ * QA-007. A NUL byte in the query reached the driver and Postgres rejected the
+ * whole statement — `invalid byte sequence for encoding "UTF8": 0x00` — which
+ * the service turned into a 503 `SEARCH_UNAVAILABLE`. Two things were wrong
+ * with that: a 503 tells the client the service is down and to retry, when the
+ * request was simply malformed and will fail identically forever; and the
+ * requirement E3 above reserves the "we could not look" answer for a genuine
+ * outage, so spending it on bad input devalues it.
+ *
+ * Stripped rather than rejected outright, because that is what the surrounding
+ * code already does with whitespace, and because the remaining text is usually
+ * a perfectly good search. If nothing usable is left, the existing length rule
+ * refuses it with the minimum stated — which is E2's answer, and the right one.
+ *
+ * C0 and C1 control characters plus the Unicode line and paragraph separators.
+ * Ordinary spacing and every script's letters are untouched.
+ */
+export function stripControlCharacters(value: string): string {
+  // eslint-disable-next-line no-control-regex
+  return value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u2028\u2029]/g, '');
+}
+
 export function checkSearchQuery(query: unknown): SearchQueryRejection | null {
   if (typeof query !== 'string') return 'NOT_A_STRING';
 
-  const trimmed = query.trim();
+  // Counted AFTER stripping, so `a` is one character rather than two and
+  // is refused as too short instead of being handed to the database.
+  const trimmed = stripControlCharacters(query).trim();
   // Counted in code points rather than graphemes: two Urdu characters is two
   // characters to the person typing, and the bound is about refusing a
   // whole-corpus scan rather than about fairness between scripts.
@@ -56,7 +82,7 @@ export function checkSearchQuery(query: unknown): SearchQueryRejection | null {
 }
 
 export function normalizeSearchQuery(query: string): string {
-  return query.trim().replace(/\s+/g, ' ');
+  return stripControlCharacters(query).trim().replace(/\s+/g, ' ');
 }
 
 /**

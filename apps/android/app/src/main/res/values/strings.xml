@@ -555,4 +555,8 @@
     <string name="delete_consequence_permanent">After 30 days this cannot be undone.</string>
 
     <string name="restore_deadline">Log in before %1$s to bring your account back.</string>
+    <string name="notification_channel_name">Neighbourhood activity</string>
+    <string name="notification_channel_description">Replies, likes, follows, messages and announcements from your neighbourhood.</string>
+    <string name="notification_permission_rationale">Turn on notifications to hear when a neighbour replies, follows you or sends a message. You can change this any time in Settings.</string>
+    <string name="notification_permission_enable">Turn on notifications</string>
 </resources>

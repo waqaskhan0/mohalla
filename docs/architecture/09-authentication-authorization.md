@@ -51,6 +51,14 @@ CHECK (NOT is_primary OR kind = 'PHONE')   -- relax this line to admit a future 
 
 **OTP:** 🟨 6 digits · 10 min · 5 attempts · 15-min lockout · 60 s resend cooldown · max 3 resends/hour. Stored **hashed**, single-use, invalidated on success, resend or exhaustion (SEC-003, EDGE-005).
 
+> **Stage 10 addendum (QA-005).** "Stored hashed" is now specifically a
+> **keyed HMAC-SHA256** under a dedicated `OTP_HASH_KEY`, bound to the
+> challenge id and purpose. The earlier implementation used an unkeyed
+> SHA-256, which QA demonstrated was reversible from a database read in about
+> half a second — a six-digit code has only 10^6 possibilities. See
+> [otp-digest-supersession.md](../security/otp-digest-supersession.md). The
+> lifetimes, attempt cap, lockout and single-use semantics above are unchanged.
+
 ---
 
 ## 3. Login and sessions
