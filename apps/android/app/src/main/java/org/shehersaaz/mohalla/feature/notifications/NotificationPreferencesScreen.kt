@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import org.shehersaaz.mohalla.BuildConfig
 import org.shehersaaz.mohalla.R
 import org.shehersaaz.mohalla.core.design.MohallaTheme
 import org.shehersaaz.mohalla.core.design.MohallaType
@@ -127,7 +128,10 @@ private fun SystemNotificationsOffNotice() {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    if (permitted) return
+    // Nothing to offer in a build with no Firebase project behind it: the
+    // button would send somebody to Android Settings to enable notifications
+    // that could not arrive either way. See `PushRegistration`.
+    if (permitted || !BuildConfig.PUSH_CONFIGURED) return
 
     Column(
         modifier = Modifier

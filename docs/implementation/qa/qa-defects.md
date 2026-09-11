@@ -1190,3 +1190,53 @@ device.
 Mutation-proven: forcing `PushPromptStore.hasAsked()` to return `false` fails
 "a refusal is not re-asked on the next cold start", and takes four downstream
 checks with it — which is precisely the cascade the original defect caused.
+
+---
+
+## QA-012 — the smoke test's event-listing check had a page budget it outgrew
+
+| | |
+| --- | --- |
+| **Severity** | LOW |
+| **Area** | QA harness — `scripts/posix/api-smoke-test.mjs` |
+| **Requirement** | EVENT-FR-005, EVENT-FR-007; the harness is the executable evidence |
+| **Status** | **CLOSED** |
+
+### What happened
+
+`npm run verify` went from `16 passed · 0 failed` to `14 passed · 1 failed`
+between two runs an hour apart, with no change to any API code. The failing
+check was *"and it is still in the upcoming list until its original date
+passes"* — a cancelled event that should remain visible so its attendees find
+out.
+
+It was not a product failure. The check paged the upcoming list looking for the
+event, up to **twenty pages of fifty**. The smoke fixture database is never
+reset, so upcoming events accumulate on every run; there are now **1,110**, and
+the event under test sits on page **22**.
+
+### Why this is worth a register entry rather than a quiet edit
+
+This is the same defect twice. The code carried a comment explaining that an
+earlier version had asserted against a single `?limit=50` page and *"passed
+until there were more than fifty upcoming events"* — and the fix for that was to
+pick a bigger arbitrary number. A third arbitrary number would only move the
+date of the next false failure.
+
+A harness that reports a product failure for correct behaviour is the more
+expensive direction of the two failure modes named at the top of this register:
+it costs a real investigation every time, and it teaches whoever sees it to
+distrust the suite.
+
+### The fix
+
+Stop on the ordering instead of on a budget. The list is soonest-first, so once
+a page begins later than the event under test starts, the event is genuinely
+absent and the search can stop. Work is now bounded by where the event sits in
+time rather than by how much fixture data has piled up.
+
+Mutation-proven: searching for an id that does not exist makes the check **FAIL**
+at page 22 and terminate, so the loop is bounded and the assertion is not
+vacuous. Reverted.
+
+`422 passed · 0 failed · 422` after the fix, found on page 22.

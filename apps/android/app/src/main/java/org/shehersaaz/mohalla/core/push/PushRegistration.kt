@@ -23,6 +23,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import org.shehersaaz.mohalla.BuildConfig
 import org.shehersaaz.mohalla.core.di.AppContainer
 
 /**
@@ -104,6 +105,14 @@ fun openAppNotificationSettings(context: Context) {
  * it was only remembered in memory. Somebody who changes their mind later has
  * the row on the notification-preferences screen, which is a place they went to
  * on purpose rather than a dialog that arrived on top of the feed.
+ *
+ * AND NOT AT ALL IN A BUILD WITH NO FIREBASE PROJECT. `PUSH_CONFIGURED` is
+ * false when `google-services.json` was absent at build time — on CI, and on
+ * any machine without DEP-003. Such a build can never receive a message, so
+ * asking to be allowed to show one is a prompt with nothing behind it. This is
+ * the same argument QA-009 made for not declaring the permission before the
+ * client existed; the client exists now, but a particular BUILD of it may still
+ * have no provider, and the reader should not be asked on its behalf.
  */
 @Composable
 fun RegisterForPushEffect(container: AppContainer) {
@@ -128,7 +137,8 @@ fun RegisterForPushEffect(container: AppContainer) {
     LaunchedEffect(Unit) {
         NotificationChannels.ensureCreated(context)
 
-        val needsPrompt = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+        val needsPrompt = BuildConfig.PUSH_CONFIGURED &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             !notificationsPermitted(context)
 
         if (needsPrompt && !asked && !prompts.hasAsked()) {

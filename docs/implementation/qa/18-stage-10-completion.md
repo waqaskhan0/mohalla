@@ -108,6 +108,7 @@ suites on top: API 950, admin 259, database 95, worker 18, validation 11.
 | QA-008 | **HIGH** | every failed request was logged as `status: 200` | CLOSED |
 | **QA-009** | **HIGH** | the Android push client did not exist | **CLOSED** |
 | QA-011 | LOW | the notification permission was re-asked on every cold start after a refusal | CLOSED (found while closing QA-009) |
+| QA-012 | LOW | the smoke test's event-listing check had a page budget the fixture outgrew | CLOSED |
 | QA-010 | LOW | Stage 9/10 docs attributed push to the wrong dependency | CLOSED |
 
 | | Found | Fixed | Open |
@@ -115,7 +116,7 @@ suites on top: API 950, admin 259, database 95, worker 18, validation 11.
 | CRITICAL | 0 | 0 | **0** |
 | HIGH | 2 | 2 | **0** |
 | MEDIUM | 6 | 6 | 0 |
-| LOW | 3 | 3 | 0 |
+| LOW | 4 | 4 | 0 |
 
 **No CRITICAL and no HIGH defect is open.**
 
@@ -211,17 +212,26 @@ Green on every pushed checkpoint. Final result recorded on the head commit.
 | | |
 | --- | --- |
 | File | `app-debug.apk` |
-| Bytes | 15,886,374 |
-| SHA-256 | `debb9fbd76847d52ea4d62d8ac1441a5940d1e5b098b6a6ac708653cac5fdf04` |
+| Bytes | 15,886,397 |
+| SHA-256 | `0fa6897077bdd2f42e56ae507a8fa7140d7ffa4bb118b3ce59ea0a5829a0d513` |
 | applicationId | `org.shehersaaz.mohalla` |
 | versionName / versionCode | `0.0.1-foundation` / 1 |
 | minSdk / compileSdk | 26 / 37 |
 
-It grew by **1,167,919 bytes** over the previous QA APK. That is the Firebase
+It grew by **1,167,942 bytes** over the previous QA APK. That is the Firebase
 messaging SDK and its Play-services dependencies, and nothing else: no other
 dependency was added. The build does **not** contain `google-services.json`
 itself as a file — the plugin folds its values into generated resources, which
 is why the source file stays git-ignored and is never printed here.
+
+**This APK was built with the Firebase configuration present**
+(`BuildConfig.PUSH_CONFIGURED = true`). CI builds it without, because the
+configuration is git-ignored: the `google-services` plugin is applied only when
+the file exists, the build logs a warning when it does not, and a build without
+it sets `PUSH_CONFIGURED = false` and never asks for `POST_NOTIFICATIONS` —
+verified by building and running both ways on the emulator. Asking somebody to
+allow notifications that the build physically cannot receive is the
+prompt-with-nothing-behind-it that QA-009 argued against.
 
 No release APK is claimed or producible: the signing config is deliberately
 absent, and a release build hard-codes `API_BASE_URL=https://api.invalid`,

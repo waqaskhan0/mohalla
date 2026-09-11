@@ -2790,25 +2790,49 @@ async function main() {
         `status ${detail?.status}`,
       );
 
-      // PAGED, not a single page. This database is not reset between smoke
-      // runs, so events accumulate and the one under test drifts off page one
-      // - which is a property of the fixture, not of the product. The first
-      // version asserted against `?limit=50` and passed until there were more
-      // than fifty upcoming events.
+      // PAGED, and STOPPING ON ORDER RATHER THAN ON A PAGE BUDGET. This
+      // database is not reset between smoke runs, so upcoming events
+      // accumulate indefinitely and the one under test drifts further from
+      // page one on every run - a property of the fixture, not of the product.
+      //
+      // This check has now been outgrown twice. The first version read one
+      // page of fifty and passed until there were fifty-one events. The second
+      // paged twenty times and passed until there were a thousand and one;
+      // there are 1,110 today, so it started reporting a product failure for a
+      // list that is perfectly correct. A third arbitrary number would just
+      // move the date of the next false failure.
+      //
+      // The list is ordered soonest-first, so there is a real stopping
+      // condition available: once a page begins later than our event starts,
+      // our event is not further on. That is bounded by where the event sits
+      // in time rather than by how much fixture data exists.
+      const ours = await (await get(`/events/${eventId}`, attendee.token)).json();
       let found = false;
       let cursor = null;
-      for (let page = 0; page < 20 && !found; page += 1) {
+      let pages = 0;
+      for (;;) {
+        pages += 1;
         const query =
           cursor === null
             ? '/events?limit=50'
             : `/events?limit=50&cursorStartsAt=${encodeURIComponent(cursor.cursorStartsAt)}` +
               `&cursorId=${cursor.cursorId}`;
         const list = await (await get(query, attendee.token)).json();
-        found = (list?.events ?? []).some((e) => e.id === eventId);
+        const events = list?.events ?? [];
+        if (events.some((e) => e.id === eventId)) {
+          found = true;
+          break;
+        }
+        // Past it in the ordering, so it is genuinely absent.
+        if (events.length > 0 && events[0].startsAt > ours.startsAt) break;
         cursor = list?.nextCursor ?? null;
-        if (cursor === null) break;
+        if (cursor === null || events.length === 0) break;
       }
-      check('and it is still in the upcoming list until its original date passes', found);
+      check(
+        'and it is still in the upcoming list until its original date passes',
+        found,
+        `${pages} page(s) read`,
+      );
 
       const lateRsvp = await send(
         'PUT',
