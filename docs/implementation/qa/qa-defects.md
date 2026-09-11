@@ -659,3 +659,183 @@ Reverted; not committed.
 | `""` | 400 | 400 |
 
 Nine new tests: five on the service, four on the environment.
+
+---
+
+## QA-007 — a NUL byte in a search query returned 503
+
+| | |
+| --- | --- |
+| **Severity** | MEDIUM |
+| **Area** | API — `apps/api/src/modules/product/search/domain/search-query.ts` |
+| **Requirement** | SEARCH-FR-003 E2 and E3 |
+| **Environment** | Local API, PostgreSQL 18.6 |
+| **Status** | **CLOSED** |
+
+### Reproduction
+
+```
+GET /search/people?q=%00a   ->  503  {"error":{"code":"SEARCH_UNAVAILABLE"}}
+GET /search/people?q=a%00b  ->  503
+```
+
+Server log:
+
+```
+error: invalid byte sequence for encoding "UTF8": 0x00
+  at pg/lib/client.js:694
+  at pg-search.repository.js:97
+```
+
+### Root cause
+
+`checkSearchQuery` counted code points on the raw string, so `a` was two
+characters and passed the two-character minimum. The value went to PostgreSQL,
+which refuses a NUL byte in a UTF-8 string, and the repository's failure was
+translated into `503 SEARCH_UNAVAILABLE`.
+
+### Why it is a defect and not merely odd input
+
+Two separate things were wrong.
+
+A **503 tells the client the service is down and to retry** — but the request
+was malformed and will fail identically forever. And SEARCH-FR-003 E3 reserves
+that answer deliberately: a search outage *"must not present as a zero-results
+state, which would mislead the user into thinking the content does not exist"*.
+The "we could not look" answer exists to distinguish an outage from an empty
+result, and spending it on bad input devalues the one signal that carries that
+meaning.
+
+No data was exposed — the error body is neutral and carried no stack trace.
+
+### Fix
+
+`stripControlCharacters` removes the C0 and C1 ranges plus ` `/` `,
+and both `checkSearchQuery` and `normalizeSearchQuery` apply it. Stripping
+rather than rejecting, because that is what the surrounding code already does
+with whitespace and because the rest of the query is usually a perfectly good
+search. If nothing usable remains, the existing length rule refuses it with the
+minimum stated — which is E2's answer.
+
+Ordinary spacing, every script's letters and emoji are untouched; the tests
+assert that explicitly.
+
+### Mutation proof
+
+Removing the stripping fails two of the eight new tests:
+
+```
+× THE DEFECT: a NUL plus one letter is now too short, not a database error
+× and a real query containing one still works, with the byte removed
+```
+
+Reverted; not committed.
+
+### Runtime retest
+
+| Query | Before | After |
+| --- | --- | --- |
+| `?q=%00a` | 503 | **400** |
+| `?q=a%00b` | 503 | **200** (byte stripped, `ab` searched) |
+| `?q=ali%00ya` | 503 | **200** (searches `aliya`) |
+| `?q=%00%1f` | 503 | **400** |
+| `?q=%1f%1f` | 200 | 400 |
+
+---
+
+## QA-008 — every failed request was written to the access log as `status: 200`
+
+| | |
+| --- | --- |
+| **Severity** | HIGH |
+| **Area** | API — `apps/api/src/common/logging/request-logging.interceptor.ts` |
+| **Requirement** | EPIC-15 observability; Stage 10 §46 |
+| **Environment** | Local API |
+| **Status** | **CLOSED** |
+
+### How it was found
+
+Chasing QA-007. The 503 was plainly visible in the response, and the access-log
+line for the same correlation id read:
+
+```
+{"event":"http_request","path":"/search/people","status":200}
+```
+
+Probing further showed it was **not** specific to that route. Every request
+that ends in a thrown exception was logged as 200:
+
+```
+logged: POST /login             -> status 200   (really 401)
+logged: GET  /posts/not-a-uuid  -> status 200   (really 400)
+logged: GET  /search/people     -> status 200   (really 503)
+```
+
+### Root cause
+
+The interceptor logged from an rxjs `tap`, reading `res.statusCode` in both the
+next and the error path:
+
+```ts
+return next.handle().pipe(tap({ next: finish, error: finish }));
+```
+
+On the error path that runs **before** the exception filter, so the status is
+still Express's default 200.
+
+### Why HIGH
+
+No data is exposed and nothing is corrupted, so this is not a security or
+integrity defect. It is rated HIGH because of what it disables.
+
+The access log is the primary operational signal, and it reported **every
+failure as a success, systematically and silently**. Error-rate alerting built
+on these lines could never fire. A brute-force run against `/login` appears as
+a wall of 200s. An outage of the kind QA-007 produced would be invisible.
+
+A log that is merely missing is a gap you can see. A log that confidently
+reports the opposite of what happened is worse, because it is trusted.
+
+Bounded, deliberately: the `/health/metrics` figures are computed from the
+database and are unaffected — checked, not assumed.
+
+### Fix
+
+The line is now written on the response's own `finish` event, after the status
+and headers are on the wire, so it records what the client actually received.
+`close` covers a client that disconnected first, which would otherwise log
+nothing at all, and a `logged` flag keeps the pair from producing two lines for
+one request.
+
+The existing privacy rule is retained and pinned by a test: the query string is
+never logged, because that is where identifiers end up.
+
+### Mutation proof
+
+Restoring the `tap` — as a **compiling** program, checked with `tsc` before
+running, because a mutation that merely fails to build proves nothing:
+
+```
+× logs the real status when the handler THROWS
+× logs the real status for a guard rejection
+× logs exactly one line even when finish and close both fire
+× logs a client disconnect rather than dropping the request entirely
+Tests  4 failed | 2 passed (6)
+```
+
+The two that still pass are the successful-response case and the query-string
+privacy case — neither depends on the timing, which is the right shape for this
+proof. Reverted; not committed.
+
+**A first attempt at this mutation did not compile** (the import edit missed a
+multi-line statement) and every test failed for that reason instead. That run
+was discarded rather than reported.
+
+### Runtime retest
+
+```
+logged GET /search/people   -> 400
+logged GET /posts/not-a-uuid -> 400
+logged GET /search/people   -> 200
+logged GET /health          -> 200
+```
