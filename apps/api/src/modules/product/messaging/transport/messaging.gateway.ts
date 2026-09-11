@@ -15,6 +15,7 @@ import {
   type AuthenticatedPrincipal,
 } from '../../../platform/identity/application/session.service.js';
 import { MessagingService, type MessageView } from '../application/messaging.service.js';
+import { MessagingRealtimePublisher } from './realtime-publisher.js';
 import { MESSAGE_BODY_MAX_LENGTH } from '../domain/message-body.js';
 
 const sendEvent = z
@@ -92,6 +93,7 @@ export class MessagingGateway implements OnGatewayInit, OnGatewayConnection {
   constructor(
     private readonly sessions: SessionService,
     private readonly messaging: MessagingService,
+    private readonly publisher: MessagingRealtimePublisher,
     private readonly logger: StructuredLogger,
   ) {}
 
@@ -106,6 +108,12 @@ export class MessagingGateway implements OnGatewayInit, OnGatewayConnection {
    * the REST guard: which one it was is not information the caller is owed.
    */
   afterInit(server: Namespace): void {
+    // Hand the namespace to the publisher, which is what actually fans out
+    // (INTEGRATION-009). It cannot take a dependency on this class, and this
+    // class cannot take one on the service's publisher, without a DI cycle —
+    // see `realtime-publisher.ts`.
+    this.publisher.attach(server);
+
     server.use((socket, next) => {
       void this.principalOf(socket).then((principal) => {
         if (principal === null) {
@@ -152,38 +160,27 @@ export class MessagingGateway implements OnGatewayInit, OnGatewayConnection {
     const parsed = sendEvent.safeParse(body);
     if (!parsed.success) return { ok: false, error: 'VALIDATION_FAILED' };
 
-    const result = await this.messaging.send(principal.userId, {
-      conversationId: parsed.data.conversationId,
-      recipientId: parsed.data.recipientId,
-      clientMessageId: parsed.data.clientMessageId,
-      body: parsed.data.body ?? null,
-      mediaId: parsed.data.mediaId ?? null,
-    });
+    const result = await this.messaging.send(
+      principal.userId,
+      {
+        conversationId: parsed.data.conversationId,
+        recipientId: parsed.data.recipientId,
+        clientMessageId: parsed.data.clientMessageId,
+        body: parsed.data.body ?? null,
+        mediaId: parsed.data.mediaId ?? null,
+      },
+      // This socket gets the acknowledgement, so it must not also get the
+      // broadcast; everything else in the sender's room should.
+      client.id,
+    );
 
     if (result.status !== 'SENT') return { ok: false, error: result.status };
 
-    // Fan out only when this call actually created the message. A retry that
-    // resolved to an existing row must not deliver it a second time — EDGE-021
-    // says a duplicate renders once, and the cheapest way to honour that is not
-    // to send the duplicate.
-    if (result.created) {
-      this.server.to(roomFor(result.recipientId)).emit('message:new', {
-        ...serialize(result.message),
-        // BR-027: the notification pipeline drops push for a request. The flag
-        // rides along so the client can also route it to the request area
-        // rather than the inbox.
-        isRequest: result.isRequest,
-      });
-      // Back to the sender's OTHER devices, so a message typed on a phone
-      // appears on a tablet. Not to the originating socket - it already has the
-      // acknowledgement, and echoing would make the same message arrive twice
-      // by two routes.
-      client.broadcast.to(roomFor(principal.userId)).emit('message:new', {
-        ...serialize(result.message),
-        isRequest: false,
-      });
-    }
-
+    // NO FAN-OUT HERE ANY MORE. `MessagingService` does it for every transport
+    // through `REALTIME_PUBLISHER`, which this class implements below — see
+    // `ports/realtime-publisher.port.ts` for why it moved (INTEGRATION-009).
+    // The socket id travels with the send so the service can skip this socket,
+    // which already has the acknowledgement.
     return { ok: true, message: result.message };
   }
 

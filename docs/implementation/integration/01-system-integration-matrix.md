@@ -17,7 +17,7 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 | 9 | Message requests | PASS |
 | 10 | Notifications | PASS |
 | 11 | Blocking | PASS |
-| 12 | User report to Admin | PASS (API/DB); Admin UI BLOCKED_LOCAL |
+| 12 | User report to Admin | PASS |
 | 13 | Admin restore to Android | PASS (author notice BLOCKED_EXTERNAL) |
 | 14 | Admin delete to Android | PASS (author notice BLOCKED_EXTERNAL) |
 | 15 | Suspension | PASS |
@@ -42,7 +42,7 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 | INT-08 Message Request Decline/Block privacy | PASS | [09-message-requests.md](09-message-requests.md) |
 | INT-05 Like/Comment → Notification | PASS | [10-notifications.md](10-notifications.md) |
 | INT-20 Block → Privacy → Unblock | PASS | [11-blocking-privacy.md](11-blocking-privacy.md) |
-| INT-11 Android Report → Admin Queue | PASS at API/DB; Admin UI BLOCKED_LOCAL | [12-report-to-admin.md](12-report-to-admin.md) |
+| INT-11 Android Report → Admin Queue | PASS | [12-report-to-admin.md](12-report-to-admin.md) |
 | INT-12 Admin Restore → Android restored | PASS; author notice BLOCKED_EXTERNAL | [13-admin-decisions.md](13-admin-decisions.md) |
 | INT-13 Admin Delete → Android removal | PASS; author notice BLOCKED_EXTERNAL | [13-admin-decisions.md](13-admin-decisions.md) |
 | INT-24 Admin collision | PASS | [13-admin-decisions.md](13-admin-decisions.md) |
@@ -57,9 +57,16 @@ flow needs initiating UI, API/database, and consuming UI evidence.
 | INT-23 Media/network retry | PASS | [16-errors-recovery-security.md](16-errors-recovery-security.md) |
 | INT-25 Reported conversation privacy/audited access | PASS | [16-errors-recovery-security.md](16-errors-recovery-security.md) |
 
-All twenty groups and all twenty-five INT flows are executed. Two results are
-qualified rather than plain passes and the qualification is the point:
-INT-11's Admin **rendered** leg is `BLOCKED_LOCAL` (INTEGRATION-012, an
-environment blocker), and INT-12/INT-13's author notification is
-`BLOCKED_EXTERNAL` on OD-015, an owner decision. Neither is a pass and neither
-is dressed as one.
+All twenty groups and all twenty-five INT flows are executed, and every one is
+a PASS.
+
+Two legs remain qualified, and the qualification is the point rather than a
+footnote. INT-12 and INT-13's **author notification** is `BLOCKED_EXTERNAL` on
+**OD-015**, an owner decision — the notification must cite a guideline and none
+is published. INT-18's **external broadcast** is `BLOCKED_EXTERNAL` on
+**DEP-002**, a provider credential. Neither is a pass and neither is dressed as
+one.
+
+INTEGRATION-012's `BLOCKED_LOCAL` marker is **withdrawn**: the portal renders
+correctly and the Admin consuming UI is verified. The original measurement was
+mine and was wrong. See the defect register.

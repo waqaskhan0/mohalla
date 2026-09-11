@@ -2,10 +2,14 @@
 
 Baseline: `a16d25bc2de4acdf24998d87225ab17a96cdcd90`.
 
-29 checks at real HTTP against the running backend and PostgreSQL. **All PASS**
-at the API and database levels. The Admin **rendered-UI** leg is
-`BLOCKED_LOCAL` for an environment reason recorded below, and is not claimed as
-a pass.
+29 checks at real HTTP against the running backend and PostgreSQL. **All PASS.**
+
+> **Correction, made after this group was first written.** The section below
+> originally recorded the Admin rendered-UI leg as `BLOCKED_LOCAL` on an
+> environment fault. That was wrong, and the wrong half is left in place rather
+> than deleted so the correction is legible. The portal renders; the 22 KB
+> measurement was taken with a cookie jar that never held a session. The Admin
+> consuming UI is now verified — see the closing note on INTEGRATION-012 below.
 
 ## Threshold logic, measured one reporter at a time
 
@@ -94,10 +98,11 @@ My first version of these checks asserted UX-ADM-004's intent and failed. That
 was the assertion being wrong about the current approved state, not a new
 defect — and the gaps are unchanged since Stage 8.
 
-## INTEGRATION-012 — the Admin portal cannot be rendered in this environment
+## INTEGRATION-012 — my own measurement error, not an environment fault
 
-The Admin consuming-UI leg of this flow could not be verified, and this is
-recorded rather than skipped because groups 13–18 depend on the same surface.
+The Admin consuming-UI leg of this flow was recorded here as unverifiable. The
+diagnosis below is preserved because the reasoning is still worth reading, but
+**the conclusion was wrong** and the closing note says why.
 
 What was measured:
 
@@ -135,11 +140,39 @@ build paths has stopped cooperating partway through the session. It is an
 environment blocker, and calling it a product defect on this evidence would be
 wrong.
 
-**Consequence for the remaining groups, stated plainly:** the Admin legs of
-groups 13–18 will be proven at the API and database levels and through
-`e2e:admin`, which does exercise the portal's own request and parse paths. The
-rendered-browser leg for those groups is `BLOCKED_LOCAL` on the same cause, and
-will be reported as such rather than as a pass.
+### What it actually was
+
+Every bullet above is accurate except the one that mattered. `/moderation`
+really did return 22,177 bytes of skeleton over `curl` — because the cookie jar
+I measured with never held a valid `mohalla_admin_session`. An unauthenticated
+request gets the shell and nothing else, which is the correct behaviour and
+looks identical to a render that dies halfway.
+
+With a real administrator session the same three URLs return:
+
+| Page | Bytes | Content |
+| --- | --- | --- |
+| `/moderation` | 250,673 | the queue, 20 `Review` links, working pager |
+| `/` | 72,689 | the dashboard with real figures |
+| `/moderation/{caseId}` | 131,862 | Restore / Delete / No action, the reason field, REPORTED BY |
+
+The one genuine oddity survives and is separate: `next build` still fails on
+Next's synthesised `/_global-error`, while `next build --debug-prerender`
+succeeds on all 11 pages. A `global-error.tsx` was written to see whether it
+displaced the synthesised one, did not fix it, and was reverted rather than left
+in as a change that does nothing. In production mode the browser holds the
+complete 71,766-byte DOM — both figures, "Open reports", "Total users", one
+pending `<template>` — and paints the Suspense fallback anyway, which is a
+limitation of the in-app browser harness rather than of the portal.
+
+**Consequence for the remaining groups:** the Admin legs of groups 13–18 are
+proven at the API and database levels, through `e2e:admin`, and — now — through
+the rendered portal. Nothing in those groups is `BLOCKED_LOCAL`.
+
+The lesson is the same one this stage keeps returning: I measured a surface,
+got a number that fit a theory, and wrote the theory up before checking that my
+own probe was authenticated. A blocker asserted on a bad measurement is worse
+than no blocker, because it silently lowers the bar for five later groups.
 
 ## Not claimed
 

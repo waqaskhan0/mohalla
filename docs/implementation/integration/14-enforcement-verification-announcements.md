@@ -5,9 +5,12 @@ Baseline: `a16d25bc2de4acdf24998d87225ab17a96cdcd90`.
 52 checks at real HTTP against the running backend and PostgreSQL. **All PASS.**
 
 Every enforcement is applied to a real account with a real live session, and
-every consequence is read back from the surface an ordinary user would use. The
-Admin **rendered** UI is `BLOCKED_LOCAL` (INTEGRATION-012); these are the
-requests the portal makes, with an administrator session.
+every consequence is read back from the surface an ordinary user would use.
+These are the requests the portal makes, with an administrator session.
+
+The `BLOCKED_LOCAL` marker this group carried for the Admin **rendered** UI is
+withdrawn — INTEGRATION-012 was my measurement error, and the portal has since
+been driven in a browser.
 
 ## Group 15 — suspension
 

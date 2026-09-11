@@ -6,9 +6,15 @@ Baseline: `a16d25bc2de4acdf24998d87225ab17a96cdcd90`.
 
 Each decision is driven on **its own** auto-hidden case, built the way a real
 one arrives: a fresh author, a fresh post, three fresh distinct reporters
-crossing the BR-044 threshold. The Admin **rendered** UI is `BLOCKED_LOCAL`
-(INTEGRATION-012); every request below is the one the portal makes, with an
-administrator session, through the same admin endpoints.
+crossing the BR-044 threshold. Every request below is the one the portal makes,
+with an administrator session, through the same admin endpoints.
+
+The Admin **rendered** queue and case detail were recorded here as
+`BLOCKED_LOCAL` when this group ran. That marker is withdrawn: INTEGRATION-012
+turned out to be my own measurement error, and the rendered surface has since
+been verified — the queue at 250,673 bytes with 20 Review links, and a case
+detail at 131,862 bytes carrying Restore, Delete, No action, the reason field
+and REPORTED BY.
 
 ## Group 13 — restore
 
@@ -140,5 +146,4 @@ resolved.
 
 The Android view of a restored or removed post was verified through the API as
 the app's own client would see it (200 with `underReview false`, and 404
-respectively), not driven on the device in this group. The rendered Admin queue
-and case detail are `BLOCKED_LOCAL` per INTEGRATION-012.
+respectively), not driven on the device in this group.

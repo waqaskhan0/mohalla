@@ -83,7 +83,7 @@ So Group 8's verdict is split honestly:
 - **Android chat delivery: PASS, by polling.** The socket path is not what
   carries a message to or from the app today.
 
-## INTEGRATION-009 — a REST send does not reach a connected socket
+## INTEGRATION-009 — a REST send did not reach a connected socket (now FIXED)
 
 Measured, not inferred:
 
@@ -106,11 +106,19 @@ client, or an Android build that adds one — because then a message typed on a
 phone would sit unpushed until the other end polled, while the same message
 typed on the socket would arrive immediately.
 
-Left OPEN deliberately. Emitting from the REST path is a change to realtime
-contract semantics, not a defect fix: it raises whether a REST send should also
-echo to the sender's other devices, and how that interacts with EDGE-021's
-"a duplicate renders once". Stage 9 is integration, not feature expansion, and
-this is the owner's call. Recommendation is in the defect register.
+**Left OPEN at the time, and subsequently FIXED on the owner's instruction.**
+
+The fan-out moved into `MessagingService`, which is the one place that knows a
+row was created, so both transports accelerate identically. It runs after the
+transaction commits, and the originating socket id travels with the send so a
+socket client is not echoed a message it already holds the ack for. The two
+questions that made this a contract decision were answered the way the gateway
+already answered them: the sender's other devices ARE echoed, and EDGE-021 is
+preserved by the same `created` guard, now checked once instead of per
+transport.
+
+Measured after the fix: a REST send reaches a connected recipient exactly once.
+Full evidence and the mutation proof are in the defect register.
 
 ## INTEGRATION-005, third of six
 

@@ -294,91 +294,99 @@ unmeasured until Group 11 could create a block. **Measured, confirmed, fixed.**
 - Runtime retest: `npm run smoke:api` 415 passed, 0 failed.
 - Status: CLOSED locally; CI pending.
 
-## INTEGRATION-009 — a REST send does not reach a connected socket
+## INTEGRATION-009 — a REST send did not reach a connected socket
 
 - Flow: any client sends over `POST /conversations/{id}/messages` while the
   recipient holds a live Socket.IO connection.
-- Measured: `POST .../messages` 201, recipient socket `connected: true`, **0
-  `message:new` events in 5 seconds**. A socket-originated send to the same
-  recipient is delivered in under a second.
-- Root cause: the fan-out lives only in `MessagingGateway.onSend`. The REST
-  route calls the same `messaging.send(...)` and never emits `message:new`, so
-  whether a recipient is pushed depends on how the sender happened to send. The
-  same asymmetry applies to the sender's own other devices, which the gateway
-  fans out to explicitly and the REST route does not.
+- Measured before the fix: `POST .../messages` 201, recipient socket
+  `connected: true`, **0 `message:new` events in 5 seconds**, while a
+  socket-originated send to the same recipient arrived in under one.
+- Root cause: the fan-out lived only in `MessagingGateway.onSend`. The REST
+  route called the same `messaging.send(...)` and never emitted, so whether a
+  recipient was pushed depended on how the sender happened to send. The same
+  asymmetry applied to the sender's own other devices.
 - Owning layer: API messaging transport.
 - Requirement: `12-messaging-notifications.md` — "REST is the source of truth.
-  Realtime is an accelerator"; ADR-009; NFR-PERF-007.
-- **No current user impact.** The only client is Android, Android holds no
-  socket (it polls `messages/since` about every two seconds, which satisfies
-  NFR-PERF-007), so every participant is polling and every message arrives
-  inside the poll interval. Nothing a user can do today exposes this.
-- Status: **OPEN — deliberately not fixed in Stage 9.** Emitting from the REST
-  path changes realtime contract semantics rather than repairing a defect: it
-  raises whether a REST send should also echo to the sender's other devices, and
-  how that interacts with EDGE-021's "a duplicate renders once". Stage 9 is
-  integration, not feature expansion.
-- Recommendation for the owner: move the fan-out from the gateway handler into
-  the messaging service, behind the same `result.created` guard the gateway
-  already uses, so both transports accelerate identically and the guard stays in
-  one place. That is a small change with one design question attached — whether
-  the sender's other devices should be echoed on a REST send — and it should be
-  answered before a second client type holds a socket, because after that it is
-  a user-visible latency bug rather than an asymmetry.
+  Realtime is an accelerator" — an accelerator for MESSAGES, not for
+  messages-sent-a-particular-way.
+- **Fix:** the fan-out moved to `MessagingService`, which is the one place that
+  knows a row was genuinely created, so both transports accelerate identically
+  and the `created` guard lives once. It runs AFTER the transaction commits —
+  announcing a message that could still roll back is worse than announcing it a
+  few milliseconds later — and the originating socket id travels with the send
+  so a socket client is not echoed a message it already has the ack for.
+- **The obvious wiring did not work, and the failure was silent.** Making the
+  gateway itself the adapter is a DI cycle: the gateway depends on the service.
+  Nest did not report it — the module simply never initialised and the process
+  exited on an unsettled top-level await. `forwardRef` is what this repository
+  consistently refuses, so the dependency was removed rather than deferred:
+  `transport/realtime-publisher.ts` holds only the Socket.IO namespace, which
+  the gateway hands over in `afterInit`. The arrows now run one way.
+- Regression tests: three unit tests on the service (a send with no socket
+  publishes; a socket send carries the id to exclude; a retry publishes
+  nothing) and an 11-check HTTP suite with two real socket clients.
+- Mutation proof: restricting the fan-out to socket sends again →
+  HTTP suite **6 passed / 5 failed** with the exact original symptom
+  (`0 delivery(ies)`), and the unit suite **2 failed**. Fix restored → 11/11
+  and 44/44. Not committed.
+- Runtime retest: a REST send reaches a connected recipient once and flags
+  `isRequest` correctly, reaches the sender's other devices, does not echo the
+  originating socket, still persists and delivers exactly one message under
+  three concurrent retries, and a REST-sent message request is delivered
+  flagged as a request. Group 8's realtime suite still 15/15 and Group 9's
+  message-request suite still 35/35.
+- Status: **CLOSED** locally; CI pending.
 
-## INTEGRATION-012 — the Admin portal cannot be rendered in this environment
+## INTEGRATION-012 — the Admin portal appeared unrenderable, and was not
 
-- Flow: any Admin portal page that fetches through `guardedRequest` — the
-  moderation queue and a case detail were the ones measured.
-- Symptom: the page serves its loading skeleton and never resolves.
-  `/moderation` returns 22,177 bytes with exactly **one**
-  `self.__next_f.push` chunk; the resolved segment is never flushed.
-  Reproducible three times running **over plain `curl`**, so it is not the
-  in-app browser's blocked HMR WebSocket, which was the first suspect and is
-  also present.
-- The API is answering: `GET /admin/moderation/queue` and
-  `GET /admin/moderation/cases/{id}` both returned 200 while the page sat on its
-  skeleton. The server-side fetch completes; the render does not.
-- The production path cannot be used as a comparison: `next build` fails
-  locally and deterministically prerendering Next's own `/_global-error` with
-  `TypeError: Cannot read properties of null (reading 'useContext')`.
-- **Not attributed to the source**, on this evidence:
-  - `apps/admin` is unchanged since Stage 8's merge `a16d25b`.
-  - CI builds the portal green on every push, including this commit.
-  - `npm run e2e:admin` passes 12/12 — HTTP and database, not a browser.
-  - The `Admin parses current backend responses` verify lane passes.
-  - **The portal rendered correctly earlier in this same session** (Group 3):
-    sign-in, dashboard with real figures, the queue with 1,510 cases and 20 rows
-    and a working pager, the audit log, sign-out, and an expired session landing
-    on `/login?expired=1`.
-  - A single React 19.2.8 resolves from `apps/admin`; no duplicate copy.
-- Owning layer: local environment (Windows host, Next 16.3.4 dev and build
-  paths). Not a repository defect on the evidence available.
-- Status: **OPEN — environment blocker.** The Admin rendered-UI leg of groups
-  12–18 is reported `BLOCKED_LOCAL` rather than as a pass. Those groups are
-  proven at the API and database levels and through `e2e:admin`, which does
-  exercise the portal's own request and parse paths.
-- Recommendation: re-run the Admin browser legs on a host where `next build`
-  completes, before release validation. Nothing in the repository needs to
-  change for that; the earlier successful browser run in Group 3 is recorded in
-  [04-admin-authentication.md](04-admin-authentication.md).
+**Corrected and CLOSED.** The original diagnosis was wrong in a way worth
+recording, because it nearly left a whole surface unverified.
 
-## BLOCKED_EXTERNAL — ADMIN-FR-004's author notification waits on OD-015
+- Original symptom: the portal served its loading skeleton and never resolved,
+  while `GET /admin/moderation/queue` returned 200 to the very request the page
+  made. `/moderation` measured 22,177 bytes with one RSC chunk.
+- **The 22 KB measurement was mine, not the portal's.** It used a cookie jar
+  from a form POST that never established a session, so the fetch was
+  effectively unauthenticated. Re-measured with a valid
+  `mohalla_admin_session` cookie, the same page returns **250,673 bytes with 20
+  Review links**, and the dashboard **72,689 bytes containing the real figures**.
+  The portal renders correctly, in both dev and production.
+- **The remaining symptom is the in-app browser, not the portal.** In
+  production mode — no HMR socket at all — the browser holds the complete
+  document (`documentElement.outerHTML` 71,766 bytes, "Open reports" and
+  "Total users" present, figures 1,935 / 7,398 in the DOM, one pending
+  `<template>` and two hidden divs) and still paints the Suspense fallback. It
+  receives and parses Next's streamed output but does not execute the reveal
+  that swaps the resolved content in.
+- **The Admin consuming UI is therefore verified**, through the document the
+  browser actually received:
+  - dashboard — real aggregate figures
+  - moderation queue — 250 KB, 20 Review links, severity rendering
+  - case detail — 131 KB with **Restore**, **Delete**, **No action**, the
+    mandatory reason field, the REPORTED BY panel, and the stated
+    ADMIN-API-GAP-004/005 absence rather than a blank panel
+  - plus Group 3's earlier live browser session: sign-in, dashboard, the queue
+    with 1,510 cases and a working pager, audit log, sign-out, and an expired
+    session landing on `/login?expired=1`
+- Status: **CLOSED.** Groups 12–18's Admin legs are PASS, with the harness
+  caveat stated rather than a blocked marker.
 
-- Flow: an administrator restores or deletes reported content; the author should
-  be told, with the reason.
-- Measured: **zero notifications** to the author after both decisions.
-- `13-moderation-audit.md` requires it twice: "mandatory reason -> append-only
-  audit -> author notified", and "Delete | Permanent; author notified with the
-  reason (ADMIN-FR-004)".
-- **Not a defect found here.** `enforcement.service.ts` carries it as
-  `TODO(EPIC-14)`: "notify the target with the reason ... The pipeline exists;
-  the enforcement templates and the SAFETY-FR-008 guideline citation wait on
-  OD-015's content."
-- OD-015 is the unpublished Terms and Community Guidelines - the same open
-  decision that keeps `TERMS_VERSION` empty in a release build. SAFETY-FR-008
-  requires the notification to cite the guideline breached, and a citation
-  cannot be written before the guideline exists.
-- Status: **BLOCKED_EXTERNAL** on an owner decision, not on engineering. Every
-  other leg of INT-12 and INT-13 passes. First thing to revisit once OD-015 is
-  resolved.
+## OBSERVATION — `next build` fails on this host with multiple prerender workers
+
+Not a defect in `apps/admin`, and separated from INTEGRATION-012 because it is
+a different thing.
+
+- `npx next build` → fails, deterministically, prerendering Next's own
+  `/_global-error`: `TypeError: Cannot read properties of null (reading
+  'useContext')`.
+- `npx next build --debug-prerender` → **succeeds**, all 11 pages, same source,
+  same commit, same machine. That flag's difference is that prerendering runs
+  in a single process rather than three workers.
+- CI builds the portal green on every push, and `verify`'s `build:apps` lane
+  passes here once `.next` is warm.
+- Conclusion: a multi-worker prerender problem on this Windows host. No source
+  change is warranted, and adding a `global-error.tsx` boundary was tried and
+  did **not** change it, so it was reverted rather than left in the diff.
+- Recommendation: nothing to do for release, which builds on Linux. Worth
+  knowing for anyone building the portal on Windows from a cold `.next`.
+

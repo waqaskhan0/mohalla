@@ -9,6 +9,8 @@ import { PgMessagingRepository } from './repositories/pg-messaging.repository.js
 import { MessagingService } from './application/messaging.service.js';
 import { MessagingController } from './transport/messaging.controller.js';
 import { MessagingGateway } from './transport/messaging.gateway.js';
+import { REALTIME_PUBLISHER } from './ports/realtime-publisher.port.js';
+import { MessagingRealtimePublisher } from './transport/realtime-publisher.js';
 
 /**
  * `messaging` — product tier. EPIC-09.
@@ -47,6 +49,12 @@ import { MessagingGateway } from './transport/messaging.gateway.js';
   imports: [IdentityModule, MediaModule, NotificationsModule, SafetyModule, SocialGraphModule],
   controllers: [MessagingController],
   providers: [
+    // The realtime fan-out (INTEGRATION-009). Deliberately NOT the gateway:
+    // the gateway depends on the service, so the service depending back on the
+    // gateway is a DI cycle that leaves the module uninitialised. This holds
+    // only the namespace, which the gateway hands over in `afterInit`.
+    MessagingRealtimePublisher,
+    { provide: REALTIME_PUBLISHER, useExisting: MessagingRealtimePublisher },
     PgMessagingRepository,
     { provide: MESSAGING_REPOSITORY, useExisting: PgMessagingRepository },
     MessagingService,
