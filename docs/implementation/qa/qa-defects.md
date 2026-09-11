@@ -380,7 +380,7 @@ including the new regression: green.
 | **Area** | API — `apps/api/src/modules/platform/identity/domain/otp.ts` |
 | **Requirement** | SEC-003; compare the project's own reasoning in `identifier-hash.ts` |
 | **Environment** | Local Postgres 18.6 |
-| **Status** | OPEN — recommendation recorded, no code change made |
+| **Status** | **CLOSED — MEDIUM, SECURITY HARDENING** |
 
 ### What was found
 
@@ -455,3 +455,207 @@ Two things the owner should weigh, which is why Stage 10 did not simply do it:
 No exploit against a deployed system was attempted or demonstrated. The
 enumeration was performed against the local QA database, on synthetic
 challenges created by this stage's own fixtures.
+
+---
+
+## QA-005 — resolution
+
+**Owner decision:** use a dedicated secret-key HMAC-SHA256. Do not keep the
+design, do not make SHA-256 slower, and do not stretch a six-digit code with
+Argon2id or bcrypt.
+
+### Implemented
+
+`OtpDigest` replaces `hashOtpCode` / `otpMatches`:
+
+```
+HMAC-SHA256(OTP_HASH_KEY, encode([
+  "mohalla:otp:v2", challengeId, purpose, code
+]))
+```
+
+`encode` writes each part as a 4-byte big-endian length followed by its UTF-8
+bytes, so the fields cannot be slid past one another — plain concatenation
+would make `("ab","c")` and `("a","bc")` collide.
+
+| Decision | Why |
+| --- | --- |
+| Dedicated `OTP_HASH_KEY` | key separation is mandatory. Not the identifier pepper, session, password, admin or push secret. The pepper additionally can **never** be rotated (it would unban everyone); this key can be. |
+| `challengeId` in the input | two live challenges holding the same six digits store different digests, so the table reveals nothing by collision |
+| `purpose` in the input | a digest lifted from a `REGISTRATION` row cannot be replayed against a `PASSWORD_RESET` one |
+| Production fails closed | `loadEnv` refuses to start when the key is absent or still the development default, and the refusal never prints the key |
+
+### Migration
+
+`0024_otp_hmac_transition.js` **deletes every row in `otp_challenges`**.
+
+They cannot be migrated — the new digest needs the plaintext, and the whole
+point of the stored value is that the plaintext is not kept. Recomputing it
+would mean performing the attack in order to fix it.
+
+**No hash-version column and no legacy window**, deliberately: any row still
+verifiable under `sha256(code)` is a row an attacker with a database read can
+still solve, so a "bounded" fallback is a bounded window in which nothing is
+fixed. The bound that matters already exists — OTPs live ten minutes. Somebody
+holding an unused code at deploy time requests a new one, which is the same
+experience as a code that expired while they were reading it.
+
+### Acceptance tests
+
+| | Requirement | Where |
+| --- | --- | --- |
+| A | correct OTP verifies | `otp.service.spec.ts` — "verifies a correct code and activates the account" |
+| B | wrong OTP fails | "rejects a wrong code and spends an attempt" |
+| C | single-use | "REFUSES TO REUSE A CODE that already succeeded" |
+| D | expired fails | "REFUSES A CODE THAT HAS EXPIRED, even though it is correct" |
+| E | resend invalidates the previous code | "RESENDING INVALIDATES THE PREVIOUS CODE" + "the newly sent code is the one that works" |
+| F | attempt limit enforced | "LOCKS OUT after the attempt cap, and the lockout outlives the challenge" |
+| G | password reset uses the same construction | `password.service.spec.ts`, built through `OtpDigest` |
+| H | digest is not `sha256(otp)` | `otp.spec.ts` — H/I |
+| I | enumeration with only the row no longer recovers it | `otp.spec.ts` — H/I, and the runtime evidence below |
+| J | same code, different challenges, different digests | `otp.spec.ts` — J |
+| K | production without the key fails closed | `env.spec.ts` — four K tests |
+| L | the dev fixture cannot become a production key | `env.spec.ts` — two L tests |
+
+A–G already existed and now run against the new construction; they were not
+rewritten, which is the point — the security property changed and the
+behavioural contract did not.
+
+### Mutation proof
+
+Restoring `storedDigest = SHA256(otp)`:
+
+```
+× J. two challenges with the SAME code do not share a stored digest
+× binds the purpose, so a registration digest cannot be replayed as a reset
+× H/I. the stored digest is NOT sha256(code), and the space is not enumerable without the key
+× a different key does not verify the same code
+Tests  4 failed | 14 passed (18)
+```
+
+Reverted; not committed.
+
+### Runtime evidence, both ways
+
+The same script, against the real endpoint and the real database, holding only
+the stored row:
+
+| Build | Result |
+| --- | --- |
+| Legacy `sha256(code)` | `enumerated 10^6 six-digit codes in 554 ms` → **RECOVERED the live code**, matching the code the provider delivered |
+| Keyed HMAC | full 10^6 sweep → **NOT RECOVERABLE from the database row** |
+
+### The QA harness had to stop working, and did
+
+Reading codes out of the database was the defect, so the driver can no longer
+do it — that is an acceptance criterion, not a regression. `qa10.otp_for` now
+reads the in-process `FakeSmsProvider` outbox through
+`.emulator-evidence/stage10-api-harness.mjs`, which composes the same
+`AppModule` and mounts one route beside it.
+
+It cannot exist in production: it is not part of `apps/api` (`grep -rn
+"__qa_harness__" apps/` returns **0 matches**), it lives in a git-ignored
+directory, and it refuses to start unless `NODE_ENV` is development, the
+database is local, and the SMS provider self-identifies as `fake`. Verified
+live — the route returns a six-digit code for a synthetic number while the same
+database row yields nothing to a full sweep.
+
+Explicitly not used: a debug endpoint in the app, an admin route, a plaintext
+column, a log line containing a code, or a committed secret.
+
+### Severity
+
+**MEDIUM**, unchanged. Exploitation needs database read access, so this is not
+a standalone authentication bypass and is not recorded as one. It is in scope
+because this project's own threat model already treats a stolen database dump
+as in scope — that is the entire justification for peppering identifier hashes.
+No more direct attack path was demonstrated, so the severity was not raised.
+
+Architecture supersession: [otp-digest-supersession.md](../../security/otp-digest-supersession.md).
+
+---
+
+## QA-006 — the API recorded acceptance of Terms versions that do not exist
+
+| | |
+| --- | --- |
+| **Severity** | MEDIUM |
+| **Area** | API — `POST /register` |
+| **Requirement** | BR-004, AUTH-FR-009, PRIV-018; OD-015 |
+| **Environment** | Local API, Postgres 18.6 |
+| **Status** | **CLOSED** |
+
+### How it was found
+
+Stage 10 §12 asks whether a release-like configuration can silently record
+legally meaningful Terms acceptance against unavailable documents. Measured
+directly against the running API:
+
+| `termsVersion` sent | Response |
+| --- | --- |
+| `""` | 400 |
+| `"   "` | 400 |
+| `"not-a-real-version"` | **202 — accepted and stored** |
+| `"terms-9999-99"` | **202 — accepted and stored** |
+
+The schema was `z.string().min(1).max(64)` and the service checked only that
+the field was non-empty. Any string was recorded as the record of what the
+person agreed to.
+
+### Why it matters, stated without inflation
+
+The **shipped release client cannot do this**: the release Android build ships
+`TERMS_VERSION=""` while OD-015 is unresolved, so it refuses to submit and
+registration is blocked. There is no user-facing path to the defect today, and
+no security compromise — nothing is disclosed and no account is taken over.
+
+What is wrong is that the guarantee lived **only in the client**. PRIV-018
+makes these documents the stated basis for every enforcement action, so an
+acceptance row naming a document that was never published cannot support the
+thing it exists to support. It is the same lesson QA-002 recorded about the
+Admin cookie: a rule enforced only by the client is not enforced.
+
+### Fix
+
+`PUBLISHED_TERMS_VERSIONS` — the versions a deployment will accept an
+acceptance of. `RegisterService` refuses anything outside it, with the
+**identical** refusal it gives an empty version, so a caller cannot enumerate
+which versions exist.
+
+- **Development** defaults to `terms-2026-01,unpublished-od-015` — exactly what
+  local tooling, CI and the debug Android build really submit, so nothing about
+  development changes.
+- **Production** must set it explicitly and startup fails if it does not, so a
+  production deployment cannot silently inherit a list containing a version
+  whose own name says it is unpublished.
+- **Empty is valid in production** and means every registration is refused.
+  That is the correct posture while OD-015 is unresolved, and it now matches
+  what the release client already does.
+
+No legal text was invented, and none was needed: the fix is a refusal to accept
+acceptance of a document nobody has published.
+
+### Mutation proof
+
+Removing the check:
+
+```
+× REFUSES a version nobody published, instead of recording it
+× refuses a plausible-looking but unpublished version
+× and nothing is written for a refused version
+× gives the same refusal shape as an empty version, disclosing nothing extra
+Tests  4 failed | 20 passed (24)
+```
+
+Reverted; not committed.
+
+### Runtime retest
+
+| `termsVersion` | Before | After |
+| --- | --- | --- |
+| `"terms-2026-01"` | 202 | 202 |
+| `"not-a-real-version"` | 202 | **400 `TERMS_NOT_ACCEPTED`** |
+| `"terms-9999-99"` | 202 | **400 `TERMS_NOT_ACCEPTED`** |
+| `""` | 400 | 400 |
+
+Nine new tests: five on the service, four on the environment.

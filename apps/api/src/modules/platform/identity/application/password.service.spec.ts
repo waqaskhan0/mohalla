@@ -11,7 +11,7 @@ import {
   OTP_RESEND_COOLDOWN_MS,
   OTP_RESEND_MAX_PER_WINDOW,
   OTP_TTL_MS,
-  hashOtpCode,
+  OtpDigest,
 } from '../domain/otp.js';
 import type { PasswordHasher } from '../ports/password-hasher.port.js';
 import type { DatabaseService } from '../../../../database/database.service.js';
@@ -50,7 +50,17 @@ function build() {
     error: (m: unknown) => logs.push(String(m)),
   } as unknown as StructuredLogger;
 
-  const service = new PasswordService(db, repo, hasher, identifierHasher, sms, clock, logger);
+  const otpDigest = new OtpDigest('test-only-otp-key-0123456789abcdefghij');
+  const service = new PasswordService(
+    db,
+    repo,
+    hasher,
+    identifierHasher,
+    otpDigest,
+    sms,
+    clock,
+    logger,
+  );
 
   return {
     service,
@@ -58,6 +68,7 @@ function build() {
     sms,
     logs,
     clock,
+    otpDigest,
     advance: (ms: number) => clock.advance(ms),
     identifierHash: identifierHasher.hash(PHONE),
 
@@ -294,11 +305,16 @@ describe('PasswordService.reset (AUTH-API-007)', () => {
 
   it('does not accept a REGISTRATION code for a reset', async () => {
     const { userId } = await ctx.seedUser(0);
+    const registrationChallengeId = randomUUID();
     await ctx.repo.replaceOtpChallenge({
-      id: randomUUID(),
+      id: registrationChallengeId,
       identifierHash: ctx.identifierHash,
       purpose: 'REGISTRATION',
-      codeHash: hashOtpCode('123456'),
+      codeHash: ctx.otpDigest.digest({
+        challengeId: registrationChallengeId,
+        purpose: 'REGISTRATION',
+        code: '123456',
+      }),
       expiresAt: new Date(ctx.clock.now().getTime() + OTP_TTL_MS),
     });
 

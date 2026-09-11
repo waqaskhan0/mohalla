@@ -1,10 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { ENV } from '../../../../config/env.token.js';
+import type { Env } from '../../../../config/env.js';
 import { randomUUID } from 'node:crypto';
 import { DatabaseService } from '../../../../database/database.service.js';
 import { StructuredLogger } from '../../../../common/logging/structured.logger.js';
 import { IdentifierHasher } from '../domain/identifier-hash.js';
 import { checkPassword } from '../domain/password-policy.js';
-import { generateOtpCode, hashOtpCode, otpExpiryFrom } from '../domain/otp.js';
+import { generateOtpCode, OtpDigest, otpExpiryFrom } from '../domain/otp.js';
 import { tryNormalizePakistaniMobile } from '../domain/phone-number.js';
 import { CLOCK, type Clock } from '../ports/clock.port.js';
 import { PASSWORD_HASHER, type PasswordHasher } from '../ports/password-hasher.port.js';
@@ -66,6 +68,8 @@ export class RegisterService {
     @Inject(IDENTITY_REPOSITORY) private readonly repo: IdentityRepository,
     @Inject(PASSWORD_HASHER) private readonly hasher: PasswordHasher,
     private readonly identifierHasher: IdentifierHasher,
+    private readonly otpDigest: OtpDigest,
+    @Inject(ENV) private readonly env: Env,
     @Inject(SMS_PROVIDER) private readonly sms: SmsProvider,
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly logger: StructuredLogger,
@@ -89,6 +93,23 @@ export class RegisterService {
 
     // BR-004 / AUTH-FR-009: acceptance must be affirmative and versioned.
     if (typeof cmd.termsVersion !== 'string' || cmd.termsVersion.trim() === '') {
+      return { status: 'INVALID_INPUT', field: 'termsVersion', reason: 'TERMS_NOT_ACCEPTED' };
+    }
+
+    // QA-006: AND IT MUST BE A VERSION THIS DEPLOYMENT ACTUALLY PUBLISHES.
+    //
+    // The check above only asked whether the field was non-empty, so the API
+    // accepted `"not-a-real-version"` with a 202 and stored it as the
+    // legally-meaningful record of what the person agreed to. The release
+    // Android build refuses to submit — it ships an empty `TERMS_VERSION`
+    // while OD-015 is unresolved — but that is a rule in the client, and a
+    // rule in the client is not a rule.
+    //
+    // An acceptance of a document that was never published is worse than no
+    // account at all: PRIV-018 makes these documents the stated basis for
+    // every enforcement action, so a bogus record is a record that cannot
+    // support the thing it exists to support.
+    if (!this.env.PUBLISHED_TERMS_VERSIONS.includes(cmd.termsVersion.trim())) {
       return { status: 'INVALID_INPUT', field: 'termsVersion', reason: 'TERMS_NOT_ACCEPTED' };
     }
 
@@ -147,12 +168,18 @@ export class RegisterService {
         }
 
         const code = generateOtpCode();
+        // The id is minted first because the digest is bound to it (QA-005).
+        const challengeId = randomUUID();
         await this.repo.replaceOtpChallenge(
           {
-            id: randomUUID(),
+            id: challengeId,
             identifierHash,
             purpose: 'REGISTRATION',
-            codeHash: hashOtpCode(code),
+            codeHash: this.otpDigest.digest({
+              challengeId,
+              purpose: 'REGISTRATION',
+              code,
+            }),
             expiresAt: otpExpiryFrom(this.clock.now()),
           },
           client,
