@@ -79,7 +79,7 @@ Retain resolved defects. Close only after regression and runtime retest evidence
   both pre-reset session tokens return 401 with `revoked_at` set; the old
   password is refused; a real app launch with cleared data logs in on the new
   password and reaches the Home shell.
-- Status: CLOSED locally; CI pending.
+- Status: CLOSED; CI passed on `23d9ff1` ([run 34548979179](https://github.com/waqaskhan0/mohalla/actions/runs/34548979179)).
 
 ## INTEGRATION-005 — FEED-FR-005 has a ViewModel and no gesture
 
@@ -101,7 +101,7 @@ Retain resolved defects. Close only after regression and runtime retest evidence
 - Fix commit: this Group 4 checkpoint.
 - Runtime retest: a slow drag fires `GET /feed/discover`; pagination still fires
   its own two further requests.
-- Status: CLOSED locally; CI pending.
+- Status: CLOSED; CI passed on `23d9ff1` ([run 34548979179](https://github.com/waqaskhan0/mohalla/actions/runs/34548979179)).
 - **Carried**: the identical gap existed on five more screens — events, inbox,
   notifications, saved posts and user lists — all computing `refreshing` with
   nothing rendering it. Fixed in the group that exercises each, so every fix is
@@ -148,7 +148,7 @@ Retain resolved defects. Close only after regression and runtime retest evidence
 - Runtime retest: `GET /posts/{id}` returns `viewerHasLiked: true`; the detail
   screen and the profile post list both render "Remove like" with a count of 1,
   matching the single `likes` row.
-- Status: CLOSED locally; CI pending.
+- Status: CLOSED; CI passed on `23d9ff1` ([run 34548979179](https://github.com/waqaskhan0/mohalla/actions/runs/34548979179)).
 
 ## INTEGRATION-010 — the same post reported different counts on different screens
 
@@ -182,7 +182,7 @@ unmeasured until Group 11 could create a block. **Measured, confirmed, fixed.**
   block, when the blocked person cannot engage at all — so the stored counter
   was zero and `detail 0` passed against the defect. Rewritten to engage first.
 - Runtime retest: detail 0/0, profile list 0/0, feed 0/0, stored 1/1.
-- Status: CLOSED locally; CI pending.
+- Status: CLOSED; CI passed on `23d9ff1` ([run 34548979179](https://github.com/waqaskhan0/mohalla/actions/runs/34548979179)).
 
 ## INTEGRATION-011 — a block did not reach the notification centre
 
@@ -214,7 +214,7 @@ unmeasured until Group 11 could create a block. **Measured, confirmed, fixed.**
   never established that there was anything to hide.
 - Runtime retest: 0 of 0 notifications name the blocked person; badge agrees
   with the list.
-- Status: CLOSED locally; CI pending.
+- Status: CLOSED; CI passed on `23d9ff1` ([run 34548979179](https://github.com/waqaskhan0/mohalla/actions/runs/34548979179)).
 
 ## INTEGRATION-007 — attaching any image killed the app, twice over
 
@@ -261,7 +261,7 @@ unmeasured until Group 11 could create a block. **Measured, confirmed, fixed.**
   (longest edge exactly the section 7 cap, from a 1080x2280 source, so
   compression is proven); `post_media` row at position 0; the image draws in the
   post on the profile. Zero crashes in logcat.
-- Status: CLOSED locally; CI pending.
+- Status: CLOSED; CI passed on `23d9ff1` ([run 34548979179](https://github.com/waqaskhan0/mohalla/actions/runs/34548979179)).
 
 ## INTEGRATION-008 — a fixture number could land on the fake provider's reserved failure suffix
 
@@ -292,7 +292,7 @@ unmeasured until Group 11 could create a block. **Measured, confirmed, fixed.**
   `onboard` had no OTP to read, exactly as in CI — while the nudged number
   recorded a verification code. 200,000 seeds now produce no reserved suffix.
 - Runtime retest: `npm run smoke:api` 415 passed, 0 failed.
-- Status: CLOSED locally; CI pending.
+- Status: CLOSED; CI passed on `23d9ff1` ([run 34548979179](https://github.com/waqaskhan0/mohalla/actions/runs/34548979179)).
 
 ## INTEGRATION-009 — a REST send did not reach a connected socket
 
@@ -335,7 +335,7 @@ unmeasured until Group 11 could create a block. **Measured, confirmed, fixed.**
   three concurrent retries, and a REST-sent message request is delivered
   flagged as a request. Group 8's realtime suite still 15/15 and Group 9's
   message-request suite still 35/35.
-- Status: **CLOSED** locally; CI pending.
+- Status: **CLOSED**; CI passed on `23d9ff1` ([run 34548979179](https://github.com/waqaskhan0/mohalla/actions/runs/34548979179)).
 
 ## INTEGRATION-012 — the Admin portal appeared unrenderable, and was not
 

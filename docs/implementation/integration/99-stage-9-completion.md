@@ -4,8 +4,8 @@
 | --- | --- |
 | Branch | `feature/stage-9-system-integration` |
 | Base | `a16d25bc2de4acdf24998d87225ab17a96cdcd90` (Stage 8, PR #15) |
-| Last code commit | `d44430d333bb8bcb64d95fe5e9b9696d5b65ab7f` (INTEGRATION-009) |
-| Commits | 19, plus this record |
+| Head | `23d9ff1` — CI green, both workflows |
+| Commits | 21 |
 | PR | [#16](https://github.com/waqaskhan0/mohalla/pull/16) — **DRAFT, not merged** |
 
 **SYSTEM INTEGRATION: COMPLETE** — all 20 groups and all 25 INT flows executed.
@@ -110,7 +110,7 @@ content the owner has not written, the other a secret the owner holds.
 | Admin portal E2E | **12 passed · 0 failed · 0 blocked** |
 | Release gate criteria | 47 checks passed · 0 failed |
 | Android lint + unit tests | PASS |
-| CI on head | **green**, both workflows |
+| CI on head (`23d9ff1`) | **green**, both workflows |
 | `npm audit --audit-level=high` | **0 vulnerabilities** |
 | Secret / public-data scans | clean on every commit |
 
