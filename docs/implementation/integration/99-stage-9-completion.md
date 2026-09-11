@@ -5,7 +5,7 @@
 | Branch | `feature/stage-9-system-integration` |
 | Base | `a16d25bc2de4acdf24998d87225ab17a96cdcd90` (Stage 8, PR #15) |
 | Last code commit | `23d9ff1` — CI green, both workflows |
-| Commits | 21, the last two documentation only |
+| Commits | 22 at the time of writing; everything after `23d9ff1` is documentation |
 | PR | [#16](https://github.com/waqaskhan0/mohalla/pull/16) — **DRAFT, not merged** |
 
 **SYSTEM INTEGRATION: COMPLETE** — all 20 groups and all 25 INT flows executed.
