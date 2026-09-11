@@ -53,28 +53,88 @@ Each is now asserted on **identity** — is this person ever the actor? — whic
 both exact and immune to timing. A count delta taken either side of an async
 queue is not evidence.
 
-## Push: what exists and what does not
+## Push — implemented and executed (QA-009 closed, 2026-09-12)
+
+The section this replaces read "*Android push SDK, token, channel, permission,
+payload handling — **none of it***", and it was accurate when written. The owner
+then supplied the DEP-003 client configuration and the client was built.
 
 | Layer | State |
 | --- | --- |
-| Outbox → worker → notification row | implemented, working |
+| Outbox → worker → notification row | implemented, working — 17/17 |
 | `PUSH_SENDER` port, `FakePushSender` | implemented |
-| `POST` / `DELETE /notifications/devices` | **implemented and routed** |
+| `POST` / `DELETE /notifications/devices` | implemented, routed, **and now called by the app** |
 | Notification preferences API | implemented |
 | Android in-app notification centre | implemented, working |
-| Android notification **preferences screen** | implemented |
-| Android push SDK, token, channel, permission, payload handling | **none of it** |
+| Android notification preferences screen | implemented, plus a permission notice when the OS is refusing |
+| Android push SDK, token, channel, permission, payload handling | **implemented** — Firebase BOM 33.7.0, one channel, contextual permission, data-only payloads |
 
-`device_tokens` holds 8 rows, every one created **2026-09-05** by backend tests
-calling the endpoint directly. Nothing was registered by the app, because no
-code path can.
+### What was executed
 
-**The app ships a screen for choosing which push notifications you want, and no
-ability to receive any of them.** That is QA-009, and it is HIGH.
+| Lane | Checks | Result |
+| --- | --- | --- |
+| Notification centre and rules (`qa10_notifications.mjs`) | 17 | **PASS** |
+| Device token lifecycle on the emulator (`qa10_push.py`) | 36 | **PASS** |
+| Delivery with permission granted (`PushMessageDeliveryTest`) | 6 | **PASS** |
+| Delivery with permission refused (`PushDeniedDeliveryTest`) | 2 | **PASS** |
+| Rotation wiring on device (`PushTokenRotationTest`) | 1 | **PASS** |
+| Backend payload ↔ client parser (`qa10_push_payload.mjs`) | 6 | **PASS** |
+| Registrar and deep-link units | 17 | **PASS** |
+
+`device_tokens` now holds a **real Firebase registration token** written by the
+app itself — 142 characters with the separator at 22, which is the shape the
+earlier synthetic rows (17–26 characters, no separator) do not have. The value
+is never printed, logged or committed; only its length and separator position
+are ever recorded.
+
+### The rules that say "no push", re-checked with a device actually registered
+
+These previously could not fail, because nothing was registered. They can now.
+
+| Rule | Evidence |
+| --- | --- |
+| A Message Request produces no push (BR-027) | `qa10_chat.mjs` — "no ordinary push is generated for a request", 0 outbox rows, with the handset live |
+| A blocked person produces no notification at all | `qa10_notifications.mjs` — 0 notifications from that actor |
+| Own actions never notify the actor | the drain logs `notification_suppressed, reason: OWN_ACTION` |
+| An account with no device is recorded, not pushed | the drain logs `notification_recorded_no_push, reason: NO_DEVICE` — which is the honest distinction NOTIF-FR-007 asks for |
+| Preferences apply to push only; the centre keeps everything | the preferences screen states it, and the centre gained every row regardless |
+
+### The payload contract, checked from both sides
+
+`qa10_push_payload.mjs` drains in-process and inspects what `FakePushSender` was
+handed. For the notification produced by a real like on a real post:
+
+- it was addressed to **the registered handset's own token**, not to some other row;
+- it carried `title`, `body`, `deepLink`, `correlationId` and **nothing else** (ADR-014);
+- its `deepLink` — `/posts/<uuid>` — is a path `DeepLinks.resolvePath` accepts.
+
+That last check reimplements the client's allowlist deliberately, so a change to
+either side without the other fails this file instead of silently shipping a
+notification that opens nothing.
+
+## Real FCM delivery — BLOCKED_EXTERNAL
+
+None of the above shows that Google's servers deliver anything. That needs a
+Firebase **service-account credential**, which is a production secret this
+public repository must not hold, and no real `FirebasePushSender` adapter exists
+yet. It is tracked as **DEP-003-B** in `qa-defects.md` and must not be reported
+as a pass.
 
 ## A correction to this stage's own earlier report
 
 The device checkpoint concluded the notification-permission lifecycle was
 "N/A because DEP-002 means there is nothing to deliver". That inference was
 wrong — a missing provider does not make a missing client acceptable — and the
-dependency was wrong too: **DEP-002 is SMS/OTP; DEP-003 is FCM** (QA-010).
+dependency was wrong too: **DEP-002 is SMS/OTP; DEP-003 is FCM** (QA-010). The
+lifecycle has since been executed in full; see `04-device-permissions.md`.
+
+## Verdicts, kept separate
+
+| | |
+| --- | --- |
+| **IN-APP NOTIFICATION CENTRE** | **PASS** |
+| **ANDROID PUSH CLIENT** | **PASS** |
+| **DEVICE TOKEN REGISTRATION** | **PASS** |
+| **OS PERMISSION FLOW** | **PASS** |
+| **BACKEND PUSH PIPELINE** | **PASS** |
+| **REAL FCM DELIVERY** | **BLOCKED_EXTERNAL — DEP-003-B** |

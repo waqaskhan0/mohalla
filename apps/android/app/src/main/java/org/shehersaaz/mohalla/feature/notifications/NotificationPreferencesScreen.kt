@@ -16,8 +16,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -28,7 +34,13 @@ import org.shehersaaz.mohalla.core.design.MohallaTheme
 import org.shehersaaz.mohalla.core.design.MohallaType
 import org.shehersaaz.mohalla.core.network.ApiFailure
 import org.shehersaaz.mohalla.core.ui.FailureState
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import org.shehersaaz.mohalla.core.push.notificationsPermitted
+import org.shehersaaz.mohalla.core.push.openAppNotificationSettings
 import org.shehersaaz.mohalla.core.ui.MohallaBackHeader
+import org.shehersaaz.mohalla.core.ui.MohallaSecondaryButton
 
 /**
  * Push preferences — UX-SET-003 (NOTIF-FR-007 · SET-FR-007).
@@ -47,10 +59,20 @@ import org.shehersaaz.mohalla.core.ui.MohallaBackHeader
  * setting while still sending replies would be technically defensible and
  * obviously wrong.
  *
- * NOTHING HERE MENTIONS THE OS PERMISSION, because push is not implemented at
- * all yet (DEP-003, GAP-M-010). These switches are recorded server-side and take
- * effect the day a push service exists; until then the centre is the whole of
- * the feature, which is exactly the fallback NOTIF-FR-001 names.
+ * THE OS PERMISSION IS SHOWN WHEN IT IS OFF, and only then (QA-009). Seven
+ * switches offering to control alerts that the operating system is dropping
+ * before they reach the reader would be a screen making a promise it cannot
+ * keep — and the reader would conclude the app is broken rather than that they
+ * refused a dialog weeks ago. When the permission is granted there is nothing to
+ * say, so nothing is said.
+ *
+ * THE BUTTON OPENS SETTINGS RATHER THAN ASKING AGAIN. Android does not show the
+ * permission dialog a second time after a refusal, so a button that re-requested
+ * would silently do nothing. See `openAppNotificationSettings`.
+ *
+ * The switches themselves remain usable either way: they are the account's
+ * server-side preferences, they are what will apply the moment the permission is
+ * turned on, and disabling them was never what stopped the phone buzzing here.
  */
 @Composable
 fun NotificationPreferencesScreen(
@@ -84,6 +106,50 @@ fun NotificationPreferencesScreen(
     }
 }
 
+/**
+ * Shown only while the operating system is refusing this app's notifications.
+ *
+ * RE-READ ON RESUME, because the reader leaves via the button below and comes
+ * back having changed the answer. A banner that stayed up after they granted it
+ * would be telling them something false about their own phone.
+ */
+@Composable
+private fun SystemNotificationsOffNotice() {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var permitted by remember { mutableStateOf(notificationsPermitted(context)) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) permitted = notificationsPermitted(context)
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    if (permitted) return
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = MohallaTheme.screenMargin,
+                vertical = MohallaTheme.spacing.Space3,
+            ),
+        verticalArrangement = Arrangement.spacedBy(MohallaTheme.spacing.Space3),
+    ) {
+        Text(
+            text = stringResource(R.string.notification_permission_rationale),
+            style = MohallaTheme.text(MohallaType.Body),
+            color = MohallaTheme.colors.TextSecondary,
+        )
+        MohallaSecondaryButton(
+            text = stringResource(R.string.notification_permission_enable),
+            onClick = { openAppNotificationSettings(context) },
+        )
+    }
+}
+
 @Composable
 private fun PreferenceList(
     state: NotificationPreferencesUiState,
@@ -95,6 +161,8 @@ private fun PreferenceList(
             .verticalScroll(rememberScrollState())
             .padding(bottom = MohallaTheme.spacing.Space8),
     ) {
+        SystemNotificationsOffNotice()
+
         Text(
             text = stringResource(R.string.settings_notifications_explainer),
             style = MohallaTheme.text(MohallaType.Body),

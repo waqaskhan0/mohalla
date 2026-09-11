@@ -96,6 +96,7 @@ import org.shehersaaz.mohalla.feature.settings.DeleteAccountScreen
 import org.shehersaaz.mohalla.feature.settings.DeleteAccountViewModel
 import org.shehersaaz.mohalla.feature.settings.HelpScreen
 import org.shehersaaz.mohalla.feature.settings.LanguageSettingsScreen
+import org.shehersaaz.mohalla.core.push.RegisterForPushEffect
 import org.shehersaaz.mohalla.feature.settings.LegalDocumentScreen
 import org.shehersaaz.mohalla.feature.settings.SettingsScreen
 import org.shehersaaz.mohalla.feature.settings.SettingsViewModel
@@ -545,6 +546,10 @@ private fun ShellRoute(
         ),
     )
     val state by shell.state.collectAsState()
+
+    // QA-009. The contextual moment for the notification permission, and the
+    // one place every signed-in entry path converges.
+    RegisterForPushEffect(container)
 
     // The capability and both badges go stale while the app is away: a
     // suspension can be applied by a moderator, and messages and notifications
@@ -1007,7 +1012,14 @@ private fun SettingsRoute(
             signOutLocally = {
                 container.clearSession()
             },
-            signOutRemotely = { container.authRepository.logout() },
+            // QA-009: the token is retired BEFORE the session goes, because the
+            // endpoint needs that session to authorise the removal. On a shared
+            // handset this is what stops the departing account's notifications
+            // arriving for whoever signs in next.
+            signOutRemotely = {
+                container.pushTokenRegistrar.onLoggedOut()
+                container.authRepository.logout()
+            },
         ),
     )
     val state by vm.state.collectAsState()

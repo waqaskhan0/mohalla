@@ -17,6 +17,7 @@ import java.util.Locale
 import org.shehersaaz.mohalla.core.config.BuildEnvironment
 import org.shehersaaz.mohalla.core.design.MohallaTheme
 import org.shehersaaz.mohalla.core.di.AppContainer
+import org.shehersaaz.mohalla.core.push.MohallaMessagingService
 import org.shehersaaz.mohalla.core.locale.AppLocale
 import org.shehersaaz.mohalla.core.locale.LocaleStore
 import org.shehersaaz.mohalla.core.ui.LoadingState
@@ -190,12 +191,29 @@ class MainActivity : ComponentActivity() {
      * entitled to be.
      */
     private fun holdDeepLink(intent: Intent?) {
-        if (intent?.action != Intent.ACTION_VIEW) return
+        if (intent == null) return
 
-        val route = DeepLinks.resolve(
-            url = intent.dataString,
-            host = BuildEnvironment.appHost,
-        ) ?: return
+        // TWO SOURCES, ONE ALLOWLIST (QA-009).
+        //
+        // A shared link arrives as ACTION_VIEW with a full URL and must match
+        // the app's own host. A push arrives as an extra carrying a PATH, and
+        // has no host to check — the release build has none at all (DEP-007),
+        // so requiring one would break push on exactly the builds that ship.
+        //
+        // Both go through `DeepLinks`, which accepts the same four shapes and
+        // refuses everything else. Neither is navigated from here: §9 forbids an
+        // unauthorised screen flashing, and the startup resolver still decides
+        // where the reader lands.
+        val route = when {
+            intent.action == Intent.ACTION_VIEW -> DeepLinks.resolve(
+                url = intent.dataString,
+                host = BuildEnvironment.appHost,
+            )
+
+            else -> DeepLinks.resolvePath(
+                intent.getStringExtra(MohallaMessagingService.EXTRA_DEEP_LINK_PATH),
+            )
+        } ?: return
 
         container.pendingDeepLink.hold(route)
     }

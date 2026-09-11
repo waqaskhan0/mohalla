@@ -850,7 +850,7 @@ logged GET /health          -> 200
 | **Area** | Android — `apps/android` |
 | **Requirement** | **NOTIF-FR-001 (Must)**, PRIV-015, MSG-FR-004, LOCALE-FR-006 |
 | **Environment** | Emulator API 36; backend and worker running |
-| **Status** | **OPEN — implementation BLOCKED_EXTERNAL on DEP-003** |
+| **Status** | **CLOSED — 2026-09-12. Client implemented and verified on device. See the resolution below.** |
 
 ### How this was found, and a correction to my own earlier reporting
 
@@ -953,7 +953,7 @@ client path is ordinary work: SDK, channel, contextual permission, token
 register/refresh/remove against endpoints that already exist, payload handling
 and deep links.
 
-### Verdicts, kept separate
+### Verdicts as at the time this was raised, kept separate
 
 | | |
 | --- | --- |
@@ -962,6 +962,122 @@ and deep links.
 | **PUSH CLIENT IMPLEMENTATION** | **FAIL — absent** |
 | **OS NOTIFICATION PERMISSION FLOW** | **NOT IMPLEMENTED** (consequence of the above) |
 | **REAL EXTERNAL PROVIDER DELIVERY** | **BLOCKED_EXTERNAL — DEP-003** |
+
+## QA-009 — resolution, 2026-09-12
+
+The owner supplied the DEP-003 client configuration
+(`apps/android/app/google-services.json`, git-ignored by `.gitignore:11` and
+confirmed untracked and invisible to `git status`). The client was then
+implemented and tested on the device.
+
+### What the app now does
+
+| Expected, from the table above | State |
+| --- | --- |
+| Push SDK dependency | Firebase BOM 33.7.0 + `firebase-messaging`, `google-services` 4.4.2 |
+| Device token acquisition | `FirebasePushTokenSource` behind a `PushTokenSource` port |
+| Call to `POST /notifications/devices` | `PushTokenRegistrar.onAuthenticated()`, after sign-in |
+| Token removal on logout | `onLoggedOut()` → `DELETE /notifications/devices`, before the session ends |
+| Token refresh handling | `MohallaMessagingService.onNewToken` → `onTokenRotated()` |
+| `POST_NOTIFICATIONS` | declared, and requested contextually on the signed-in shell |
+| Notification channel | one channel, `mohalla.notifications`, `IMPORTANCE_DEFAULT` |
+| Incoming payload handling | `onMessageReceived`, reading `title` / `body` / `deepLink` and nothing else |
+| Deep link from a notification | `DeepLinks.resolvePath`, the same allowlist every other link uses |
+
+### What was executed, and what it proved
+
+| Lane | Result |
+| --- | --- |
+| Android unit tests — `PushTokenRegistrarTest`, `PushDeepLinkTest` | 17/17 |
+| Device lifecycle — `.emulator-evidence/qa10_push.py` | **36/36** |
+| On-device delivery, permission granted — `PushMessageDeliveryTest` | 6/6 |
+| On-device delivery, permission refused — `PushDeniedDeliveryTest` | 2/2 |
+| Rotation wiring on device — `PushTokenRotationTest` | 1/1 |
+| Backend→client payload seam — `qa10_push_payload.mjs` | 6/6 |
+| Notification suite, re-run | 17/17 |
+
+A **real Firebase registration token** was obtained on the emulator (142
+characters, separator at 22 — shape only; the value is never printed, logged or
+committed) and registered against the account with `platform=ANDROID` and the
+device's own language, satisfying BR-040.
+
+### One defect found while testing this, and fixed
+
+The first implementation kept "have we already asked?" in `rememberSaveable`,
+which does not survive process death. On the device that meant the OS prompt
+reappeared on **every cold start** after a refusal, and reappeared immediately
+after somebody deliberately turned notifications off in Android Settings. That
+is not a contextual request. Fixed by [`PushPromptStore`], which remembers that
+the app has had its turn to ask — never the grant state, which belongs to the
+operating system — and by a notice on the notification-preferences screen that
+appears only while the OS is refusing, explaining the situation and opening the
+Android settings page that can actually change it. Both halves are covered by
+the device suite, and the fix is mutation-proven: forcing `hasAsked()` to
+`false` fails "a refusal is not re-asked on the next cold start".
+
+[`PushPromptStore`]: ../../../apps/android/app/src/main/java/org/shehersaaz/mohalla/core/push/PushPromptStore.kt
+
+### What is still not proven, stated plainly
+
+Nothing here demonstrates that Google's servers deliver anything. Sending to FCM
+requires a **service-account credential** that this public repository must not
+hold, so real server→FCM→handset delivery is recorded as its own external
+blocker (**DEP-003-B**, below) rather than folded into the passes above. What is
+proven is every step the codebase owns: the token is obtained, registered,
+rotated, retired and reassigned; the backend addresses that exact token; the
+payload it composes carries only the contracted fields and a deep link the
+client can resolve; and the client renders, ignores or refuses each payload
+correctly on a real device.
+
+### Verdicts now, kept separate
+
+| | |
+| --- | --- |
+| **ANDROID PUSH CLIENT** | **PASS** |
+| **DEVICE TOKEN REGISTRATION** | **PASS** |
+| **OS PERMISSION FLOW** | **PASS** |
+| **BACKEND PUSH PIPELINE** | **PASS** |
+| **REAL FCM DELIVERY** | **BLOCKED_EXTERNAL — DEP-003-B** |
+
+---
+
+## DEP-003-B — server→FCM delivery cannot be exercised without a service-account credential
+
+| | |
+| --- | --- |
+| **Severity** | n/a — external blocker, not a defect |
+| **Area** | Backend delivery · deployment |
+| **Requirement** | NOTIF-FR-001 |
+| **Status** | **OPEN — BLOCKED_EXTERNAL, owner action required** |
+
+DEP-003 had two halves and only one of them is now supplied.
+
+| Half | What it is | State |
+| --- | --- | --- |
+| Client configuration | `google-services.json` — project id, application id, API key | **supplied**, and QA-009 is closed on it |
+| Server credential | a Firebase **service-account key** (or ADC) for the FCM v1 API | **not supplied** |
+
+Without the second, `PUSH_SENDER` can only be `FakePushSender`: the backend
+composes the message and records what it *would* have sent, which is what
+`qa10_push_payload.mjs` inspects. No real `FirebasePushSender` adapter exists
+yet, and one cannot be tested against anything without the key.
+
+**This is not a workaround anybody should take.** The service-account key is a
+production secret and must never be committed to this repository — it is on the
+explicit never-commit list for this stage. It belongs in the deployment's secret
+store, injected as an environment value.
+
+What the owner needs to do, once, when a real environment exists:
+
+1. In the Firebase console, **Project settings → Service accounts → Generate new
+   private key**. This downloads a JSON key.
+2. Store it in the deployment's secret manager. Do **not** place it in the repo,
+   in `.env`, in CI logs, or in any QA document.
+3. Provide it to the API process as a credential path or an environment value,
+   and switch `PUSH_SENDER` from `fake` to the real adapter.
+
+Until then this lane stays **BLOCKED_EXTERNAL** and must not be reported as a
+pass.
 
 ---
 
@@ -1010,3 +1126,67 @@ Consequence worth stating: DEP-002 has been reported as "the one push blocker"
 since Stage 9, which obscured the fact that **two** separate external
 dependencies are open — SMS (DEP-002, blocking registration in any real
 environment) and FCM (DEP-003, blocking push).
+
+---
+
+## QA-011 — the notification permission was re-asked on every cold start after a refusal
+
+| | |
+| --- | --- |
+| **Severity** | LOW |
+| **Area** | Android — `apps/android`, push permission |
+| **Requirement** | NOTIF-FR-001, PRIV-015, `04-mobile-architecture.md` ("requested contextually") |
+| **Environment** | Emulator API 36, real backend |
+| **Status** | **CLOSED — fixed in the same change that closed QA-009** |
+
+### What happened
+
+Found while executing QA-009's own permission lifecycle, not by reading the
+code. The device suite refused the prompt, relaunched the app, and the OS dialog
+was there again — sitting over the feed. Worse: after deliberately turning
+notifications off in Android Settings, the very next launch asked again.
+
+The cause was small. The first implementation held "have we already asked?" in
+`rememberSaveable`, which survives a configuration change but not process death,
+so every cold start believed it had never asked.
+
+### Why it counts as a defect and not a preference
+
+`04-mobile-architecture.md` says the permission is *requested contextually*. A
+dialog that returns every morning is not context; and somebody who went into
+Settings on purpose to turn notifications off has given an unambiguous answer
+that the app then talked over. Android caps the practical damage — it stops
+showing the dialog after two refusals in a row — but the cap is the platform's
+good behaviour covering for the app's, and a revoke resets the counter.
+
+**LOW**, not higher: nothing is insecure, nothing is lost, and the reader can
+always refuse again. It is a respect-for-the-answer defect, not a functional one.
+
+### The fix
+
+`PushPromptStore` remembers that the app has had its turn to ask — and only
+that. It never mirrors the grant state, which belongs to the operating system
+and goes stale the moment somebody changes it in Settings.
+
+Not re-asking creates an obvious hole: how does somebody who refused change
+their mind? Android will not show the dialog again, so an in-app button that
+"asks" would do nothing and look broken. So the notification-preferences screen
+now shows a notice **only while the OS is refusing**, explaining the situation
+and offering a control that opens the Android settings page which can actually
+change it. Granting there clears the notice on resume and re-registers the
+device.
+
+### Evidence
+
+| Check | Result |
+| --- | --- |
+| A refusal is not re-asked on the next cold start | PASS |
+| A deliberate revocation is not re-asked on the next launch | PASS |
+| Preferences explain that the phone is refusing notifications | PASS |
+| …and offer a control that can actually change it | PASS — opens `Settings$AppNotificationSettingsActivity` |
+| The per-category switches remain usable | PASS |
+| Granting from Android Settings clears the notice and re-registers | PASS |
+
+Mutation-proven: forcing `PushPromptStore.hasAsked()` to return `false` fails
+"a refusal is not re-asked on the next cold start", and takes four downstream
+checks with it — which is precisely the cascade the original defect caused.
