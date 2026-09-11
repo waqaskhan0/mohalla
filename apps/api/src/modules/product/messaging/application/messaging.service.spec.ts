@@ -309,9 +309,31 @@ function build() {
     error: (m: unknown) => logs.push(String(m)),
   } as unknown as StructuredLogger;
 
+  // RECORDING rather than a no-op, so these tests can assert the realtime
+  // fan-out the same way they already assert the outbox (INTEGRATION-009).
+  const published: {
+    message: { id: string; clientMessageId: string };
+    senderId: string;
+    recipientId: string;
+    isRequest: boolean;
+    excludeSocketId?: string | undefined;
+  }[] = [];
+  const realtime = {
+    messageCreated: (input: {
+      message: { id: string; clientMessageId: string };
+      senderId: string;
+      recipientId: string;
+      isRequest: boolean;
+      excludeSocketId?: string | undefined;
+    }) => {
+      published.push(input);
+    },
+  };
+
   return {
     emitted,
-    service: new MessagingService(db, repo, blocks, follows, outbox, clock, logger),
+    published,
+    service: new MessagingService(db, repo, blocks, follows, outbox, clock, realtime, logger),
     repo,
     clock,
     logs,
@@ -768,6 +790,55 @@ describe('MessagingService — read-only threads (EDGE-022)', () => {
       body: 'still here',
     });
     expect(r.status).toBe('SENT');
+  });
+});
+
+describe('MessagingService — realtime fan-out (INTEGRATION-009)', () => {
+  /**
+   * The fan-out used to live in `MessagingGateway.onSend`, so a recipient's
+   * live socket heard nothing unless the SENDER also happened to be on one.
+   * Measured against the running backend: `POST /conversations/{id}/messages`
+   * returned 201 while a connected recipient received nothing in five seconds.
+   *
+   * These assert the property that fixes it — the SERVICE publishes, so the
+   * transport the sender chose cannot change whether the recipient is told.
+   */
+  it('PUBLISHES FOR A SEND WITH NO SOCKET, which is what a REST send is', async () => {
+    const ctx = build();
+    await ctx.service.send('sender', {
+      recipientId: 'recipient',
+      clientMessageId: 'm-1',
+      body: 'over REST',
+    });
+
+    expect(ctx.published).toHaveLength(1);
+    expect(ctx.published[0]?.recipientId).toBe('recipient');
+    expect(ctx.published[0]?.senderId).toBe('sender');
+    // Nothing to exclude: every device the sender has should hear it.
+    expect(ctx.published[0]?.excludeSocketId).toBeUndefined();
+  });
+
+  it('and carries the originating socket when there is one, so it is not echoed', async () => {
+    const ctx = build();
+    await ctx.service.send(
+      'sender',
+      { recipientId: 'recipient', clientMessageId: 'm-2', body: 'over the socket' },
+      'socket-abc',
+    );
+
+    expect(ctx.published).toHaveLength(1);
+    expect(ctx.published[0]?.excludeSocketId).toBe('socket-abc');
+  });
+
+  it('DOES NOT PUBLISH A RETRY THAT RESOLVED TO AN EXISTING MESSAGE (EDGE-021)', async () => {
+    const ctx = build();
+    const once = { recipientId: 'recipient', clientMessageId: 'm-3', body: 'retried' };
+    await ctx.service.send('sender', once);
+    await ctx.service.send('sender', once);
+    await ctx.service.send('sender', once);
+
+    // Three sends, one message, one delivery. A duplicate renders once.
+    expect(ctx.published).toHaveLength(1);
   });
 });
 

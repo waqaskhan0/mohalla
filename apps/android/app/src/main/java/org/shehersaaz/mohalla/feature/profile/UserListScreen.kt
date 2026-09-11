@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
@@ -49,6 +51,7 @@ import org.shehersaaz.mohalla.core.ui.UserRow
  * one. Tapping through to the profile gives the same action with the same
  * accuracy and without the wall of maybe-wrong buttons.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserListScreen(
     state: UserListUiState,
@@ -73,6 +76,15 @@ fun UserListScreen(
             onBack = onBack,
         )
 
+        // The last of INTEGRATION-005's six screens. Followers and following
+        // change while somebody is looking at them, which is exactly when a
+        // reader reaches for a pull - and `UserListViewModel` maintained
+        // `refreshing` with nothing rendering it.
+        PullToRefreshBox(
+            isRefreshing = state.refreshing,
+            onRefresh = onRetry,
+            modifier = Modifier.fillMaxSize(),
+        ) {
         when {
             // BR-025 — the profile itself is unavailable, so its lists are too,
             // and the answer is the same neutral one.
@@ -107,6 +119,7 @@ fun UserListScreen(
                     }
                 }
             }
+        }
         }
     }
 }

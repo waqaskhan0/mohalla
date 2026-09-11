@@ -81,6 +81,9 @@ jobs:
       - name: Build all workspaces
         run: npm run build
 
+      - name: Typecheck all workspaces
+        run: npm run typecheck
+
       - name: Unit tests (api, worker, validation, admin)
         run: npm run test --workspaces --if-present
 
@@ -95,6 +98,14 @@ jobs:
           sleep 4
           kill $API_PID 2>/dev/null || true
           test -f openapi.generated.json && echo "OpenAPI generated" || (echo "OpenAPI NOT generated" && exit 1)
+
+      - name: Current generated contract is committed
+        env:
+          DATABASE_URL: postgres://unused:unused@127.0.0.1:5432/unused
+        run: |
+          npm run contract:generate
+          git diff --exit-code -- docs/architecture/contracts/openapi-stage6-generated.json
+          npm run test:contract-safety
 
   # -------------------------------------------------------------- database
   database:
@@ -216,6 +227,36 @@ jobs:
           kill $WORKER_PID 2>/dev/null || true
           echo "final job state: $STATE"
           test "$STATE" = "completed"
+
+      - name: Generate sanitized contracts from real backend actions
+        env:
+          DATABASE_URL: postgres://runtime_app:ci_runtime_app@127.0.0.1:5432/mohalla
+          MIGRATION_DATABASE_URL: postgres://migration_owner:ci_migration_owner@127.0.0.1:5432/mohalla
+          CONTRACT_OUT: .emulator-evidence/ci-contract.json
+        run: |
+          mkdir -p .emulator-evidence
+          node --test scripts/posix/contract-specimens.test.mjs
+          npm run smoke:api
+
+      - name: Admin production parsers consume current backend responses
+        env:
+          MOHALLA_CONTRACT_FIXTURES: ${{ github.workspace }}/.emulator-evidence/ci-contract.json
+        run: npm exec --workspace @mohalla/admin -- vitest run lib/admin-api/live-contract.spec.ts
+
+      - name: Set up JDK for Android contract serialization
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle for Android contract serialization
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Android production serializers consume current backend responses
+        working-directory: apps/android
+        env:
+          MOHALLA_CONTRACT_FIXTURES: ${{ github.workspace }}/.emulator-evidence/ci-contract.json
+        run: ./gradlew testDebugUnitTest --tests org.shehersaaz.mohalla.LiveContractTest --no-daemon --console=plain
 
   # -------------------------------------------------------------- security
   security:

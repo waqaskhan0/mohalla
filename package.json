@@ -39,6 +39,8 @@
     "smoke": "node scripts/posix/foundation-smoke-test.mjs",
     "smoke:api": "node scripts/posix/api-smoke-test.mjs",
     "e2e:admin": "node scripts/posix/admin-e2e.mjs",
+    "contract:generate": "node scripts/posix/generate-openapi.mjs",
+    "test:contract-safety": "node --test scripts/posix/contract-specimens.test.mjs",
     "release:gate": "node scripts/posix/release-gate.mjs",
     "build:packages": "npm run build --workspace @mohalla/contracts --workspace @mohalla/validation --workspace @mohalla/observability --workspace @mohalla/design-tokens --if-present",
     "build:apps": "npm run build --workspace @mohalla/api --workspace @mohalla/worker --workspace @mohalla/admin",

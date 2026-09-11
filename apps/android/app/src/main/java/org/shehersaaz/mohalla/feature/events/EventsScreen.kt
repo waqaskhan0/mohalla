@@ -17,7 +17,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -57,6 +59,7 @@ import org.shehersaaz.mohalla.core.ui.MohallaSecondaryButton
  * this product does that Facebook does not. Burying the differentiator two
  * levels deep would be a strategic error."
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventsScreen(
     state: EventsUiState,
@@ -79,6 +82,18 @@ fun EventsScreen(
 
         val page = state.current
 
+        // FEED-FR-005's sibling on this screen, and the second of the six
+        // places INTEGRATION-005 recorded: `EventsViewModel` maintains
+        // `refreshing` and nothing rendered it, so a reader looking at a
+        // populated events list had no way to ask for new ones. Wrapping the
+        // whole branch rather than only the list, so an empty Upcoming tab can
+        // be pulled too — "nobody has planned anything yet" is exactly the
+        // state somebody wants to re-check.
+        PullToRefreshBox(
+            isRefreshing = state.refreshing,
+            onRefresh = onRefresh,
+            modifier = Modifier.fillMaxSize(),
+        ) {
         when {
             state.firstPageFailure != null && page.events.isEmpty() ->
                 FirstPageFailure(failure = state.firstPageFailure, onRetry = onRefresh)
@@ -114,6 +129,7 @@ fun EventsScreen(
                 onOpenEvent = onOpenEvent,
                 onRespond = onRespond,
             )
+        }
         }
     }
 }

@@ -1,0 +1,4056 @@
+[
+  {
+    "method": "DELETE",
+    "path": "/events/{id}",
+    "status": 200,
+    "body": {
+      "outcome": "CANCELLED",
+      "notifiedAttendees": 1
+    }
+  },
+  {
+    "method": "DELETE",
+    "path": "/events/{id}",
+    "status": 200,
+    "body": {
+      "outcome": "DELETED"
+    }
+  },
+  {
+    "method": "DELETE",
+    "path": "/me",
+    "status": 200,
+    "body": {
+      "scheduledErasureAt": "2030-01-01T00:00:00.000Z",
+      "consequences": ["synthetic"]
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/admin/announcements/allowance",
+    "status": 200,
+    "body": {
+      "used": 1,
+      "limit": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/admin/audit-log",
+    "status": 200,
+    "body": {
+      "entries": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "occurredAt": "2030-01-01T00:00:00.000Z",
+          "actorType": "ADMIN",
+          "actorId": "00000000-0000-4000-8000-000000000001",
+          "action": "ADMIN_ON_ADMIN_ACTION_REFUSED",
+          "entityType": "ADMIN",
+          "entityId": "00000000-0000-4000-8000-000000000001",
+          "metadata": {
+            "attempted": "synthetic"
+          }
+        }
+      ],
+      "total": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/admin/audit-log",
+    "status": 200,
+    "body": {
+      "entries": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "occurredAt": "2030-01-01T00:00:00.000Z",
+          "actorType": "ADMIN",
+          "actorId": "00000000-0000-4000-8000-000000000001",
+          "action": "ADMIN_PUBLISHED_ANNOUNCEMENT",
+          "entityType": "ANNOUNCEMENT",
+          "entityId": "00000000-0000-4000-8000-000000000001",
+          "metadata": {
+            "expiresAt": "2030-01-01T00:00:00.000Z"
+          }
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "occurredAt": "2030-01-01T00:00:00.000Z",
+          "actorType": "ADMIN",
+          "actorId": "00000000-0000-4000-8000-000000000001",
+          "action": "ADMIN_ON_ADMIN_ACTION_REFUSED",
+          "entityType": "ADMIN",
+          "entityId": "00000000-0000-4000-8000-000000000001",
+          "metadata": {
+            "attempted": "synthetic"
+          }
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "occurredAt": "2030-01-01T00:00:00.000Z",
+          "actorType": "ADMIN",
+          "actorId": "00000000-0000-4000-8000-000000000001",
+          "action": "ADMIN_REINSTATE",
+          "entityType": "USER",
+          "entityId": "00000000-0000-4000-8000-000000000001",
+          "metadata": {
+            "reason": "synthetic"
+          }
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "occurredAt": "2030-01-01T00:00:00.000Z",
+          "actorType": "ADMIN",
+          "actorId": "00000000-0000-4000-8000-000000000001",
+          "action": "ADMIN_SUSPEND",
+          "entityType": "USER",
+          "entityId": "00000000-0000-4000-8000-000000000001",
+          "metadata": {
+            "reason": "synthetic",
+            "expiresAt": "2030-01-01T00:00:00.000Z"
+          }
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "occurredAt": "2030-01-01T00:00:00.000Z",
+          "actorType": "ADMIN",
+          "actorId": "00000000-0000-4000-8000-000000000001",
+          "action": "ADMIN_VIEWED_SENSITIVE_DATA",
+          "entityType": "USER",
+          "entityId": "00000000-0000-4000-8000-000000000001",
+          "metadata": {
+            "fields": ["synthetic"]
+          }
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "occurredAt": "2030-01-01T00:00:00.000Z",
+          "actorType": "SYSTEM",
+          "actorId": null,
+          "action": "CONTENT_AUTO_HIDDEN",
+          "entityType": "POST",
+          "entityId": "00000000-0000-4000-8000-000000000001",
+          "metadata": {
+            "caseId": "00000000-0000-4000-8000-000000000001",
+            "severity": "synthetic",
+            "distinctReportCount": 1
+          }
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "occurredAt": "2030-01-01T00:00:00.000Z",
+          "actorType": "ADMIN",
+          "actorId": "00000000-0000-4000-8000-000000000001",
+          "action": "MODERATION_RESOLVED_RESTORED",
+          "entityType": "POST",
+          "entityId": "00000000-0000-4000-8000-000000000001",
+          "metadata": {
+            "caseId": "00000000-0000-4000-8000-000000000001",
+            "reason": "synthetic",
+            "distinctReportCount": 1
+          }
+        }
+      ],
+      "total": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/admin/audit-log",
+    "status": 200,
+    "body": {
+      "entries": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "occurredAt": "2030-01-01T00:00:00.000Z",
+          "actorType": "ADMIN",
+          "actorId": "00000000-0000-4000-8000-000000000001",
+          "action": "ADMIN_PUBLISHED_ANNOUNCEMENT",
+          "entityType": "ANNOUNCEMENT",
+          "entityId": "00000000-0000-4000-8000-000000000001",
+          "metadata": {
+            "expiresAt": "2030-01-01T00:00:00.000Z"
+          }
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "occurredAt": "2030-01-01T00:00:00.000Z",
+          "actorType": "ADMIN",
+          "actorId": "00000000-0000-4000-8000-000000000001",
+          "action": "ADMIN_ON_ADMIN_ACTION_REFUSED",
+          "entityType": "ADMIN",
+          "entityId": "00000000-0000-4000-8000-000000000001",
+          "metadata": {
+            "attempted": "synthetic"
+          }
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "occurredAt": "2030-01-01T00:00:00.000Z",
+          "actorType": "ADMIN",
+          "actorId": "00000000-0000-4000-8000-000000000001",
+          "action": "ADMIN_REINSTATE",
+          "entityType": "USER",
+          "entityId": "00000000-0000-4000-8000-000000000001",
+          "metadata": {
+            "reason": "synthetic"
+          }
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "occurredAt": "2030-01-01T00:00:00.000Z",
+          "actorType": "ADMIN",
+          "actorId": "00000000-0000-4000-8000-000000000001",
+          "action": "ADMIN_SUSPEND",
+          "entityType": "USER",
+          "entityId": "00000000-0000-4000-8000-000000000001",
+          "metadata": {
+            "reason": "synthetic",
+            "expiresAt": "2030-01-01T00:00:00.000Z"
+          }
+        }
+      ],
+      "total": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/admin/audit-log",
+    "status": 200,
+    "body": {
+      "entries": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "occurredAt": "2030-01-01T00:00:00.000Z",
+          "actorType": "ADMIN",
+          "actorId": "00000000-0000-4000-8000-000000000001",
+          "action": "ADMIN_VIEWED_SENSITIVE_DATA",
+          "entityType": "USER",
+          "entityId": "00000000-0000-4000-8000-000000000001",
+          "metadata": {
+            "fields": ["synthetic"]
+          }
+        }
+      ],
+      "total": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/admin/dashboard",
+    "status": 200,
+    "body": {
+      "totalUsers": 1,
+      "newUsersToday": 1,
+      "newUsersThisWeek": 1,
+      "postsToday": 1,
+      "upcomingEvents": 1,
+      "openReports": 1,
+      "actionsThisWeek": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/admin/moderation/cases/{id}",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "targetType": "POST",
+      "targetId": "00000000-0000-4000-8000-000000000001",
+      "targetOwnerId": "00000000-0000-4000-8000-000000000001",
+      "state": "OPEN",
+      "maxSeverity": "HIGH",
+      "distinctReportCount": 1,
+      "autoHidden": true,
+      "resolutionReason": null,
+      "resolvedByAdminId": null,
+      "resolvedAt": null,
+      "version": 1,
+      "createdAt": "2030-01-01T00:00:00.000Z",
+      "repeatOffenderFlag": false,
+      "enforcementHistory": []
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/admin/moderation/cases/{id}/conversation",
+    "status": 200,
+    "body": {
+      "messages": []
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/admin/moderation/queue",
+    "status": 200,
+    "body": {
+      "cases": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "targetType": "POST",
+          "targetId": "00000000-0000-4000-8000-000000000001",
+          "targetOwnerId": "00000000-0000-4000-8000-000000000001",
+          "state": "OPEN",
+          "maxSeverity": "HIGH",
+          "distinctReportCount": 1,
+          "autoHidden": true,
+          "resolutionReason": null,
+          "resolvedByAdminId": null,
+          "resolvedAt": null,
+          "version": 1,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "targetType": "CONVERSATION",
+          "targetId": "00000000-0000-4000-8000-000000000001",
+          "targetOwnerId": "00000000-0000-4000-8000-000000000001",
+          "state": "OPEN",
+          "maxSeverity": "HIGH",
+          "distinctReportCount": 1,
+          "autoHidden": false,
+          "resolutionReason": null,
+          "resolvedByAdminId": null,
+          "resolvedAt": null,
+          "version": 1,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "targetType": "CONVERSATION",
+          "targetId": "00000000-0000-4000-8000-000000000001",
+          "targetOwnerId": null,
+          "state": "OPEN",
+          "maxSeverity": "HIGH",
+          "distinctReportCount": 1,
+          "autoHidden": false,
+          "resolutionReason": null,
+          "resolvedByAdminId": null,
+          "resolvedAt": null,
+          "version": 1,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "total": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/admin/moderation/queue",
+    "status": 200,
+    "body": {
+      "cases": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "targetType": "POST",
+          "targetId": "00000000-0000-4000-8000-000000000001",
+          "targetOwnerId": "00000000-0000-4000-8000-000000000001",
+          "state": "OPEN",
+          "maxSeverity": "HIGH",
+          "distinctReportCount": 1,
+          "autoHidden": true,
+          "resolutionReason": null,
+          "resolvedByAdminId": null,
+          "resolvedAt": null,
+          "version": 1,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "total": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/admin/moderation/queue",
+    "status": 200,
+    "body": {
+      "cases": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "targetType": "PROFILE",
+          "targetId": "00000000-0000-4000-8000-000000000001",
+          "targetOwnerId": "00000000-0000-4000-8000-000000000001",
+          "state": "OPEN",
+          "maxSeverity": "HIGH",
+          "distinctReportCount": 1,
+          "autoHidden": false,
+          "resolutionReason": null,
+          "resolvedByAdminId": null,
+          "resolvedAt": null,
+          "version": 1,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "total": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/admin/users/{id}",
+    "status": 200,
+    "body": {
+      "userId": "00000000-0000-4000-8000-000000000001",
+      "username": "synthetic",
+      "displayName": "synthetic",
+      "accountType": "INDIVIDUAL",
+      "state": "ACTIVE",
+      "suspendedUntil": null,
+      "verifiedBadge": false,
+      "createdAt": "2030-01-01T00:00:00.000Z",
+      "postCount": 0,
+      "reportsMade": 0,
+      "reportsReceived": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/admin/users/{id}",
+    "status": 200,
+    "body": {
+      "userId": "00000000-0000-4000-8000-000000000001",
+      "username": "synthetic",
+      "displayName": "synthetic",
+      "accountType": "INDIVIDUAL",
+      "state": "ACTIVE",
+      "suspendedUntil": null,
+      "verifiedBadge": false,
+      "createdAt": "2030-01-01T00:00:00.000Z",
+      "postCount": 0,
+      "reportsMade": 0,
+      "reportsReceived": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/admin/users/{id}/sensitive",
+    "status": 200,
+    "body": {
+      "phone": "synthetic",
+      "dateOfBirth": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/admin/users/search",
+    "status": 200,
+    "body": {
+      "users": []
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/categories",
+    "status": 200,
+    "body": {
+      "categories": [
+        {
+          "slug": "synthetic",
+          "nameEn": "synthetic",
+          "nameUr": "synthetic",
+          "sortOrder": 1
+        }
+      ]
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/conversations",
+    "status": 200,
+    "body": {
+      "conversations": [],
+      "nextBefore": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/conversations",
+    "status": 200,
+    "body": {
+      "conversations": [
+        {
+          "conversationId": "00000000-0000-4000-8000-000000000001",
+          "otherUserId": "00000000-0000-4000-8000-000000000001",
+          "requestState": "ACCEPTED",
+          "unreadCount": 0,
+          "lastMessageAt": "2030-01-01T00:00:00.000Z",
+          "preview": {
+            "body": "synthetic",
+            "hasMedia": false,
+            "senderId": "00000000-0000-4000-8000-000000000001"
+          },
+          "readOnly": false
+        }
+      ],
+      "nextBefore": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/conversations",
+    "status": 200,
+    "body": {
+      "conversations": [
+        {
+          "conversationId": "00000000-0000-4000-8000-000000000001",
+          "otherUserId": "00000000-0000-4000-8000-000000000001",
+          "requestState": "ACCEPTED",
+          "unreadCount": 1,
+          "lastMessageAt": "2030-01-01T00:00:00.000Z",
+          "preview": {
+            "body": "synthetic",
+            "hasMedia": false,
+            "senderId": "00000000-0000-4000-8000-000000000001"
+          },
+          "readOnly": false
+        }
+      ],
+      "nextBefore": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/conversations",
+    "status": 200,
+    "body": {
+      "conversations": [
+        {
+          "conversationId": "00000000-0000-4000-8000-000000000001",
+          "otherUserId": "00000000-0000-4000-8000-000000000001",
+          "requestState": "PENDING",
+          "unreadCount": 1,
+          "lastMessageAt": "2030-01-01T00:00:00.000Z",
+          "preview": {
+            "body": "synthetic",
+            "hasMedia": false,
+            "senderId": "00000000-0000-4000-8000-000000000001"
+          },
+          "readOnly": false
+        }
+      ],
+      "nextBefore": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/conversations/{id}/messages",
+    "status": 200,
+    "body": {
+      "messages": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "clientMessageId": "00000000-0000-4000-8000-000000000001",
+          "conversationId": "00000000-0000-4000-8000-000000000001",
+          "senderId": "00000000-0000-4000-8000-000000000001",
+          "body": "synthetic",
+          "mediaId": null,
+          "createdAt": "2030-01-01T00:00:00.000Z",
+          "readAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/conversations/{id}/messages",
+    "status": 200,
+    "body": {
+      "messages": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "clientMessageId": "00000000-0000-4000-8000-000000000001",
+          "conversationId": "00000000-0000-4000-8000-000000000001",
+          "senderId": "00000000-0000-4000-8000-000000000001",
+          "body": "synthetic",
+          "mediaId": null,
+          "createdAt": "2030-01-01T00:00:00.000Z",
+          "readAt": null
+        }
+      ],
+      "nextCursor": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/conversations/{id}/messages/since",
+    "status": 200,
+    "body": {
+      "messages": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "clientMessageId": "00000000-0000-4000-8000-000000000001",
+          "conversationId": "00000000-0000-4000-8000-000000000001",
+          "senderId": "00000000-0000-4000-8000-000000000001",
+          "body": "synthetic",
+          "mediaId": null,
+          "createdAt": "2030-01-01T00:00:00.000Z",
+          "readAt": null
+        }
+      ]
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/conversations/unread",
+    "status": 200,
+    "body": {
+      "conversations": 0,
+      "requests": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/conversations/unread",
+    "status": 200,
+    "body": {
+      "conversations": 0,
+      "requests": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/events",
+    "status": 200,
+    "body": {
+      "events": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "ONLINE",
+          "locationText": null,
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 0,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": "2030-01-01T00:00:00.000Z",
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 0,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "ONLINE",
+          "locationText": null,
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 1,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": {
+        "cursorStartsAt": "2030-01-01T00:00:00.000Z",
+        "cursorId": "00000000-0000-4000-8000-000000000001"
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/events",
+    "status": 200,
+    "body": {
+      "events": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "ONLINE",
+          "locationText": null,
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 0,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": "2030-01-01T00:00:00.000Z",
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 0,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "CANCELLED",
+          "goingCount": 1,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": "2030-01-01T00:00:00.000Z",
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "CANCELLED",
+          "goingCount": 1,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": "synthetic",
+          "underReview": false,
+          "editedAt": "2030-01-01T00:00:00.000Z",
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/events",
+    "status": 200,
+    "body": {
+      "events": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "ONLINE",
+          "locationText": null,
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 0,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": "2030-01-01T00:00:00.000Z",
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 0,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "CANCELLED",
+          "goingCount": 1,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "ONLINE",
+          "locationText": null,
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 1,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "ONLINE",
+          "locationText": null,
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 1,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": "2030-01-01T00:00:00.000Z",
+          "myResponse": "synthetic",
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "CANCELLED",
+          "goingCount": 1,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": "2030-01-01T00:00:00.000Z",
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": {
+        "cursorStartsAt": "2030-01-01T00:00:00.000Z",
+        "cursorId": "00000000-0000-4000-8000-000000000001"
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/events",
+    "status": 200,
+    "body": {
+      "events": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "ONLINE",
+          "locationText": null,
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 1,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "ONLINE",
+          "locationText": null,
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 1,
+          "interestedCount": 0,
+          "joinLinkAvailable": true,
+          "joinLinkAvailableFrom": null,
+          "myResponse": "synthetic",
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 0,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "CANCELLED",
+          "goingCount": 1,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": {
+        "cursorStartsAt": "2030-01-01T00:00:00.000Z",
+        "cursorId": "00000000-0000-4000-8000-000000000001"
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/events",
+    "status": 200,
+    "body": {
+      "events": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "ONLINE",
+          "locationText": null,
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 1,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 0,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": {
+        "cursorStartsAt": "2030-01-01T00:00:00.000Z",
+        "cursorId": "00000000-0000-4000-8000-000000000001"
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/events",
+    "status": 200,
+    "body": {
+      "events": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "CANCELLED",
+          "goingCount": 1,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": "2030-01-01T00:00:00.000Z",
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 0,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": {
+        "cursorStartsAt": "2030-01-01T00:00:00.000Z",
+        "cursorId": "00000000-0000-4000-8000-000000000001"
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/events",
+    "status": 200,
+    "body": {
+      "events": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "CANCELLED",
+          "goingCount": 1,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "ONLINE",
+          "locationText": null,
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 1,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 0,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": {
+        "cursorStartsAt": "2030-01-01T00:00:00.000Z",
+        "cursorId": "00000000-0000-4000-8000-000000000001"
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/events",
+    "status": 200,
+    "body": {
+      "events": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 0,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "ONLINE",
+          "locationText": null,
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 0,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": "2030-01-01T00:00:00.000Z",
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "CANCELLED",
+          "goingCount": 1,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "CANCELLED",
+          "goingCount": 1,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": "2030-01-01T00:00:00.000Z",
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": {
+        "cursorStartsAt": "2030-01-01T00:00:00.000Z",
+        "cursorId": "00000000-0000-4000-8000-000000000001"
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/events",
+    "status": 200,
+    "body": {
+      "events": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 0,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "ONLINE",
+          "locationText": null,
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 0,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": "2030-01-01T00:00:00.000Z",
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "CANCELLED",
+          "goingCount": 1,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": {
+        "cursorStartsAt": "2030-01-01T00:00:00.000Z",
+        "cursorId": "00000000-0000-4000-8000-000000000001"
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/events",
+    "status": 200,
+    "body": {
+      "events": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 0,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "ONLINE",
+          "locationText": null,
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 0,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": "2030-01-01T00:00:00.000Z",
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": {
+        "cursorStartsAt": "2030-01-01T00:00:00.000Z",
+        "cursorId": "00000000-0000-4000-8000-000000000001"
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/events",
+    "status": 200,
+    "body": {
+      "events": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 0,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "CANCELLED",
+          "goingCount": 1,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "CANCELLED",
+          "goingCount": 1,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": "2030-01-01T00:00:00.000Z",
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "ONLINE",
+          "locationText": null,
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 0,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": "2030-01-01T00:00:00.000Z",
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": {
+        "cursorStartsAt": "2030-01-01T00:00:00.000Z",
+        "cursorId": "00000000-0000-4000-8000-000000000001"
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/events/{id}",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "creatorId": "00000000-0000-4000-8000-000000000001",
+      "title": "synthetic",
+      "description": "synthetic",
+      "startsAt": "2030-01-01T00:00:00.000Z",
+      "eventType": "PHYSICAL",
+      "locationText": "synthetic",
+      "categorySlug": null,
+      "status": "CANCELLED",
+      "goingCount": 1,
+      "interestedCount": 0,
+      "joinLinkAvailable": false,
+      "joinLinkAvailableFrom": null,
+      "myResponse": "synthetic",
+      "underReview": false,
+      "editedAt": "2030-01-01T00:00:00.000Z",
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/events/{id}",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "creatorId": "00000000-0000-4000-8000-000000000001",
+      "title": "synthetic",
+      "description": "synthetic",
+      "startsAt": "2030-01-01T00:00:00.000Z",
+      "eventType": "PHYSICAL",
+      "locationText": "synthetic",
+      "categorySlug": null,
+      "status": "SCHEDULED",
+      "goingCount": 0,
+      "interestedCount": 0,
+      "joinLinkAvailable": false,
+      "joinLinkAvailableFrom": null,
+      "myResponse": null,
+      "underReview": false,
+      "editedAt": null,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/events/{id}",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "creatorId": "00000000-0000-4000-8000-000000000001",
+      "title": "synthetic",
+      "description": "synthetic",
+      "startsAt": "2030-01-01T00:00:00.000Z",
+      "eventType": "PHYSICAL",
+      "locationText": "synthetic",
+      "categorySlug": null,
+      "status": "SCHEDULED",
+      "goingCount": 1,
+      "interestedCount": 0,
+      "joinLinkAvailable": false,
+      "joinLinkAvailableFrom": null,
+      "myResponse": "synthetic",
+      "underReview": false,
+      "editedAt": null,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/feed/discover",
+    "status": 200,
+    "body": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 0,
+            "followingCount": 0,
+            "postCount": 1
+          },
+          "body": "synthetic",
+          "categorySlug": null,
+          "mediaIds": ["00000000-0000-4000-8000-000000000001"],
+          "likeCount": 0,
+          "commentCount": 0,
+          "viewerHasLiked": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 0,
+            "followingCount": 0,
+            "postCount": 1
+          },
+          "body": "synthetic",
+          "categorySlug": null,
+          "mediaIds": [],
+          "likeCount": 0,
+          "commentCount": 0,
+          "viewerHasLiked": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 1,
+            "followingCount": 0,
+            "postCount": 1
+          },
+          "body": "synthetic",
+          "categorySlug": null,
+          "mediaIds": [],
+          "likeCount": 0,
+          "commentCount": 0,
+          "viewerHasLiked": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 0,
+            "followingCount": 0,
+            "postCount": 1
+          },
+          "body": "synthetic",
+          "categorySlug": null,
+          "mediaIds": [],
+          "likeCount": 1,
+          "commentCount": 0,
+          "viewerHasLiked": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 1,
+            "followingCount": 0,
+            "postCount": 1
+          },
+          "body": "synthetic",
+          "categorySlug": null,
+          "mediaIds": [],
+          "likeCount": 1,
+          "commentCount": 0,
+          "viewerHasLiked": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 0,
+            "followingCount": 0,
+            "postCount": 1
+          },
+          "body": "synthetic",
+          "categorySlug": "synthetic",
+          "mediaIds": [],
+          "likeCount": 0,
+          "commentCount": 0,
+          "viewerHasLiked": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": {
+        "createdAt": "2030-01-01T00:00:00.000Z",
+        "id": "00000000-0000-4000-8000-000000000001"
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/feed/discover",
+    "status": 200,
+    "body": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 1,
+            "followingCount": 0,
+            "postCount": 1
+          },
+          "body": "synthetic",
+          "categorySlug": "synthetic",
+          "mediaIds": [],
+          "likeCount": 0,
+          "commentCount": 0,
+          "viewerHasLiked": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 0,
+            "followingCount": 0,
+            "postCount": 1
+          },
+          "body": "synthetic",
+          "categorySlug": "synthetic",
+          "mediaIds": [],
+          "likeCount": 0,
+          "commentCount": 0,
+          "viewerHasLiked": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": {
+        "createdAt": "2030-01-01T00:00:00.000Z",
+        "id": "00000000-0000-4000-8000-000000000001"
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/feed/discover",
+    "status": 200,
+    "body": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 1,
+            "followingCount": 0,
+            "postCount": 1
+          },
+          "body": "synthetic",
+          "categorySlug": null,
+          "mediaIds": [],
+          "likeCount": 0,
+          "commentCount": 0,
+          "viewerHasLiked": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": {
+        "createdAt": "2030-01-01T00:00:00.000Z",
+        "id": "00000000-0000-4000-8000-000000000001"
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/feed/featured",
+    "status": 200,
+    "body": {
+      "announcements": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "body": "synthetic",
+          "expiresAt": "2030-01-01T00:00:00.000Z"
+        }
+      ]
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/feed/following",
+    "status": 200,
+    "body": {
+      "items": [],
+      "nextCursor": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/feed/following",
+    "status": 200,
+    "body": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 1,
+            "followingCount": 0,
+            "postCount": 1
+          },
+          "body": "synthetic",
+          "categorySlug": null,
+          "mediaIds": [],
+          "likeCount": 0,
+          "commentCount": 0,
+          "viewerHasLiked": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": {
+        "createdAt": "2030-01-01T00:00:00.000Z",
+        "id": "00000000-0000-4000-8000-000000000001"
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/feed/following",
+    "status": 200,
+    "body": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 1,
+            "followingCount": 0,
+            "postCount": 1
+          },
+          "body": "synthetic",
+          "categorySlug": null,
+          "mediaIds": [],
+          "likeCount": 0,
+          "commentCount": 0,
+          "viewerHasLiked": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/health/live",
+    "status": 200,
+    "body": {
+      "status": "ok",
+      "uptimeSeconds": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/me",
+    "status": 200,
+    "body": {
+      "userId": "00000000-0000-4000-8000-000000000001",
+      "username": "synthetic",
+      "displayName": "synthetic",
+      "photoMediaId": null,
+      "city": "synthetic",
+      "bio": "synthetic",
+      "verifiedBadge": false,
+      "accountType": "INDIVIDUAL",
+      "followerCount": 0,
+      "followingCount": 0,
+      "postCount": 0,
+      "state": "ACTIVE",
+      "suspendedUntil": null,
+      "interests": [],
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/me",
+    "status": 200,
+    "body": {
+      "userId": "00000000-0000-4000-8000-000000000001",
+      "username": "synthetic",
+      "displayName": "synthetic",
+      "photoMediaId": null,
+      "city": null,
+      "bio": null,
+      "verifiedBadge": false,
+      "accountType": "INDIVIDUAL",
+      "followerCount": 0,
+      "followingCount": 0,
+      "postCount": 0,
+      "state": "ACTIVE",
+      "suspendedUntil": null,
+      "interests": [],
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/me",
+    "status": 200,
+    "body": {
+      "userId": "00000000-0000-4000-8000-000000000001",
+      "username": "synthetic",
+      "displayName": "synthetic",
+      "photoMediaId": null,
+      "city": null,
+      "bio": null,
+      "verifiedBadge": false,
+      "accountType": "INDIVIDUAL",
+      "followerCount": 1,
+      "followingCount": 0,
+      "postCount": 1,
+      "state": "ACTIVE",
+      "suspendedUntil": null,
+      "interests": [],
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/me/blocks",
+    "status": 200,
+    "body": {
+      "blocks": [],
+      "nextBefore": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/me/blocks",
+    "status": 200,
+    "body": {
+      "blocks": [
+        {
+          "blockedUserId": "00000000-0000-4000-8000-000000000001",
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextBefore": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/me/deletion-consequences",
+    "status": 200,
+    "body": {
+      "keys": ["synthetic"],
+      "graceDays": 1,
+      "scheduledErasureAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/me/deletion-consequences",
+    "status": 200,
+    "body": {
+      "keys": ["synthetic"],
+      "graceDays": 1,
+      "scheduledErasureAt": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/me/saved",
+    "status": 200,
+    "body": {
+      "items": [],
+      "nextCursor": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/me/saved",
+    "status": 200,
+    "body": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 0,
+            "followingCount": 0,
+            "postCount": 1
+          },
+          "body": "synthetic",
+          "categorySlug": null,
+          "mediaIds": [],
+          "likeCount": 0,
+          "commentCount": 0,
+          "viewerHasLiked": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/me/settings",
+    "status": 200,
+    "body": {
+      "language": "ur",
+      "notifications": {
+        "LIKE": true,
+        "COMMENT": true,
+        "FOLLOW": true,
+        "MENTION": true,
+        "MESSAGE": true,
+        "EVENT": true,
+        "ANNOUNCEMENT": true
+      },
+      "blockedCount": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/me/settings",
+    "status": 200,
+    "body": {
+      "language": null,
+      "notifications": {
+        "LIKE": true,
+        "COMMENT": true,
+        "FOLLOW": true,
+        "MENTION": true,
+        "MESSAGE": true,
+        "EVENT": true,
+        "ANNOUNCEMENT": true
+      },
+      "blockedCount": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/notifications",
+    "status": 200,
+    "body": {
+      "notifications": [],
+      "nextCursor": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/notifications",
+    "status": 200,
+    "body": {
+      "notifications": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "category": "synthetic",
+          "actorId": "00000000-0000-4000-8000-000000000001",
+          "targetType": "CONVERSATION",
+          "targetId": "00000000-0000-4000-8000-000000000001",
+          "text": "synthetic",
+          "batchCount": 1,
+          "readAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "category": "synthetic",
+          "actorId": "00000000-0000-4000-8000-000000000001",
+          "targetType": "POST",
+          "targetId": "00000000-0000-4000-8000-000000000001",
+          "text": "synthetic",
+          "batchCount": 1,
+          "readAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/notifications",
+    "status": 200,
+    "body": {
+      "notifications": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "category": "synthetic",
+          "actorId": "00000000-0000-4000-8000-000000000001",
+          "targetType": "EVENT",
+          "targetId": "00000000-0000-4000-8000-000000000001",
+          "text": "synthetic",
+          "batchCount": 1,
+          "readAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/notifications",
+    "status": 200,
+    "body": {
+      "notifications": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "category": "synthetic",
+          "actorId": "00000000-0000-4000-8000-000000000001",
+          "targetType": "POST",
+          "targetId": "00000000-0000-4000-8000-000000000001",
+          "text": "synthetic",
+          "batchCount": 1,
+          "readAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/notifications",
+    "status": 200,
+    "body": {
+      "notifications": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "category": "synthetic",
+          "actorId": "00000000-0000-4000-8000-000000000001",
+          "targetType": "PROFILE",
+          "targetId": "00000000-0000-4000-8000-000000000001",
+          "text": "synthetic",
+          "batchCount": 1,
+          "readAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "category": "synthetic",
+          "actorId": "00000000-0000-4000-8000-000000000001",
+          "targetType": "CONVERSATION",
+          "targetId": "00000000-0000-4000-8000-000000000001",
+          "text": "synthetic",
+          "batchCount": 1,
+          "readAt": "2030-01-01T00:00:00.000Z",
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "category": "synthetic",
+          "actorId": "00000000-0000-4000-8000-000000000001",
+          "targetType": "POST",
+          "targetId": "00000000-0000-4000-8000-000000000001",
+          "text": "synthetic",
+          "batchCount": 1,
+          "readAt": "2030-01-01T00:00:00.000Z",
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/notifications",
+    "status": 200,
+    "body": {
+      "notifications": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "category": "synthetic",
+          "actorId": null,
+          "targetType": "EVENT",
+          "targetId": "00000000-0000-4000-8000-000000000001",
+          "text": "synthetic",
+          "batchCount": 1,
+          "readAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/notifications/preferences",
+    "status": 200,
+    "body": {
+      "preferences": {
+        "LIKE": true,
+        "COMMENT": true,
+        "FOLLOW": true,
+        "MENTION": true,
+        "MESSAGE": true,
+        "EVENT": true,
+        "ANNOUNCEMENT": true
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/notifications/unread-count",
+    "status": 200,
+    "body": {
+      "unread": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/notifications/unread-count",
+    "status": 200,
+    "body": {
+      "unread": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/posts/{id}",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "author": {
+        "userId": "00000000-0000-4000-8000-000000000001",
+        "username": "synthetic",
+        "displayName": "synthetic",
+        "photoMediaId": null,
+        "city": null,
+        "bio": null,
+        "verifiedBadge": false,
+        "accountType": "INDIVIDUAL",
+        "followerCount": 0,
+        "followingCount": 0,
+        "postCount": 0,
+        "state": "ACTIVE",
+        "suspendedUntil": null,
+        "interests": [],
+        "createdAt": "2030-01-01T00:00:00.000Z"
+      },
+      "body": "synthetic",
+      "categorySlug": null,
+      "mediaIds": [],
+      "likeCount": 0,
+      "commentCount": 0,
+      "editedAt": null,
+      "underReview": true,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/posts/{id}",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "author": {
+        "userId": "00000000-0000-4000-8000-000000000001",
+        "username": "synthetic",
+        "displayName": "synthetic",
+        "photoMediaId": null,
+        "city": null,
+        "bio": null,
+        "verifiedBadge": false,
+        "accountType": "INDIVIDUAL",
+        "followerCount": 0,
+        "followingCount": 0,
+        "postCount": 0
+      },
+      "body": "synthetic",
+      "categorySlug": null,
+      "mediaIds": [],
+      "likeCount": 0,
+      "commentCount": 0,
+      "editedAt": null,
+      "underReview": false,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/posts/{id}",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "author": {
+        "userId": "00000000-0000-4000-8000-000000000001",
+        "username": "synthetic",
+        "displayName": "synthetic",
+        "photoMediaId": null,
+        "city": null,
+        "bio": null,
+        "verifiedBadge": false,
+        "accountType": "INDIVIDUAL",
+        "followerCount": 0,
+        "followingCount": 0,
+        "postCount": 1
+      },
+      "body": "synthetic",
+      "categorySlug": "synthetic",
+      "mediaIds": [],
+      "likeCount": 0,
+      "commentCount": 0,
+      "editedAt": null,
+      "underReview": false,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/posts/{id}",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "author": {
+        "userId": "00000000-0000-4000-8000-000000000001",
+        "username": "synthetic",
+        "displayName": "synthetic",
+        "photoMediaId": null,
+        "city": null,
+        "bio": null,
+        "verifiedBadge": false,
+        "accountType": "INDIVIDUAL",
+        "followerCount": 0,
+        "followingCount": 0,
+        "postCount": 1
+      },
+      "body": "synthetic",
+      "categorySlug": null,
+      "mediaIds": [],
+      "likeCount": 0,
+      "commentCount": 0,
+      "editedAt": null,
+      "underReview": false,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/posts/{id}",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "author": {
+        "userId": "00000000-0000-4000-8000-000000000001",
+        "username": "synthetic",
+        "displayName": "synthetic",
+        "photoMediaId": null,
+        "city": null,
+        "bio": null,
+        "verifiedBadge": false,
+        "accountType": "INDIVIDUAL",
+        "followerCount": 1,
+        "followingCount": 0,
+        "postCount": 1
+      },
+      "body": "synthetic",
+      "categorySlug": null,
+      "mediaIds": [],
+      "likeCount": 0,
+      "commentCount": 0,
+      "editedAt": null,
+      "underReview": false,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/posts/{id}",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "author": {
+        "userId": "00000000-0000-4000-8000-000000000001",
+        "username": "synthetic",
+        "displayName": "synthetic",
+        "photoMediaId": null,
+        "city": null,
+        "bio": null,
+        "verifiedBadge": false,
+        "accountType": "INDIVIDUAL",
+        "followerCount": 1,
+        "followingCount": 0,
+        "postCount": 1
+      },
+      "body": "synthetic",
+      "categorySlug": null,
+      "mediaIds": [],
+      "likeCount": 1,
+      "commentCount": 0,
+      "editedAt": null,
+      "underReview": false,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/posts/{id}/comments",
+    "status": 200,
+    "body": {
+      "comments": [],
+      "nextCursor": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/posts/{id}/comments",
+    "status": 200,
+    "body": {
+      "comments": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "postId": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 0,
+            "followingCount": 1,
+            "postCount": 0,
+            "state": "ACTIVE",
+            "suspendedUntil": null,
+            "interests": [],
+            "createdAt": "2030-01-01T00:00:00.000Z"
+          },
+          "parentCommentId": null,
+          "body": "synthetic",
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "postId": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 1,
+            "followingCount": 0,
+            "postCount": 1
+          },
+          "parentCommentId": "00000000-0000-4000-8000-000000000001",
+          "body": "synthetic",
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "postId": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 0,
+            "followingCount": 1,
+            "postCount": 0,
+            "state": "ACTIVE",
+            "suspendedUntil": null,
+            "interests": [],
+            "createdAt": "2030-01-01T00:00:00.000Z"
+          },
+          "parentCommentId": "00000000-0000-4000-8000-000000000001",
+          "body": "synthetic",
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/search/events",
+    "status": 200,
+    "body": {
+      "results": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 0,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "CANCELLED",
+          "goingCount": 1,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": "2030-01-01T00:00:00.000Z",
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextOffset": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/search/events",
+    "status": 200,
+    "body": {
+      "results": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "creatorId": "00000000-0000-4000-8000-000000000001",
+          "title": "synthetic",
+          "description": "synthetic",
+          "startsAt": "2030-01-01T00:00:00.000Z",
+          "eventType": "PHYSICAL",
+          "locationText": "synthetic",
+          "categorySlug": null,
+          "status": "SCHEDULED",
+          "goingCount": 0,
+          "interestedCount": 0,
+          "joinLinkAvailable": false,
+          "joinLinkAvailableFrom": null,
+          "myResponse": null,
+          "underReview": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextOffset": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/search/people",
+    "status": 200,
+    "body": {
+      "results": [],
+      "nextOffset": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/search/people",
+    "status": 200,
+    "body": {
+      "results": [
+        {
+          "userId": "00000000-0000-4000-8000-000000000001",
+          "username": "synthetic",
+          "displayName": "synthetic",
+          "photoMediaId": null,
+          "city": "synthetic",
+          "bio": null,
+          "verifiedBadge": false,
+          "accountType": "INDIVIDUAL",
+          "followerCount": 0,
+          "followingCount": 0,
+          "postCount": 0
+        },
+        {
+          "userId": "00000000-0000-4000-8000-000000000001",
+          "username": "synthetic",
+          "displayName": "synthetic",
+          "photoMediaId": null,
+          "city": null,
+          "bio": null,
+          "verifiedBadge": false,
+          "accountType": "INDIVIDUAL",
+          "followerCount": 0,
+          "followingCount": 0,
+          "postCount": 1
+        }
+      ],
+      "nextOffset": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/search/people",
+    "status": 200,
+    "body": {
+      "results": [
+        {
+          "userId": "00000000-0000-4000-8000-000000000001",
+          "username": "synthetic",
+          "displayName": "synthetic",
+          "photoMediaId": null,
+          "city": null,
+          "bio": null,
+          "verifiedBadge": false,
+          "accountType": "INDIVIDUAL",
+          "followerCount": 0,
+          "followingCount": 0,
+          "postCount": 1,
+          "state": "ACTIVE",
+          "suspendedUntil": null,
+          "interests": [],
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextOffset": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/search/posts",
+    "status": 200,
+    "body": {
+      "results": [],
+      "nextOffset": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/search/posts",
+    "status": 200,
+    "body": {
+      "results": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 0,
+            "followingCount": 0,
+            "postCount": 1,
+            "state": "ACTIVE",
+            "suspendedUntil": null,
+            "interests": [],
+            "createdAt": "2030-01-01T00:00:00.000Z"
+          },
+          "body": "synthetic",
+          "categorySlug": null,
+          "mediaIds": [],
+          "likeCount": 0,
+          "commentCount": 0,
+          "viewerHasLiked": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 0,
+            "followingCount": 0,
+            "postCount": 1
+          },
+          "body": "synthetic",
+          "categorySlug": null,
+          "mediaIds": [],
+          "likeCount": 0,
+          "commentCount": 0,
+          "viewerHasLiked": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextOffset": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/search/posts",
+    "status": 200,
+    "body": {
+      "results": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 0,
+            "followingCount": 0,
+            "postCount": 1
+          },
+          "body": "synthetic",
+          "categorySlug": null,
+          "mediaIds": [],
+          "likeCount": 0,
+          "commentCount": 0,
+          "viewerHasLiked": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 0,
+            "followingCount": 0,
+            "postCount": 1,
+            "state": "ACTIVE",
+            "suspendedUntil": null,
+            "interests": [],
+            "createdAt": "2030-01-01T00:00:00.000Z"
+          },
+          "body": "synthetic",
+          "categorySlug": null,
+          "mediaIds": [],
+          "likeCount": 0,
+          "commentCount": 0,
+          "viewerHasLiked": false,
+          "editedAt": null,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextOffset": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/suggestions",
+    "status": 200,
+    "body": {
+      "users": [
+        {
+          "userId": "00000000-0000-4000-8000-000000000001",
+          "username": "synthetic",
+          "displayName": "synthetic",
+          "photoMediaId": null,
+          "city": null,
+          "bio": null,
+          "verifiedBadge": false,
+          "accountType": "INDIVIDUAL",
+          "followerCount": 1,
+          "followingCount": 0,
+          "postCount": 0
+        },
+        {
+          "userId": "00000000-0000-4000-8000-000000000001",
+          "username": "synthetic",
+          "displayName": "synthetic",
+          "photoMediaId": null,
+          "city": null,
+          "bio": null,
+          "verifiedBadge": false,
+          "accountType": "INDIVIDUAL",
+          "followerCount": 1,
+          "followingCount": 0,
+          "postCount": 1
+        }
+      ],
+      "nextBefore": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/username/available",
+    "status": 200,
+    "body": {
+      "available": false,
+      "malformed": false,
+      "suggestions": ["synthetic"]
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/username/available",
+    "status": 200,
+    "body": {
+      "available": false,
+      "malformed": true,
+      "reason": "synthetic"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/username/available",
+    "status": 200,
+    "body": {
+      "available": true,
+      "malformed": false
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/users/{id}",
+    "status": 200,
+    "body": {
+      "userId": "00000000-0000-4000-8000-000000000001",
+      "username": "synthetic",
+      "displayName": "synthetic",
+      "photoMediaId": null,
+      "city": "synthetic",
+      "bio": null,
+      "verifiedBadge": false,
+      "accountType": "INDIVIDUAL",
+      "followerCount": 0,
+      "followingCount": 0,
+      "postCount": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/users/{id}",
+    "status": 200,
+    "body": {
+      "userId": "00000000-0000-4000-8000-000000000001",
+      "username": "synthetic",
+      "displayName": "synthetic",
+      "photoMediaId": null,
+      "city": null,
+      "bio": null,
+      "verifiedBadge": false,
+      "accountType": "INDIVIDUAL",
+      "followerCount": 0,
+      "followingCount": 0,
+      "postCount": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/users/{id}",
+    "status": 200,
+    "body": {
+      "userId": "00000000-0000-4000-8000-000000000001",
+      "username": "synthetic",
+      "displayName": "synthetic",
+      "photoMediaId": null,
+      "city": null,
+      "bio": null,
+      "verifiedBadge": false,
+      "accountType": "INDIVIDUAL",
+      "followerCount": 0,
+      "followingCount": 1,
+      "postCount": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/users/{id}",
+    "status": 200,
+    "body": {
+      "userId": "00000000-0000-4000-8000-000000000001",
+      "username": "synthetic",
+      "displayName": "synthetic",
+      "photoMediaId": null,
+      "city": null,
+      "bio": null,
+      "verifiedBadge": false,
+      "accountType": "INDIVIDUAL",
+      "followerCount": 1,
+      "followingCount": 0,
+      "postCount": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/users/{id}",
+    "status": 200,
+    "body": {
+      "userId": "00000000-0000-4000-8000-000000000001",
+      "username": "synthetic",
+      "displayName": "synthetic",
+      "photoMediaId": null,
+      "city": null,
+      "bio": null,
+      "verifiedBadge": false,
+      "accountType": "INDIVIDUAL",
+      "followerCount": 1,
+      "followingCount": 0,
+      "postCount": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/users/{id}",
+    "status": 200,
+    "body": {
+      "userId": "00000000-0000-4000-8000-000000000001",
+      "username": "synthetic",
+      "displayName": "synthetic",
+      "photoMediaId": null,
+      "city": null,
+      "bio": null,
+      "verifiedBadge": false,
+      "accountType": "INDIVIDUAL",
+      "followerCount": 1,
+      "followingCount": 1,
+      "postCount": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/users/{id}/followers",
+    "status": 200,
+    "body": {
+      "users": [],
+      "nextBefore": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/users/{id}/followers",
+    "status": 200,
+    "body": {
+      "users": [
+        {
+          "userId": "00000000-0000-4000-8000-000000000001",
+          "username": "synthetic",
+          "displayName": "synthetic",
+          "photoMediaId": null,
+          "city": null,
+          "bio": null,
+          "verifiedBadge": false,
+          "accountType": "INDIVIDUAL",
+          "followerCount": 0,
+          "followingCount": 1,
+          "postCount": 0
+        }
+      ],
+      "nextBefore": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/users/{id}/following",
+    "status": 200,
+    "body": {
+      "users": [
+        {
+          "userId": "00000000-0000-4000-8000-000000000001",
+          "username": "synthetic",
+          "displayName": "synthetic",
+          "photoMediaId": null,
+          "city": null,
+          "bio": null,
+          "verifiedBadge": false,
+          "accountType": "INDIVIDUAL",
+          "followerCount": 1,
+          "followingCount": 0,
+          "postCount": 0
+        }
+      ],
+      "nextBefore": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/users/{id}/posts",
+    "status": 200,
+    "body": {
+      "posts": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 0,
+            "followingCount": 0,
+            "postCount": 1
+          },
+          "body": "synthetic",
+          "categorySlug": null,
+          "mediaIds": ["00000000-0000-4000-8000-000000000001"],
+          "likeCount": 0,
+          "commentCount": 0,
+          "editedAt": null,
+          "underReview": false,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 0,
+            "followingCount": 0,
+            "postCount": 1
+          },
+          "body": "synthetic",
+          "categorySlug": null,
+          "mediaIds": [],
+          "likeCount": 0,
+          "commentCount": 0,
+          "editedAt": null,
+          "underReview": false,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "author": {
+            "userId": "00000000-0000-4000-8000-000000000001",
+            "username": "synthetic",
+            "displayName": "synthetic",
+            "photoMediaId": null,
+            "city": null,
+            "bio": null,
+            "verifiedBadge": false,
+            "accountType": "INDIVIDUAL",
+            "followerCount": 0,
+            "followingCount": 0,
+            "postCount": 1
+          },
+          "body": "synthetic",
+          "categorySlug": "synthetic",
+          "mediaIds": [],
+          "likeCount": 0,
+          "commentCount": 0,
+          "editedAt": "2030-01-01T00:00:00.000Z",
+          "underReview": false,
+          "createdAt": "2030-01-01T00:00:00.000Z"
+        }
+      ],
+      "nextCursor": null
+    }
+  },
+  {
+    "method": "PATCH",
+    "path": "/events/{id}",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "creatorId": "00000000-0000-4000-8000-000000000001",
+      "title": "synthetic",
+      "description": "synthetic",
+      "startsAt": "2030-01-01T00:00:00.000Z",
+      "eventType": "ONLINE",
+      "locationText": null,
+      "categorySlug": null,
+      "status": "SCHEDULED",
+      "goingCount": 0,
+      "interestedCount": 0,
+      "joinLinkAvailable": false,
+      "joinLinkAvailableFrom": null,
+      "myResponse": null,
+      "underReview": false,
+      "editedAt": "2030-01-01T00:00:00.000Z",
+      "createdAt": "2030-01-01T00:00:00.000Z",
+      "notifiedAttendees": 0
+    }
+  },
+  {
+    "method": "PATCH",
+    "path": "/events/{id}",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "creatorId": "00000000-0000-4000-8000-000000000001",
+      "title": "synthetic",
+      "description": "synthetic",
+      "startsAt": "2030-01-01T00:00:00.000Z",
+      "eventType": "PHYSICAL",
+      "locationText": "synthetic",
+      "categorySlug": null,
+      "status": "SCHEDULED",
+      "goingCount": 1,
+      "interestedCount": 0,
+      "joinLinkAvailable": false,
+      "joinLinkAvailableFrom": null,
+      "myResponse": null,
+      "underReview": false,
+      "editedAt": "2030-01-01T00:00:00.000Z",
+      "createdAt": "2030-01-01T00:00:00.000Z",
+      "notifiedAttendees": 0
+    }
+  },
+  {
+    "method": "PATCH",
+    "path": "/events/{id}",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "creatorId": "00000000-0000-4000-8000-000000000001",
+      "title": "synthetic",
+      "description": "synthetic",
+      "startsAt": "2030-01-01T00:00:00.000Z",
+      "eventType": "PHYSICAL",
+      "locationText": "synthetic",
+      "categorySlug": null,
+      "status": "SCHEDULED",
+      "goingCount": 1,
+      "interestedCount": 0,
+      "joinLinkAvailable": false,
+      "joinLinkAvailableFrom": null,
+      "myResponse": null,
+      "underReview": false,
+      "editedAt": "2030-01-01T00:00:00.000Z",
+      "createdAt": "2030-01-01T00:00:00.000Z",
+      "notifiedAttendees": 1
+    }
+  },
+  {
+    "method": "PATCH",
+    "path": "/me/profile",
+    "status": 200,
+    "body": {
+      "userId": "00000000-0000-4000-8000-000000000001",
+      "username": "synthetic",
+      "displayName": "synthetic",
+      "photoMediaId": null,
+      "city": "synthetic",
+      "bio": null,
+      "verifiedBadge": false,
+      "accountType": "INDIVIDUAL",
+      "followerCount": 0,
+      "followingCount": 0,
+      "postCount": 0,
+      "state": "ACTIVE",
+      "suspendedUntil": null,
+      "interests": [],
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "PATCH",
+    "path": "/me/profile",
+    "status": 200,
+    "body": {
+      "userId": "00000000-0000-4000-8000-000000000001",
+      "username": "synthetic",
+      "displayName": "synthetic",
+      "photoMediaId": null,
+      "city": null,
+      "bio": null,
+      "verifiedBadge": false,
+      "accountType": "INDIVIDUAL",
+      "followerCount": 0,
+      "followingCount": 0,
+      "postCount": 1,
+      "state": "ACTIVE",
+      "suspendedUntil": null,
+      "interests": [],
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "PATCH",
+    "path": "/posts/{id}",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "author": {
+        "userId": "00000000-0000-4000-8000-000000000001",
+        "username": "synthetic",
+        "displayName": "synthetic",
+        "photoMediaId": null,
+        "city": null,
+        "bio": null,
+        "verifiedBadge": false,
+        "accountType": "INDIVIDUAL",
+        "followerCount": 0,
+        "followingCount": 0,
+        "postCount": 1,
+        "state": "ACTIVE",
+        "suspendedUntil": null,
+        "interests": [],
+        "createdAt": "2030-01-01T00:00:00.000Z"
+      },
+      "body": "synthetic",
+      "categorySlug": "synthetic",
+      "mediaIds": [],
+      "likeCount": 0,
+      "commentCount": 0,
+      "editedAt": "2030-01-01T00:00:00.000Z",
+      "underReview": false,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/admin/announcements",
+    "status": 201,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "broadcast": false
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/admin/login",
+    "status": 200,
+    "body": {
+      "status": "AUTHENTICATED",
+      "token": "synthetic-contract-credential-not-valid",
+      "expiresAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/admin/moderation/cases/{id}/restore",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "targetType": "POST",
+      "targetId": "00000000-0000-4000-8000-000000000001",
+      "targetOwnerId": "00000000-0000-4000-8000-000000000001",
+      "state": "RESOLVED_RESTORED",
+      "maxSeverity": "HIGH",
+      "distinctReportCount": 1,
+      "autoHidden": true,
+      "resolutionReason": "synthetic",
+      "resolvedByAdminId": "00000000-0000-4000-8000-000000000001",
+      "resolvedAt": "2030-01-01T00:00:00.000Z",
+      "version": 1,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/admin/users/{id}/reinstate",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "kind": "REINSTATE",
+      "expiresAt": null,
+      "sessionsRevoked": 0
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/admin/users/{id}/suspend",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "kind": "SUSPEND",
+      "expiresAt": "2030-01-01T00:00:00.000Z",
+      "sessionsRevoked": 0
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/admin/users/{id}/suspend",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "kind": "SUSPEND",
+      "expiresAt": "2030-01-01T00:00:00.000Z",
+      "sessionsRevoked": 1
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/comments/{id}/replies",
+    "status": 201,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "postId": "00000000-0000-4000-8000-000000000001",
+      "author": {
+        "userId": "00000000-0000-4000-8000-000000000001",
+        "username": "synthetic",
+        "displayName": "synthetic",
+        "photoMediaId": null,
+        "city": null,
+        "bio": null,
+        "verifiedBadge": false,
+        "accountType": "INDIVIDUAL",
+        "followerCount": 0,
+        "followingCount": 1,
+        "postCount": 0,
+        "state": "ACTIVE",
+        "suspendedUntil": null,
+        "interests": [],
+        "createdAt": "2030-01-01T00:00:00.000Z"
+      },
+      "parentCommentId": "00000000-0000-4000-8000-000000000001",
+      "body": "synthetic",
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/comments/{id}/replies",
+    "status": 201,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "postId": "00000000-0000-4000-8000-000000000001",
+      "author": {
+        "userId": "00000000-0000-4000-8000-000000000001",
+        "username": "synthetic",
+        "displayName": "synthetic",
+        "photoMediaId": null,
+        "city": null,
+        "bio": null,
+        "verifiedBadge": false,
+        "accountType": "INDIVIDUAL",
+        "followerCount": 1,
+        "followingCount": 0,
+        "postCount": 1,
+        "state": "ACTIVE",
+        "suspendedUntil": null,
+        "interests": [],
+        "createdAt": "2030-01-01T00:00:00.000Z"
+      },
+      "parentCommentId": "00000000-0000-4000-8000-000000000001",
+      "body": "synthetic",
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/conversations",
+    "status": 200,
+    "body": {
+      "conversationId": "00000000-0000-4000-8000-000000000001",
+      "otherUserId": "00000000-0000-4000-8000-000000000001",
+      "requestState": "ACCEPTED",
+      "unreadCount": 0,
+      "lastMessageAt": null,
+      "readOnly": false,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/conversations",
+    "status": 200,
+    "body": {
+      "conversationId": "00000000-0000-4000-8000-000000000001",
+      "otherUserId": "00000000-0000-4000-8000-000000000001",
+      "requestState": "PENDING",
+      "unreadCount": 0,
+      "lastMessageAt": null,
+      "readOnly": false,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/conversations/{id}/messages",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "clientMessageId": "00000000-0000-4000-8000-000000000001",
+      "conversationId": "00000000-0000-4000-8000-000000000001",
+      "senderId": "00000000-0000-4000-8000-000000000001",
+      "body": "synthetic",
+      "mediaId": null,
+      "createdAt": "2030-01-01T00:00:00.000Z",
+      "readAt": null
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/conversations/{id}/messages",
+    "status": 201,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "clientMessageId": "00000000-0000-4000-8000-000000000001",
+      "conversationId": "00000000-0000-4000-8000-000000000001",
+      "senderId": "00000000-0000-4000-8000-000000000001",
+      "body": "synthetic",
+      "mediaId": null,
+      "createdAt": "2030-01-01T00:00:00.000Z",
+      "readAt": null
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/events",
+    "status": 201,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "creatorId": "00000000-0000-4000-8000-000000000001",
+      "title": "synthetic",
+      "description": "synthetic",
+      "startsAt": "2030-01-01T00:00:00.000Z",
+      "eventType": "ONLINE",
+      "locationText": null,
+      "categorySlug": null,
+      "status": "SCHEDULED",
+      "goingCount": 0,
+      "interestedCount": 0,
+      "joinLinkAvailable": false,
+      "joinLinkAvailableFrom": null,
+      "myResponse": null,
+      "underReview": false,
+      "editedAt": null,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/events",
+    "status": 201,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "creatorId": "00000000-0000-4000-8000-000000000001",
+      "title": "synthetic",
+      "description": "synthetic",
+      "startsAt": "2030-01-01T00:00:00.000Z",
+      "eventType": "PHYSICAL",
+      "locationText": "synthetic",
+      "categorySlug": null,
+      "status": "SCHEDULED",
+      "goingCount": 0,
+      "interestedCount": 0,
+      "joinLinkAvailable": false,
+      "joinLinkAvailableFrom": null,
+      "myResponse": null,
+      "underReview": false,
+      "editedAt": null,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/events/{id}/join",
+    "status": 200,
+    "body": {
+      "meetingUrl": "synthetic"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/login",
+    "status": 200,
+    "body": {
+      "status": "AUTHENTICATED",
+      "token": "synthetic-contract-credential-not-valid",
+      "expiresAt": "2030-01-01T00:00:00.000Z",
+      "capability": "FULL",
+      "suspendedUntil": null
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/login",
+    "status": 200,
+    "body": {
+      "status": "AUTHENTICATED",
+      "token": "synthetic-contract-credential-not-valid",
+      "expiresAt": "2030-01-01T00:00:00.000Z",
+      "capability": "RESTORE_ONLY",
+      "suspendedUntil": null
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/login",
+    "status": 200,
+    "body": {
+      "status": "VERIFICATION_REQUIRED"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/me/profile",
+    "status": 201,
+    "body": {
+      "userId": "00000000-0000-4000-8000-000000000001",
+      "username": "synthetic",
+      "displayName": "synthetic",
+      "photoMediaId": null,
+      "city": "synthetic",
+      "bio": "synthetic",
+      "verifiedBadge": false,
+      "accountType": "INDIVIDUAL",
+      "followerCount": 0,
+      "followingCount": 0,
+      "postCount": 0,
+      "state": "ACTIVE",
+      "suspendedUntil": null,
+      "interests": [],
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/me/profile",
+    "status": 201,
+    "body": {
+      "userId": "00000000-0000-4000-8000-000000000001",
+      "username": "synthetic",
+      "displayName": "synthetic",
+      "photoMediaId": null,
+      "city": null,
+      "bio": null,
+      "verifiedBadge": false,
+      "accountType": "INDIVIDUAL",
+      "followerCount": 0,
+      "followingCount": 0,
+      "postCount": 0,
+      "state": "ACTIVE",
+      "suspendedUntil": null,
+      "interests": [],
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/me/restore",
+    "status": 200,
+    "body": {
+      "status": "RESTORED"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/me/username",
+    "status": 201,
+    "body": {
+      "userId": "00000000-0000-4000-8000-000000000001",
+      "username": "synthetic",
+      "displayName": "synthetic",
+      "photoMediaId": null,
+      "city": null,
+      "bio": null,
+      "verifiedBadge": false,
+      "accountType": "INDIVIDUAL",
+      "followerCount": 0,
+      "followingCount": 0,
+      "postCount": 0,
+      "state": "ACTIVE",
+      "suspendedUntil": null,
+      "interests": [],
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/media/{id}/complete",
+    "status": 200,
+    "body": {
+      "mediaId": "00000000-0000-4000-8000-000000000001",
+      "state": "READY",
+      "mime": "synthetic",
+      "byteSize": 1,
+      "width": 1,
+      "height": 1
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/media/upload-slot",
+    "status": 201,
+    "body": {
+      "mediaId": "00000000-0000-4000-8000-000000000001",
+      "upload": {
+        "url": "synthetic",
+        "method": "synthetic",
+        "headers": {
+          "synthetic": "synthetic"
+        },
+        "expiresAt": "2030-01-01T00:00:00.000Z"
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/notifications/read-all",
+    "status": 200,
+    "body": {
+      "marked": 1
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/otp/verify",
+    "status": 200,
+    "body": {
+      "status": "VERIFIED",
+      "userId": "00000000-0000-4000-8000-000000000001",
+      "token": "synthetic-contract-credential-not-valid",
+      "expiresAt": "2030-01-01T00:00:00.000Z",
+      "capability": "FULL"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/password/forgot",
+    "status": 202,
+    "body": {
+      "status": "ACCEPTED"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/posts",
+    "status": 201,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "author": {
+        "userId": "00000000-0000-4000-8000-000000000001",
+        "username": "synthetic",
+        "displayName": "synthetic",
+        "photoMediaId": null,
+        "city": null,
+        "bio": null,
+        "verifiedBadge": false,
+        "accountType": "INDIVIDUAL",
+        "followerCount": 0,
+        "followingCount": 0,
+        "postCount": 0,
+        "state": "ACTIVE",
+        "suspendedUntil": null,
+        "interests": [],
+        "createdAt": "2030-01-01T00:00:00.000Z"
+      },
+      "body": "synthetic",
+      "categorySlug": "synthetic",
+      "mediaIds": [],
+      "likeCount": 0,
+      "commentCount": 0,
+      "editedAt": null,
+      "underReview": false,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/posts",
+    "status": 201,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "author": {
+        "userId": "00000000-0000-4000-8000-000000000001",
+        "username": "synthetic",
+        "displayName": "synthetic",
+        "photoMediaId": null,
+        "city": null,
+        "bio": null,
+        "verifiedBadge": false,
+        "accountType": "INDIVIDUAL",
+        "followerCount": 0,
+        "followingCount": 0,
+        "postCount": 0,
+        "state": "ACTIVE",
+        "suspendedUntil": null,
+        "interests": [],
+        "createdAt": "2030-01-01T00:00:00.000Z"
+      },
+      "body": "synthetic",
+      "categorySlug": null,
+      "mediaIds": [],
+      "likeCount": 0,
+      "commentCount": 0,
+      "editedAt": null,
+      "underReview": false,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/posts",
+    "status": 201,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "author": {
+        "userId": "00000000-0000-4000-8000-000000000001",
+        "username": "synthetic",
+        "displayName": "synthetic",
+        "photoMediaId": null,
+        "city": null,
+        "bio": null,
+        "verifiedBadge": false,
+        "accountType": "INDIVIDUAL",
+        "followerCount": 0,
+        "followingCount": 0,
+        "postCount": 1,
+        "state": "ACTIVE",
+        "suspendedUntil": null,
+        "interests": [],
+        "createdAt": "2030-01-01T00:00:00.000Z"
+      },
+      "body": "synthetic",
+      "categorySlug": null,
+      "mediaIds": ["00000000-0000-4000-8000-000000000001"],
+      "likeCount": 0,
+      "commentCount": 0,
+      "editedAt": null,
+      "underReview": false,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/posts",
+    "status": 201,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "author": {
+        "userId": "00000000-0000-4000-8000-000000000001",
+        "username": "synthetic",
+        "displayName": "synthetic",
+        "photoMediaId": null,
+        "city": null,
+        "bio": null,
+        "verifiedBadge": false,
+        "accountType": "INDIVIDUAL",
+        "followerCount": 0,
+        "followingCount": 0,
+        "postCount": 1,
+        "state": "ACTIVE",
+        "suspendedUntil": null,
+        "interests": [],
+        "createdAt": "2030-01-01T00:00:00.000Z"
+      },
+      "body": "synthetic",
+      "categorySlug": null,
+      "mediaIds": [],
+      "likeCount": 0,
+      "commentCount": 0,
+      "editedAt": null,
+      "underReview": false,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/posts",
+    "status": 201,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "author": {
+        "userId": "00000000-0000-4000-8000-000000000001",
+        "username": "synthetic",
+        "displayName": "synthetic",
+        "photoMediaId": null,
+        "city": null,
+        "bio": null,
+        "verifiedBadge": false,
+        "accountType": "INDIVIDUAL",
+        "followerCount": 1,
+        "followingCount": 0,
+        "postCount": 0,
+        "state": "ACTIVE",
+        "suspendedUntil": null,
+        "interests": [],
+        "createdAt": "2030-01-01T00:00:00.000Z"
+      },
+      "body": "synthetic",
+      "categorySlug": null,
+      "mediaIds": [],
+      "likeCount": 0,
+      "commentCount": 0,
+      "editedAt": null,
+      "underReview": false,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/posts",
+    "status": 201,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "author": {
+        "userId": "00000000-0000-4000-8000-000000000001",
+        "username": "synthetic",
+        "displayName": "synthetic",
+        "photoMediaId": null,
+        "city": null,
+        "bio": null,
+        "verifiedBadge": false,
+        "accountType": "INDIVIDUAL",
+        "followerCount": 1,
+        "followingCount": 0,
+        "postCount": 1,
+        "state": "ACTIVE",
+        "suspendedUntil": null,
+        "interests": [],
+        "createdAt": "2030-01-01T00:00:00.000Z"
+      },
+      "body": "synthetic",
+      "categorySlug": "synthetic",
+      "mediaIds": [],
+      "likeCount": 0,
+      "commentCount": 0,
+      "editedAt": null,
+      "underReview": false,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/posts",
+    "status": 201,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "author": {
+        "userId": "00000000-0000-4000-8000-000000000001",
+        "username": "synthetic",
+        "displayName": "synthetic",
+        "photoMediaId": null,
+        "city": null,
+        "bio": null,
+        "verifiedBadge": false,
+        "accountType": "INDIVIDUAL",
+        "followerCount": 1,
+        "followingCount": 0,
+        "postCount": 1,
+        "state": "ACTIVE",
+        "suspendedUntil": null,
+        "interests": [],
+        "createdAt": "2030-01-01T00:00:00.000Z"
+      },
+      "body": "synthetic",
+      "categorySlug": null,
+      "mediaIds": [],
+      "likeCount": 0,
+      "commentCount": 0,
+      "editedAt": null,
+      "underReview": false,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/posts/{id}/comments",
+    "status": 201,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "postId": "00000000-0000-4000-8000-000000000001",
+      "author": {
+        "userId": "00000000-0000-4000-8000-000000000001",
+        "username": "synthetic",
+        "displayName": "synthetic",
+        "photoMediaId": null,
+        "city": null,
+        "bio": null,
+        "verifiedBadge": false,
+        "accountType": "INDIVIDUAL",
+        "followerCount": 0,
+        "followingCount": 1,
+        "postCount": 0,
+        "state": "ACTIVE",
+        "suspendedUntil": null,
+        "interests": [],
+        "createdAt": "2030-01-01T00:00:00.000Z"
+      },
+      "parentCommentId": null,
+      "body": "synthetic",
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/register",
+    "status": 202,
+    "body": {
+      "status": "ACCEPTED"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/reports",
+    "status": 202,
+    "body": {
+      "status": "RECEIVED"
+    }
+  },
+  {
+    "method": "PUT",
+    "path": "/events/{id}/rsvp",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "creatorId": "00000000-0000-4000-8000-000000000001",
+      "title": "synthetic",
+      "description": "synthetic",
+      "startsAt": "2030-01-01T00:00:00.000Z",
+      "eventType": "ONLINE",
+      "locationText": null,
+      "categorySlug": null,
+      "status": "SCHEDULED",
+      "goingCount": 1,
+      "interestedCount": 0,
+      "joinLinkAvailable": false,
+      "joinLinkAvailableFrom": "2030-01-01T00:00:00.000Z",
+      "myResponse": "synthetic",
+      "underReview": false,
+      "editedAt": null,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "PUT",
+    "path": "/events/{id}/rsvp",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "creatorId": "00000000-0000-4000-8000-000000000001",
+      "title": "synthetic",
+      "description": "synthetic",
+      "startsAt": "2030-01-01T00:00:00.000Z",
+      "eventType": "ONLINE",
+      "locationText": null,
+      "categorySlug": null,
+      "status": "SCHEDULED",
+      "goingCount": 1,
+      "interestedCount": 0,
+      "joinLinkAvailable": true,
+      "joinLinkAvailableFrom": null,
+      "myResponse": "synthetic",
+      "underReview": false,
+      "editedAt": null,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "PUT",
+    "path": "/events/{id}/rsvp",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "creatorId": "00000000-0000-4000-8000-000000000001",
+      "title": "synthetic",
+      "description": "synthetic",
+      "startsAt": "2030-01-01T00:00:00.000Z",
+      "eventType": "PHYSICAL",
+      "locationText": "synthetic",
+      "categorySlug": null,
+      "status": "SCHEDULED",
+      "goingCount": 0,
+      "interestedCount": 1,
+      "joinLinkAvailable": false,
+      "joinLinkAvailableFrom": null,
+      "myResponse": "synthetic",
+      "underReview": false,
+      "editedAt": null,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "PUT",
+    "path": "/events/{id}/rsvp",
+    "status": 200,
+    "body": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "creatorId": "00000000-0000-4000-8000-000000000001",
+      "title": "synthetic",
+      "description": "synthetic",
+      "startsAt": "2030-01-01T00:00:00.000Z",
+      "eventType": "PHYSICAL",
+      "locationText": "synthetic",
+      "categorySlug": null,
+      "status": "SCHEDULED",
+      "goingCount": 1,
+      "interestedCount": 0,
+      "joinLinkAvailable": false,
+      "joinLinkAvailableFrom": null,
+      "myResponse": "synthetic",
+      "underReview": false,
+      "editedAt": null,
+      "createdAt": "2030-01-01T00:00:00.000Z"
+    }
+  },
+  {
+    "method": "PUT",
+    "path": "/me/interests",
+    "status": 200,
+    "body": {
+      "interests": ["synthetic"]
+    }
+  },
+  {
+    "method": "PUT",
+    "path": "/me/interests",
+    "status": 200,
+    "body": {
+      "interests": []
+    }
+  }
+]

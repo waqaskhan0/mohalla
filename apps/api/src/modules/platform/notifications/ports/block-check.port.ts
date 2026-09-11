@@ -20,4 +20,17 @@ export const BLOCK_CHECK = Symbol.for('mohalla.notifications.blockCheck');
 
 export interface BlockCheck {
   isBlockedEitherWay(userA: string, userB: string): Promise<boolean>;
+
+  /**
+   * Everyone this user has a block with, either way.
+   *
+   * Eligibility rule 2 suppresses the RECORD at write time, which covers
+   * everything that happens after a block is created. It cannot cover what was
+   * already there — and measured on a real block, every notification the
+   * blocked person had caused was still listed, so blocking somebody left them
+   * in front of the person who blocked them (INTEGRATION-011). The read path
+   * needs the same predicate, and for a page it needs the set rather than a
+   * call per row.
+   */
+  blockCounterparts(userId: string): Promise<string[]>;
 }

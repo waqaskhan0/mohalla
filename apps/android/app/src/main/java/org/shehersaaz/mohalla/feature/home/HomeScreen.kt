@@ -24,8 +24,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -78,6 +80,7 @@ import org.shehersaaz.mohalla.core.ui.homeActions
  * (FEED-FR-002), including on the empty and skeleton screens, so there is always
  * something to read (REL-005).
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     state: FeedUiState,
@@ -168,6 +171,25 @@ fun HomeScreen(
 
         val page = state.current
 
+        // FEED-FR-005. THE GESTURE, not just the call behind it.
+        //
+        // `FeedViewModel.refresh()` and `FeedUiState.refreshing` were both here
+        // and correct, and `FeedStateTest` exercised them — but nothing in any
+        // screen ever called `onRefresh` except the failed-first-page retry
+        // button, so a reader on a populated feed had no way to ask for new
+        // posts at all. Found by posting from the app and watching the feed not
+        // change; the unit suite could not see it, because the half that was
+        // missing was the half it does not touch (INTEGRATION-005).
+        //
+        // WRAPPING THE WHOLE BRANCH rather than only the list, so an empty
+        // Discover feed can also be pulled: "nothing nearby yet" is exactly the
+        // state a reader wants to retry, and it is the one the retry button
+        // does not cover because it is not a failure.
+        PullToRefreshBox(
+            isRefreshing = state.refreshing,
+            onRefresh = onRefresh,
+            modifier = Modifier.fillMaxSize(),
+        ) {
         when {
             // 1 — a failed FIRST page. Never "no posts".
             state.firstPageFailure != null && page.items.isEmpty() ->
@@ -218,6 +240,7 @@ fun HomeScreen(
                 onShare = onShare,
                 onOpenAnnouncement = onOpenAnnouncement,
             )
+        }
         }
     }
 }

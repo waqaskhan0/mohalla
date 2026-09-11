@@ -20,4 +20,8 @@ export class BlockCheckAdapter implements BlockCheck {
   async isBlockedEitherWay(userA: string, userB: string): Promise<boolean> {
     return this.blocks.isBlockedEitherWay(userA, userB);
   }
+
+  async blockCounterparts(userId: string): Promise<string[]> {
+    return this.blocks.blockCounterparts(userId);
+  }
 }

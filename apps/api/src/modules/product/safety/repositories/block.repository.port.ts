@@ -18,6 +18,17 @@ export interface BlockRepository {
   isBlockedEitherWay(userA: string, userB: string, client?: PoolClient): Promise<boolean>;
 
   /**
+   * Every user id with a block between them and `userId`, in either direction.
+   *
+   * THE SET RATHER THAN A PREDICATE PER PAIR, because the callers that need
+   * this are filtering a PAGE. `isBlockedEitherWay` asked twenty times for a
+   * page of twenty notifications is the per-row call `visibility-policy.ts`
+   * warns about; one bounded query and a SQL exclusion is the same answer
+   * without it.
+   */
+  blockCounterparts(userId: string, client?: PoolClient): Promise<string[]>;
+
+  /**
    * Create the block.
    *
    * @returns false when the block already existed. Idempotent, because a

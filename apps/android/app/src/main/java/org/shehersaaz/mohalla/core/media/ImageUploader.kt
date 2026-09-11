@@ -1,5 +1,10 @@
 package org.shehersaaz.mohalla.core.media
 
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -35,6 +40,20 @@ import java.io.IOException
 class ImageUploader(
     private val api: MohallaApi,
     private val http: OkHttpClient,
+    /**
+     * What a RELATIVE upload target is resolved against.
+     *
+     * ADR-013's port is explicit that the two adapters answer differently: S3
+     * presigns an absolute URL, and the local adapter — which cannot presign —
+     * returns an API path, `/media/upload/{key}`. Both are valid targets and
+     * the client's code path is meant to be otherwise identical.
+     *
+     * It was not. `Request.Builder().url()` throws `IllegalArgumentException`
+     * on a path, that is not an `IOException`, and the catch below only held
+     * `IOException` — so attaching ANY image killed the process on the main
+     * thread (INTEGRATION-007). Media had never worked from the app.
+     */
+    private val apiBaseUrl: String,
 ) {
 
     suspend fun upload(bytes: ByteArray, visibility: String? = null): UploadResult {
@@ -68,23 +87,57 @@ class ImageUploader(
         }
 
         // ---- 2 · put the bytes into quarantine ---------------------------
-        val put = try {
-            val request = Request.Builder()
-                .url(target.upload.url)
-                .method(
-                    target.upload.method,
-                    bytes.toRequestBody("image/jpeg".toMediaType()),
-                )
-                .apply {
-                    // Whatever the server said to send. The client does not
-                    // invent headers for a presigned target.
-                    target.upload.headers.forEach { (name, value) -> header(name, value) }
-                }
-                .build()
+        //
+        // RESOLVED, NOT ASSUMED ABSOLUTE. See `apiBaseUrl`: a relative target
+        // is a documented answer from a storage adapter that cannot presign,
+        // not a malformed one.
+        val uploadUrl = resolveUploadUrl(target.upload.url)
+            ?: return UploadResult.Failed
 
-            http.newCall(request).execute().use { it.isSuccessful }
+        // OFF THE MAIN THREAD, like every other network call in the app.
+        //
+        // `execute()` is OkHttp's BLOCKING call, and this runs inside
+        // `viewModelScope` — which is `Dispatchers.Main`. So the second half of
+        // INTEGRATION-007 was `NetworkOnMainThreadException`, which is not an
+        // `IOException` either: fixing the URL only moved the crash a few lines
+        // down. Every other network path in this app already does this —
+        // `apiCall`, `ImagePicker.read`, `UrlConnectionHttpClient` — and this
+        // one place did not, which is exactly why only media crashed.
+        val put = try {
+            withContext(Dispatchers.IO) {
+                val request = Request.Builder()
+                    .url(uploadUrl)
+                    .method(
+                        target.upload.method,
+                        bytes.toRequestBody("image/jpeg".toMediaType()),
+                    )
+                    .apply {
+                        // Whatever the server said to send. The client does not
+                        // invent headers for a presigned target.
+                        target.upload.headers.forEach { (name, value) -> header(name, value) }
+                    }
+                    .build()
+
+                http.newCall(request).execute().use { it.isSuccessful }
+            }
         } catch (e: IOException) {
             // Transient. The caller keeps the bytes and can retry.
+            return UploadResult.Failed
+        } catch (e: CancellationException) {
+            // The composer was closed. Not a failure to report — let it
+            // propagate so the coroutine actually cancels.
+            throw e
+        } catch (e: Exception) {
+            // A DELIBERATELY BROAD NET, and only here.
+            //
+            // This upload crashed the app twice, both times because something
+            // that was not an `IOException` escaped: first
+            // `IllegalArgumentException` from the URL, then
+            // `NetworkOnMainThreadException`. Both are now fixed at the cause,
+            // but the lesson is that "the bytes did not get there" is a state
+            // this function can already express, and taking the process down
+            // while somebody is writing a post is never the better answer to
+            // it. Cancellation is re-thrown above so this does not swallow it.
             return UploadResult.Failed
         }
 
@@ -103,6 +156,22 @@ class ImageUploader(
             // failed inspection. Retrying the same file cannot help.
             is ApiResult.Err -> failureFor(complete, rejectable = true)
         }
+    }
+
+    /**
+     * The absolute URL to PUT to, or `null` if the target cannot be one.
+     *
+     * `null` RATHER THAN A THROW, and the reason is the crash this replaces: a
+     * target the client cannot use is a failed upload, which is a thing the UI
+     * already knows how to say. It is not a reason to take the app down while
+     * somebody is writing a post.
+     */
+    private fun resolveUploadUrl(target: String): HttpUrl? {
+        val absolute = target.toHttpUrlOrNull()
+        if (absolute != null) return absolute
+        // Relative: resolve against the API base, which is where this adapter's
+        // upload endpoint lives.
+        return apiBaseUrl.toHttpUrlOrNull()?.resolve(target)
     }
 
     private fun failureFor(err: ApiResult.Err, rejectable: Boolean): UploadResult {

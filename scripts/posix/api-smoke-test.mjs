@@ -26,6 +26,7 @@
  * per run, so repeated runs do not collide on the UNIQUE identifier index.
  */
 import { randomUUID } from 'node:crypto';
+import { captureContractResponses, writeContractSpecimens } from './contract-specimens.mjs';
 
 const results = [];
 let failures = 0;
@@ -106,10 +107,33 @@ function check(name, ok, detail = '') {
 }
 
 /** A distinct synthetic 03xx number per run. Never a real subscriber. */
+/**
+ * The fake SMS provider's RESERVED suffixes.
+ *
+ * `FakeSmsProvider` fails deterministically on the recipient number — `0000`
+ * permanently, `9999` retryably — which is what makes retry and dead-job
+ * behaviour testable without monkey-patching. It also means a general-purpose
+ * fixture number that happens to end in one of them gets no message at all.
+ *
+ * That is not hypothetical: a fresh-database CI run seeded `Date.now() + 21444`
+ * into a `9999` number, so `onboard` read no OTP, produced an account with no
+ * token, and a message-privacy check three lines later failed with
+ * `report status 401` — an authentication error reported against an assertion
+ * about non-participant access, which is the worst kind of red: one that points
+ * at the wrong thing.
+ */
+const RESERVED_FAILURE_SUFFIXES = ['0000', '9999'];
+
 function syntheticPhone(seed) {
   // 0300 is a real prefix, so the SUFFIX is randomised per run and the number
   // is never printed in full by this script.
-  const suffix = String(seed % 10_000_000).padStart(7, '0');
+  let suffix = String(seed % 10_000_000).padStart(7, '0');
+  // Nudged off a reserved suffix rather than re-seeded, so the number stays a
+  // pure function of the seed and callers that reuse a seed still collide the
+  // way they intend to.
+  while (RESERVED_FAILURE_SUFFIXES.some((r) => suffix.endsWith(r))) {
+    suffix = String((Number(suffix) + 1) % 10_000_000).padStart(7, '0');
+  }
   return `+92300${suffix}`;
 }
 
@@ -136,6 +160,11 @@ async function main() {
   await app.listen(0);
   const url = await app.getUrl();
   const base = url.replace('[::1]', '127.0.0.1');
+
+  const contractSamples = [];
+  const fetch = process.env.CONTRACT_OUT
+    ? captureContractResponses(globalThis.fetch, contractSamples)
+    : globalThis.fetch;
 
   const post = async (path, body, token) =>
     fetch(`${base}${path}`, {
@@ -510,6 +539,17 @@ async function main() {
     await post('/me/profile', { displayName: `Person ${handle}` }, token);
 
     const me = await (await get('/me', token)).json();
+    // LOUD, RATHER THAN RETURNING A BROKEN ACCOUNT. Onboarding here is fixture
+    // setup for whatever check comes next, so a silent failure shows up as that
+    // check failing for a reason it knows nothing about. Throwing names the
+    // real problem at the place it happened.
+    if (token === undefined || me?.userId === undefined) {
+      throw new Error(
+        'onboard() produced no session — the OTP was never recorded, so the ' +
+          'fixture number is unusable and every check built on it would be ' +
+          'reporting an authentication error instead of its own subject',
+      );
+    }
     return { token, userId: me?.userId, handle, phone: number };
   };
 
@@ -923,6 +963,104 @@ async function main() {
         alicesBlockList?.blocks?.[0]?.blockedUserId === bob.userId,
         JSON.stringify(alicesBlockList?.blocks),
       );
+
+      // ---- BR-025 on the read paths that were missing it -------------
+      //
+      // A FRESH PAIR, and the engagement happens BEFORE the block. That
+      // ordering is the whole test: once a block exists the blocked person
+      // cannot like or comment at all, so engaging afterwards asserts nothing
+      // — the first version of this check did exactly that and passed against
+      // a stored count of zero.
+      {
+        const author = await onboard(Date.now() + 30111);
+        const engager = await onboard(Date.now() + 30222);
+        const subject = await (
+          await post('/posts', { body: 'counts and notices across a block' }, author.token)
+        ).json();
+
+        await send('PUT', `/posts/${subject.id}/like`, undefined, engager.token);
+        await post(`/posts/${subject.id}/comments`, { body: 'before the block' }, engager.token);
+
+        // The notification for that like has to actually exist before the
+        // block, or the centre check below is vacuous too.
+        const { OutboxDrainService: Drain } =
+          await import('../../apps/api/dist/modules/platform/notifications/application/outbox-drain.service.js');
+        await app.get(Drain, { strict: false }).drain();
+
+        const beforeCentre = await (await get('/notifications', author.token)).json();
+        const beforeFromEngager = (beforeCentre?.notifications ?? []).filter(
+          (n) => (n.actor?.userId ?? n.actorId) === engager.userId,
+        );
+        check(
+          'the engagement and its notifications exist before the block',
+          beforeFromEngager.length > 0,
+          `${beforeFromEngager.length} notification(s) from them`,
+        );
+
+        await send('PUT', `/users/${engager.userId}/block`, undefined, author.token);
+
+        // INTEGRATION-010. `07-database-design.md` lists the read paths the
+        // block predicate is applied on and names "post detail" among them.
+        // The feed did it through `adjustedCounts`; a post's own screen and a
+        // profile's post list rendered the stored counters straight, so the
+        // same post reported different numbers depending on which screen it
+        // was opened from — and what it reported was engagement from somebody
+        // the reader had blocked. The comment THREAD was already filtered, so
+        // the screen contradicted itself: "1 comment" above an empty thread.
+        const { DatabaseService: Db } =
+          await import('../../apps/api/dist/database/database.service.js');
+        const stored = await app
+          .get(Db, { strict: false })
+          .query('SELECT like_count, comment_count FROM posts WHERE id = $1', [subject.id]);
+        const detail = await (await get(`/posts/${subject.id}`, author.token)).json();
+
+        check(
+          "A BLOCKED PERSON'S LIKE IS NOT COUNTED ON THE POST'S OWN SCREEN (ENGAGE-FR-006)",
+          detail?.likeCount === 0,
+          `detail ${detail?.likeCount}, stored ${stored.rows[0]?.like_count}`,
+        );
+        check(
+          'nor their comment',
+          detail?.commentCount === 0,
+          `detail ${detail?.commentCount}, stored ${stored.rows[0]?.comment_count}`,
+        );
+        // The stored counters are the platform-wide truth moderation and
+        // ranking read, and must NOT be rewritten: the adjustment is a
+        // per-viewer projection of them.
+        check(
+          'while the stored counters still hold the platform-wide truth',
+          Number(stored.rows[0]?.like_count) === 1 && Number(stored.rows[0]?.comment_count) === 1,
+          `stored ${stored.rows[0]?.like_count}/${stored.rows[0]?.comment_count}`,
+        );
+
+        const list = await (await get(`/users/${author.userId}/posts`, author.token)).json();
+        const listed = (list?.posts ?? []).find((p) => p.id === subject.id);
+        check(
+          "and not on the author's own post list either",
+          listed?.likeCount === 0 && listed?.commentCount === 0,
+          `list ${listed?.likeCount}/${listed?.commentCount}`,
+        );
+
+        // INTEGRATION-011. Eligibility rule 2 suppresses the RECORD at write
+        // time, which covers everything after a block and nothing before it.
+        // `domain/eligibility.ts` is explicit that "a notification centre is a
+        // surface like any other".
+        const centre = await (await get('/notifications', author.token)).json();
+        const fromEngager = (centre?.notifications ?? []).filter(
+          (n) => (n.actor?.userId ?? n.actorId) === engager.userId,
+        );
+        check(
+          'A BLOCKED PERSON LEAVES THE CENTRE, INCLUDING EVENTS FROM BEFORE THE BLOCK',
+          fromEngager.length === 0,
+          `${fromEngager.length} of ${(centre?.notifications ?? []).length} notifications name them`,
+        );
+        const unread = await (await get('/notifications/unread-count', author.token)).json();
+        check(
+          'and the badge cannot count what the centre will not show',
+          (unread?.unread ?? unread?.count ?? 0) === (centre?.notifications ?? []).length,
+          `badge ${unread?.unread ?? unread?.count} vs ${(centre?.notifications ?? []).length} listed`,
+        );
+      }
     }
 
     // ---- unblocking ---------------------------------------------------
@@ -1326,6 +1464,16 @@ async function main() {
         view?.likeCount === 1,
         `likeCount ${view?.likeCount}`,
       );
+      // INTEGRATION-006. This response was already fetched and its count
+      // already checked; the FIELD was not, and that is exactly how a post
+      // opened at its own screen came to render an empty heart for somebody
+      // who had liked it. The Android field defaults to `false`, so an omitted
+      // key is not a parse error anywhere - only a wrong picture.
+      check(
+        'AND THE VIEWER LIKE STATE COMES WITH IT (INTEGRATION-006)',
+        view?.viewerHasLiked === true,
+        `viewerHasLiked ${JSON.stringify(view?.viewerHasLiked)}`,
+      );
 
       const un = await send('DELETE', `/posts/${target}/like`, undefined, reader.token);
       check('DELETE unlikes', un.status === 204, `status ${un.status}`);
@@ -1334,6 +1482,14 @@ async function main() {
         'and the count goes back down',
         after?.likeCount === 0,
         `likeCount ${after?.likeCount}`,
+      );
+      // Both directions, because `false` is the value a missing field also
+      // produces - asserting only the `true` case would pass against a
+      // response that hard-coded it.
+      check(
+        'and the viewer like state goes back down with it',
+        after?.viewerHasLiked === false,
+        `viewerHasLiked ${JSON.stringify(after?.viewerHasLiked)}`,
       );
 
       const again = await send('DELETE', `/posts/${target}/like`, undefined, reader.token);
@@ -3465,6 +3621,20 @@ async function main() {
     const adminA = await makeAdmin('admin-a');
     const adminB = await makeAdmin('admin-b');
 
+    if (process.env.CONTRACT_OUT) {
+      const search = await get('/admin/users/search?q=Person&limit=20', adminA.token);
+      check('contract capture: Admin user search responds', search.status === 200);
+      const reported = await db.query(
+        "SELECT id FROM moderation_cases WHERE target_type='CONVERSATION' ORDER BY created_at DESC LIMIT 1",
+      );
+      const caseId = reported.rows[0]?.id;
+      check('contract capture: reported conversation fixture exists', Boolean(caseId));
+      if (caseId) {
+        const excerpt = await get(`/admin/moderation/cases/${caseId}/conversation`, adminA.token);
+        check('contract capture: audited conversation endpoint responds', excerpt.status === 200);
+      }
+    }
+
     check(
       'POST /admin/login issues an admin session (AUTH-FR-011)',
       adminA.loginStatus === 200 && typeof adminA.token === 'string',
@@ -4240,12 +4410,14 @@ async function main() {
       // suite leaves another dry-run account due forever (a dry run completes
       // nothing, by design). Without this the assertion below starts failing
       // once the eleventh run accumulates - a fact about the dev database, not
-      // about the sweep.
+      // about the sweep. Clamp the minimum to now as well: on a fresh database
+      // every request can still be in its grace period, so merely subtracting
+      // one day from the oldest schedule leaves this fixture in the future.
       await db.query(
         `UPDATE deletion_requests AS d
             SET scheduled_erasure_at = oldest.at - interval '1 day',
                 requested_at = oldest.at - interval '31 days'
-           FROM (SELECT coalesce(min(scheduled_erasure_at), now()) AS at
+           FROM (SELECT least(coalesce(min(scheduled_erasure_at), now()), now()) AS at
                    FROM deletion_requests) AS oldest
           WHERE d.user_id = $1`,
         [erasable.userId],
@@ -4429,6 +4601,12 @@ async function main() {
     );
   }
 
+  if (process.env.CONTRACT_OUT && failures === 0) {
+    const { createApiDocument } = await import('../../apps/api/dist/openapi.js');
+    const openapi = createApiDocument(app);
+    const count = writeContractSpecimens(process.env.CONTRACT_OUT, contractSamples, openapi);
+    console.log(`Contract capture: ${count} sanitized runtime specimens written`);
+  }
   await app.close();
 
   console.log('\n═══════════════════ API SMOKE SUMMARY ═══════════════════');

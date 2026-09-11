@@ -120,6 +120,16 @@ export class BlockService {
     return this.blocks.isBlockedEitherWay(userA, userB, client);
   }
 
+  /**
+   * Everyone this user has a block with, either way.
+   *
+   * For read paths that filter a PAGE rather than a pair. See the repository
+   * port for why that distinction earns its own method.
+   */
+  async blockCounterparts(userId: string, client?: PoolClient): Promise<string[]> {
+    return this.blocks.blockCounterparts(userId, client);
+  }
+
   /** The caller's own block list (SAFETY-FR-006). Never anyone else's. */
   async listOwnBlocks(
     blockerId: string,

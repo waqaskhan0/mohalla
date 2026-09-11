@@ -768,6 +768,7 @@ class ProfileTest {
                 arrayOf(MohallaApi::class.java),
             ) { _, _, _ -> error("the profile tests never upload") } as MohallaApi,
             http = OkHttpClient(),
+            apiBaseUrl = "http://localhost.invalid",
         )
     }
 }

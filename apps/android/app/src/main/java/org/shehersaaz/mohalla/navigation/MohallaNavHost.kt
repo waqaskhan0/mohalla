@@ -1789,7 +1789,7 @@ private fun EventComposerRoute(
 }
 
 /** Welcome → phone → date of birth → password → terms → OTP. */
-private fun NavGraphBuilder.authGraph(
+internal fun NavGraphBuilder.authGraph(
     navController: NavHostController,
     container: AppContainer,
 ) {
@@ -1815,7 +1815,7 @@ private fun NavGraphBuilder.authGraph(
             onPhoneChanged = vm::onPhoneChanged,
             onPasswordChanged = vm::onPasswordChanged,
             onSubmit = vm::submit,
-            onForgotPassword = { navController.navigate(Routes.FORGOT_PASSWORD) },
+            onForgotPassword = { navController.navigate(Routes.PASSWORD_RESET_GRAPH) },
             // ONBOARDING IS CHECKED, NOT ASSUMED (RUNTIME-007).
             //
             // This was `toShell()`, unconditionally, so an account that was
@@ -1933,40 +1933,47 @@ private fun NavGraphBuilder.authGraph(
     }
     }
 
-    composable(Routes.FORGOT_PASSWORD) {
-        val vm: PasswordResetViewModel =
-            viewModel(factory = PasswordResetViewModel.Factory(container.authRepository))
-        val state by vm.state.collectAsState()
+    // BOTH STEPS IN ONE GRAPH, for the reason the ViewModel's own KDoc gives:
+    // the accepted number has to survive the step boundary, and threading it
+    // through a navigation argument would put a phone number in the back stack.
+    // Two destination-scoped instances are not "one ViewModel for both"
+    // (INTEGRATION-004).
+    navigation(startDestination = Routes.FORGOT_PASSWORD, route = Routes.PASSWORD_RESET_GRAPH) {
+        composable(Routes.FORGOT_PASSWORD) { entry ->
+            val vm = passwordResetViewModel(navController, entry, container)
+            val state by vm.state.collectAsState()
 
-        ForgotPasswordScreen(
-            state = state,
-            onPhoneChanged = vm::onPhoneChanged,
-            onSubmit = vm::requestCode,
-            onBack = { navController.popBackStack() },
-            onCodeRequested = { navController.navigate(Routes.RESET_PASSWORD) },
-        )
-    }
+            ForgotPasswordScreen(
+                state = state,
+                onPhoneChanged = vm::onPhoneChanged,
+                onSubmit = vm::requestCode,
+                onBack = { navController.popBackStack() },
+                onCodeRequested = { navController.navigate(Routes.RESET_PASSWORD) },
+            )
+        }
 
-    composable(Routes.RESET_PASSWORD) {
-        val vm: PasswordResetViewModel =
-            viewModel(factory = PasswordResetViewModel.Factory(container.authRepository))
-        val state by vm.state.collectAsState()
+        composable(Routes.RESET_PASSWORD) { entry ->
+            val vm = passwordResetViewModel(navController, entry, container)
+            val state by vm.state.collectAsState()
 
-        ResetPasswordScreen(
-            state = state,
-            onCodeChanged = vm::onCodeChanged,
-            onNewPasswordChanged = vm::onNewPasswordChanged,
-            onSubmit = vm::submitReset,
-            onBack = { navController.popBackStack() },
-            // Straight to Login, and the whole reset flow is popped: returning
-            // Back into a reset form whose code has been spent would offer a
-            // retry that cannot succeed.
-            onComplete = {
-                navController.navigate(Routes.LOGIN) {
-                    popUpTo(Routes.FORGOT_PASSWORD) { inclusive = true }
-                }
-            },
-        )
+            ResetPasswordScreen(
+                state = state,
+                onCodeChanged = vm::onCodeChanged,
+                onNewPasswordChanged = vm::onNewPasswordChanged,
+                onSubmit = vm::submitReset,
+                onBack = { navController.popBackStack() },
+                // Straight to Login, and the whole reset flow is popped:
+                // returning Back into a reset form whose code has been spent
+                // would offer a retry that cannot succeed. Popping the GRAPH,
+                // not its start destination, also destroys the shared store —
+                // so a second reset starts with no number from the first.
+                onComplete = {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.PASSWORD_RESET_GRAPH) { inclusive = true }
+                    }
+                },
+            )
+        }
     }
 
     composable(Routes.RESTORE_ACCOUNT) {
@@ -2097,6 +2104,31 @@ private fun registerViewModel(
             auth = container.authRepository,
             termsVersion = container.termsVersion,
         ),
+    )
+}
+
+/**
+ * The password-reset ViewModel, owned by the password-reset graph.
+ *
+ * The same shared-owner lookup [registerViewModel] uses, and for the same
+ * reason: `getBackStackEntry(PASSWORD_RESET_GRAPH)` resolves to one entry for
+ * both steps, so both get the same instance and the accepted number is still
+ * there when the second screen submits it.
+ */
+@Composable
+private fun passwordResetViewModel(
+    navController: NavHostController,
+    entry: NavBackStackEntry,
+    container: AppContainer,
+): PasswordResetViewModel {
+    // Keyed on the destination's own entry — see `registerViewModel` for why
+    // remembering against the controller hands out a stale, destroyed store.
+    val owner = remember(entry) {
+        navController.getBackStackEntry(Routes.PASSWORD_RESET_GRAPH)
+    }
+    return viewModel(
+        viewModelStoreOwner = owner,
+        factory = PasswordResetViewModel.Factory(container.authRepository),
     )
 }
 

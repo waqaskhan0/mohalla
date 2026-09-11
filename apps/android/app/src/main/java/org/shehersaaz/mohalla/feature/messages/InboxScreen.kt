@@ -18,7 +18,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,6 +63,7 @@ import org.shehersaaz.mohalla.core.ui.MohallaTopBar
  * THE EMPTY REQUEST LIST OFFERS NO ACTION. §21: "this is a good state to be in —
  * offering an action would imply something is wrong."
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InboxScreen(
     state: InboxUiState,
@@ -89,6 +92,16 @@ fun InboxScreen(
 
         val list = state.current
 
+        // The third of INTEGRATION-005's six screens. `InboxViewModel`
+        // maintains `refreshing` and nothing rendered it, so a reader with a
+        // populated inbox had no way to ask whether anything new had arrived —
+        // which matters more here than anywhere else, because the socket is
+        // exactly the thing that can quietly stop delivering.
+        PullToRefreshBox(
+            isRefreshing = state.refreshing,
+            onRefresh = onRefresh,
+            modifier = Modifier.fillMaxSize(),
+        ) {
         when {
             state.firstPageFailure != null && list.conversations.isEmpty() ->
                 InboxFailure(failure = state.firstPageFailure, onRetry = onRefresh)
@@ -119,6 +132,7 @@ fun InboxScreen(
                 onDecline = onDecline,
                 onLoadMore = onLoadMore,
             )
+        }
         }
     }
 }

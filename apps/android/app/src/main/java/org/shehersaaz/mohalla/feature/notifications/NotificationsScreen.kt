@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
@@ -56,6 +58,7 @@ import java.time.ZoneId
  * the platform's mechanism for it and it only works if the formatter hands over
  * a number rather than a sentence.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationsScreen(
     state: NotificationsUiState,
@@ -77,6 +80,16 @@ fun NotificationsScreen(
             onBack = onBack,
         )
 
+        // The fourth of INTEGRATION-005's six screens. `NotificationsViewModel`
+        // maintains `refreshing` and nothing rendered it. `onRetry` is the same
+        // call, but it is only reachable from the FAILURE branch — so a reader
+        // whose centre had loaded once had no way to ask again, on the one
+        // screen whose whole purpose is to tell them something happened.
+        PullToRefreshBox(
+            isRefreshing = state.refreshing,
+            onRefresh = onRetry,
+            modifier = Modifier.fillMaxSize(),
+        ) {
         when {
             // Kept apart from emptiness. "Nothing yet — when people interact
             // with your posts, you'll see it here" after a timeout tells
@@ -98,6 +111,7 @@ fun NotificationsScreen(
                 onOpen = onOpen,
                 onLoadMore = onLoadMore,
             )
+        }
         }
     }
 }

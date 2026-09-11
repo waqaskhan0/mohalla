@@ -21,6 +21,7 @@ import {
   receiptsVisibleToSender,
   type RequestState,
 } from '../domain/request-policy.js';
+import { REALTIME_PUBLISHER, type RealtimePublisher } from '../ports/realtime-publisher.port.js';
 import {
   MESSAGING_REPOSITORY,
   type ConversationRecord,
@@ -145,6 +146,7 @@ export class MessagingService {
     private readonly follows: FollowService,
     private readonly outbox: OutboxService,
     @Inject(CLOCK) private readonly clock: Clock,
+    @Inject(REALTIME_PUBLISHER) private readonly realtime: RealtimePublisher,
     private readonly logger: StructuredLogger,
   ) {}
 
@@ -213,6 +215,14 @@ export class MessagingService {
       body?: string | null | undefined;
       mediaId?: string | null | undefined;
     },
+    /**
+     * The socket that made this request, if any (INTEGRATION-009).
+     *
+     * A socket send already has its acknowledgement, so it must not also
+     * receive the broadcast. A REST send passes nothing and every device the
+     * sender has is reached.
+     */
+    excludeSocketId?: string,
   ): Promise<SendResult> {
     const mediaId = input.mediaId ?? null;
     const bodyProblem = checkMessageBody(input.body, { hasAttachment: mediaId !== null });
@@ -267,7 +277,7 @@ export class MessagingService {
     const pair = orderPair(senderId, recipientId);
     if (pair === 'CANNOT_MESSAGE_SELF') return { status: 'NOT_AVAILABLE' };
 
-    return this.db.withTransaction(async (client) => {
+    const sent = await this.db.withTransaction(async (client) => {
       const { conversation } =
         existingConversation !== null
           ? { conversation: existingConversation }
@@ -351,6 +361,28 @@ export class MessagingService {
         recipientId,
       } as const;
     });
+
+    // AFTER THE COMMIT, AND ONLY FOR A ROW THAT WAS ACTUALLY CREATED.
+    //
+    // This is the fan-out that used to live in the gateway, which meant a
+    // recipient's live socket heard nothing unless the SENDER also happened to
+    // be on one (INTEGRATION-009). It sits here now because this is the single
+    // place that knows a message was genuinely written, so both transports
+    // accelerate identically and `created` is checked once.
+    //
+    // Outside the transaction on purpose: announcing a message that could
+    // still roll back is worse than announcing it a few milliseconds later.
+    if (sent.status === 'SENT' && sent.created) {
+      this.realtime.messageCreated({
+        message: sent.message,
+        senderId,
+        recipientId: sent.recipientId,
+        isRequest: sent.isRequest,
+        excludeSocketId,
+      });
+    }
+
+    return sent;
   }
 
   // ----------------------------------------------------------------- inbox

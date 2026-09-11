@@ -13,6 +13,7 @@ import {
   resolveThreadParent,
   type CommentBodyRejection,
 } from '../domain/comment-body.js';
+import { adjustCounts } from '../domain/adjusted-counts.js';
 import {
   ENGAGEMENT_REPOSITORY,
   type EngagementRepository,
@@ -322,22 +323,10 @@ export class EngagementService {
       this.repo.likedPostIds(viewerId, ids),
     ]);
 
-    const out = new Map<
-      string,
-      { likeCount: number; commentCount: number; viewerHasLiked: boolean }
-    >();
-    for (const post of posts) {
-      const h: HiddenEngagement = hidden.get(post.id) ?? { likes: 0, comments: 0 };
-      out.set(post.id, {
-        // Clamped at zero. The stored count and the hidden count are read in
-        // separate statements, so a like removed between them could otherwise
-        // produce a negative - which would look like a bug to a user.
-        likeCount: Math.max(post.likeCount - h.likes, 0),
-        commentCount: Math.max(post.commentCount - h.comments, 0),
-        viewerHasLiked: liked.has(post.id),
-      });
-    }
-    return out;
+    // The arithmetic lives in `domain/adjusted-counts.ts` because the posts
+    // module needs the same answer for a post's own screen, and a second copy
+    // of it is what produced INTEGRATION-010 in the first place.
+    return adjustCounts(posts, hidden, liked);
   }
 
   // ---- internals --------------------------------------------------------

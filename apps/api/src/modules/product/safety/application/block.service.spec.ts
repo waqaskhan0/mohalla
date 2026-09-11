@@ -22,6 +22,16 @@ class InMemoryBlocks implements BlockRepository {
     );
   }
 
+  async blockCounterparts(userId: string): Promise<string[]> {
+    return [
+      ...new Set(
+        this.rows
+          .filter((r) => r.blockerId === userId || r.blockedId === userId)
+          .map((r) => (r.blockerId === userId ? r.blockedId : r.blockerId)),
+      ),
+    ];
+  }
+
   async create(blockerId: string, blockedId: string): Promise<boolean> {
     if (this.rows.some((r) => r.blockerId === blockerId && r.blockedId === blockedId)) {
       return false;
