@@ -5,6 +5,18 @@ local API, worker, Socket.IO and PostgreSQL. Nothing is stubbed and no result
 below comes from reading source.
 
 **Result: 36 checks, 36 PASS, 0 FAIL**, stable across three consecutive runs.
+
+> **Count reconciliation.** An intermediate PR body quoted *"30 passed, 1
+> failed"*. That was a stale mid-correction run, quoted from the terminal
+> instead of from this file, and it is superseded — the raw results file
+> (`stage10-android-results.json`) and this document both record 36/36.
+>
+> The one failure in that intermediate run was **mine, not the product's**: the
+> event-detail check asserted `len(labels) > 3`, which was true of the search
+> screen it had never navigated away from. It was **strengthened, not deleted**
+> — it now requires `Organiser` and a "going" label to be present, so it can
+> only pass on the detail screen. The canonical result below is the run after
+> that correction.
 One defect found and fixed — **QA-004**.
 
 ## Clean install and the authentication chain
