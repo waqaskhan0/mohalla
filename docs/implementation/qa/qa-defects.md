@@ -113,77 +113,137 @@ symptom.
 | `next start` (production build) | 12 passed · 0 failed |
 | `next dev` | 12 passed · 0 failed |
 
+Re-confirmed after QA-002 added flow M: **13 passed · 0 failed** in both modes.
+The positive control still fires first, so a page that fails to render is still
+reported as a failure to render rather than as a content assertion.
+
 ---
 
-## QA-002 — the portal's admin cookie name is fixed at build time, not runtime
+## QA-002 — the portal advertised a plain-HTTP escape hatch that never worked
 
 | | |
 | --- | --- |
 | **Severity** | MEDIUM |
-| **Area** | Admin portal — `apps/admin/lib/admin-session.ts` |
-| **Requirement** | SEC-024 session handling; the module's own stated intent |
+| **Area** | Admin portal — `apps/admin/lib/admin-session.ts`, admin authentication doc |
+| **Requirement** | SEC-017 (plain HTTP refused, not redirected), SEC-024, SEC-025 |
 | **Environment** | `next build` output run over plain HTTP |
-| **Status** | OPEN — recommendation recorded, no code change made |
+| **Status** | **CLOSED — DOCUMENTED SECURITY POLICY CORRECTION** |
 
-### What the code intends
+### What was observed
 
-`admin-session.ts` documents a deliberate two-name scheme:
+`admin-session.ts` documented a two-name scheme and explained it as:
 
 > The prefix requires Secure, which requires HTTPS. Local development over
 > plain HTTP therefore uses the unprefixed name — see `sessionCookieName`.
 
-and implements the switch as `process.env.NODE_ENV === 'production'`.
+which reads as a supported plain-HTTP path for any deployment. The admin
+authentication doc said the same thing in a table row: *"unprefixed over plain
+HTTP locally"*.
 
-### What actually happens
-
-Next inlines `process.env.NODE_ENV` at **build** time. In the production bundle
-the ternary is constant-folded — the compiled route reads:
+**That escape hatch does not exist.** Next inlines `process.env.NODE_ENV` at
+build time, so a production bundle has the secure name constant-folded in — the
+compiled route literally reads:
 
 ```
 (await cookies()).delete("__Host-mohalla_admin_session")
 ```
 
-So a production build always uses the `__Host-` name **regardless of the
-runtime environment**. `.env` sets `NODE_ENV=development`, `next start` even
-warns *"You are using a non-standard NODE_ENV value"*, and the cookie name does
-not change, because the decision was already compiled in.
+`.env` sets `NODE_ENV=development`, `next start` even warns *"You are using a
+non-standard NODE_ENV value"*, and the cookie name does not change, because the
+decision was already compiled in. Independently, a browser refuses a `__Host-`
+cookie on an insecure origin, so the promise could not have been kept anyway.
 
-### Impact, stated precisely
+**The observation stands and is not withdrawn:** the previously documented
+plain-HTTP production escape hatch did not work.
 
-- **Real deployments: none.** The portal is served over HTTPS, where `__Host-`
-  is the correct and more secure choice. Nothing about production is wrong.
-- **Local and staging verification over plain HTTP: broken.** A browser refuses
-  to store a `__Host-` cookie on an insecure origin, so signing in to a
-  production build over `http://` silently fails — the POST succeeds, the
-  cookie is discarded by the browser, and the reader lands back on `/login`.
-  The documented escape hatch for exactly this case does not work.
+### Owner disposition
 
-This is not a security hole; it is a hole in the ability to verify the release
-artifact before shipping it. It is also the most plausible explanation for how
-Stage 9's INTEGRATION-012 came to be diagnosed as "the portal cannot render".
+> **PRODUCTION ADMIN PORTAL REQUIRES HTTPS.**
 
-### Why no code change was made here
+The approved resolution is to **remove the promise, not weaken the credential**.
+Explicitly rejected: dropping `Secure`, dropping the `__Host-` prefix,
+conditionally downgrading at runtime, trusting a forwarded-proto header without
+an approved proxy model, or adding any insecure environment switch to
+production behaviour.
 
-The obvious fix is a runtime switch (an explicit env flag consulted at request
-time rather than `NODE_ENV`). That adds a supported way to downgrade the
-session cookie from `__Host-` to an unprefixed name, which is a **security
-policy decision about the highest-value credential in the product**, not an
-ordinary reversible defect fix. Stage 10 does not make that call unprompted.
+This matters because the portal is, by the architecture's own words, *"the
+highest-value XSS target"* in the product, and the cookie in question is an
+8-hour administrator session.
 
-### Recommended owner disposition
+### Resolution
 
-One of:
+No behaviour changed. The **documentation** was corrected to state the policy,
+and tests were added so the policy is enforced rather than merely written down:
 
-1. **Accept as-is** and record that the production build must be verified over
-   HTTPS (a local TLS-terminating proxy in front of `next start` is enough).
-2. **Add an explicit, loudly-named runtime flag** — e.g. `ADMIN_INSECURE_COOKIE`
-   — read per request, refused when `NODE_ENV=production` at runtime, and
-   logged at startup whenever it is on.
+- `apps/admin/lib/admin-session.ts` — the comment now states that production
+  requires HTTPS, explains that the two names are a property of the *build*
+  rather than a runtime option, and records that there is deliberately no
+  downgrade switch. `isSecureDeployment` documents that it reads `NODE_ENV` and
+  nothing else, on purpose.
+- `docs/implementation/admin/02-admin-authentication.md` — the "unprefixed over
+  plain HTTP locally" row is replaced with an explicit build/transport table.
 
-Option 1 changes nothing and costs a proxy. Option 2 restores the documented
-intent at the cost of a deliberate downgrade switch existing in the codebase.
+| Build | Transport | Cookie |
+| --- | --- | --- |
+| `next dev` | plain `http://localhost` supported | `mohalla_admin_session` |
+| `next build` + `next start` | **HTTPS required** | `__Host-mohalla_admin_session` |
 
----
+### Regression coverage
+
+`apps/admin/lib/admin-cookie-policy.spec.ts` — six tests, behavioural where
+behaviour can reach (`sessionCookieName` does not touch request-scoped
+`cookies()`, so it is directly callable):
+
+| | Requirement | Test |
+| --- | --- | --- |
+| **A** | production build uses the secure cookie | `NODE_ENV=production` → `__Host-mohalla_admin_session` |
+| **B** | development build uses the intended dev behaviour | `NODE_ENV=development` → `mohalla_admin_session` |
+| **C** | production cannot silently downgrade | eight plausible downgrade variables set at once — including `ADMIN_INSECURE_COOKIE` and a forwarded-proto claim — must not change the name; plus a source check that the decision reads `NODE_ENV` **and nothing else**; plus `secure:` must stay bound to `isSecureDeployment()` rather than a literal |
+| **D** | an authenticated production-mode portal works | `e2e:admin` **flow M**, against the running portal |
+
+Flow M reads the build mode from the portal's own CSP header rather than from
+an environment this script controls — `proxy.ts` adds `'unsafe-eval'` only in
+development, and that decision is inlined from the same constant as the cookie
+name. Requiring the two to agree is what catches a build that shipped
+production CSP with a development cookie. It then **attempts** the downgrade
+rather than assuming it impossible: a production portal must refuse the
+unprefixed cookie outright.
+
+### Mutation proof
+
+Adding exactly the switch the owner forbade —
+
+```
+if (process.env.ADMIN_INSECURE_COOKIE === '1') return false;
+```
+
+— failed **both** C tests: the behavioural one on the specific variable, and the
+source check generically (`expected [ 'ADMIN_INSECURE_COOKIE', 'NODE_ENV' ] to
+equal [ 'NODE_ENV' ]`). Reverted; not committed.
+
+One test of mine was wrong before the code was: the documentation assertion used
+`readCode`, which strips block comments, and so failed against a file that
+already said the right thing. Fixed to use `readFile`, and the reason is
+recorded in the test.
+
+### Retest
+
+| Lane | Result |
+| --- | --- |
+| `admin-cookie-policy.spec.ts` | 6 passed |
+| `e2e:admin` against production build (`next start`) | **13 passed · 0 failed** |
+| `e2e:admin` against development build (`next dev`) | **13 passed · 0 failed** |
+
+### What is NOT claimed
+
+| | |
+| --- | --- |
+| **SECURITY CONFIGURATION** | **PASS** |
+| **LIVE HTTPS DEPLOYMENT** | **NOT EXECUTED — release environment** |
+
+No TLS terminator was placed in front of the portal, so no browser was observed
+storing a real `__Host-` cookie over HTTPS. The configuration that governs it is
+proven; the deployment is not, and is not claimed.
 
 ## QA-003 — first cold `next build` after a dev session fails on `/_global-error`
 

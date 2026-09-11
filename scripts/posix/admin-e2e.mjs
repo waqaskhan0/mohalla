@@ -79,7 +79,14 @@ async function portal(path, { cookie } = {}) {
     redirect: 'manual',
     headers: cookie ? { cookie } : {},
   });
-  return { status: res.status, location: res.headers.get('location'), text: await res.text() };
+  return {
+    status: res.status,
+    location: res.headers.get('location'),
+    // Exposed because QA-002's flow M reads the build mode out of the portal's
+    // own policy header rather than out of an environment this script controls.
+    headersCsp: res.headers.get('content-security-policy') ?? '',
+    text: await res.text(),
+  };
 }
 
 /**
@@ -523,6 +530,60 @@ let portalCookieName = null;
       `status ${after.status}`,
     );
     token = null;
+  }
+}
+
+{
+  flow('M', 'The session cookie matches the build, and cannot be downgraded');
+  /**
+   * QA-002. The approved policy is that the PRODUCTION ADMIN PORTAL REQUIRES
+   * HTTPS, and the resolution was to remove the plain-HTTP promise rather than
+   * weaken the cookie. This flow is what enforces it against a *running*
+   * portal, which no unit test can do.
+   *
+   * The build mode is read from the portal's own CSP rather than from an
+   * environment variable this script controls. `proxy.ts` adds `'unsafe-eval'`
+   * only in development, and — like the cookie name — that decision is inlined
+   * at build time. So the header and the cookie name come from the SAME
+   * compiled constant, and requiring them to agree is a real check: a build
+   * that shipped production CSP with a development cookie name would be a
+   * silent session downgrade, and this is the assertion that catches it.
+   */
+  if (!portalUp) blocked('the portal is not running');
+  else if (portalCookieName === null) blocked('the portal cookie name was not resolved (QA-001)');
+  else {
+    const login = await portal('/login');
+    const csp = login.headersCsp ?? '';
+    check('the portal sends a Content-Security-Policy', csp.length > 0);
+
+    const isDevBuild = csp.includes("'unsafe-eval'");
+    const expected = isDevBuild ? 'mohalla_admin_session' : '__Host-mohalla_admin_session';
+
+    check(
+      `a ${isDevBuild ? 'development' : 'production'} build uses the ${expected} cookie`,
+      portalCookieName === expected,
+      `resolved ${portalCookieName}`,
+    );
+
+    if (!isDevBuild) {
+      // The downgrade, attempted rather than assumed impossible. A production
+      // portal must not accept the development cookie name under any
+      // circumstances — that is the whole security boundary QA-002 preserves.
+      const downgraded = await portal('/dashboard', {
+        cookie: authCookie('mohalla_admin_session', token ?? 'x'),
+      });
+      check(
+        'a production portal REFUSES the unprefixed development cookie',
+        downgraded.status !== 200,
+        `status ${downgraded.status}`,
+      );
+
+      check(
+        'and its policy asks the browser to upgrade insecure requests',
+        csp.includes('upgrade-insecure-requests'),
+      );
+      check('and does not permit eval', !csp.includes("'unsafe-eval'"));
+    }
   }
 }
 
