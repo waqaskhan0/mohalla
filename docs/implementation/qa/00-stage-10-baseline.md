@@ -102,7 +102,8 @@ the alert and does not claim zero CodeQL alerts.
 | Blocker | Nature |
 | --- | --- |
 | **OD-015** | Terms / Community Guidelines unpublished. SAFETY-FR-008 requires an enforcement notification to cite the guideline breached. Owner content decision; not a code defect. |
-| **DEP-002** | Push provider credential. Owner-held secret. |
+| **DEP-002** | **SMS / OTP provider.** Owner-held. This is what `FakeSmsProvider` stands in for, and OD-021 made it the single most important external dependency by removing email registration as a fallback. |
+| **DEP-003** | **FCM / push provider.** Owner-held. This line originally said DEP-002 was the push credential — see QA-010; that was documentation drift, not an approved renumbering. |
 | **DEP-007** | App domain not provisioned — release build has no `APP_HOST`. |
 | **OD-020 / DEP-016** | No named technical owner, so no administrator may be provisioned in a real environment. |
 

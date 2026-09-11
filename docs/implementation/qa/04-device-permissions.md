@@ -93,7 +93,14 @@ built APK, and `dumpsys package` on the device.
 | `CAMERA` | camera is not in the current implementation. §6 says test only if it is; it is not, so this is N/A rather than untested. |
 | `POST_NOTIFICATIONS` | the app posts **no** OS notification. `NotificationManager`, `NotificationCompat` and `NotificationChannel` appear nowhere in the Android source. The notification centre is an in-app screen. |
 
-### The notification-permission lifecycle is N/A, and that is a finding not a gap
+### The notification-permission lifecycle — THIS SECTION'S CONCLUSION WAS WRONG
+
+> **Superseded by QA-009.** What follows was accurate about what the app
+> contains and wrong about what that means. A missing external provider does
+> not make a missing client implementation "not applicable": NOTIF-FR-001 is a
+> retained Must, `04-mobile-architecture.md` requires the client behaviour
+> explicitly, and `POST /notifications/devices` exists for the app to call. The
+> observations below stand; the verdict is now **QA-009, HIGH, OPEN**.
 
 §6 asks for allow / deny / grant-from-Settings / revoke. **None of it applies**,
 because the app never asks: there is no `POST_NOTIFICATIONS` in the manifest and

@@ -839,3 +839,174 @@ logged GET /posts/not-a-uuid -> 400
 logged GET /search/people   -> 200
 logged GET /health          -> 200
 ```
+
+---
+
+## QA-009 — the Android push-notification client does not exist
+
+| | |
+| --- | --- |
+| **Severity** | **HIGH** |
+| **Area** | Android — `apps/android` |
+| **Requirement** | **NOTIF-FR-001 (Must)**, PRIV-015, MSG-FR-004, LOCALE-FR-006 |
+| **Environment** | Emulator API 36; backend and worker running |
+| **Status** | **OPEN — implementation BLOCKED_EXTERNAL on DEP-003** |
+
+### How this was found, and a correction to my own earlier reporting
+
+The Stage 10 device checkpoint recorded:
+
+> No `POST_NOTIFICATIONS` because the app posts no OS notification at all;
+> therefore the notification permission lifecycle is N/A.
+
+**That conclusion was wrong**, and it was wrong in the specific way the brief
+warns against: I let a missing external provider hide a missing client
+implementation. The observation (no permission, no channel, no posting code)
+was accurate. The inference — that this is therefore *not applicable* — was
+not. Nothing in the approved requirements says the client may be absent because
+a provider credential is unavailable.
+
+Re-reading the authority chain settles it. `04-mobile-architecture.md` §137–139
+is **mobile** architecture and is explicit:
+
+> 🟦 NOTIF-FR-001 · PRIV-015 — permission requested contextually; declining
+> degrades **only** notifications.
+>
+> 🟩 Token registered after login and on permission grant; removed on logout;
+> refreshed on FCM rotation. Deep links route to the causing item… **Message
+> Requests never produce a push** (BR-027).
+
+And `08-api-architecture.md` defines the contract the client is supposed to
+call:
+
+| | | | |
+| --- | --- | --- | --- |
+| NOTF-API-004 | NOTIF-FR-001 | POST | `/devices` |
+| NOTF-API-005 | NOTIF-FR-001 | DELETE | `/devices/{token}` |
+
+### What exists
+
+| Layer | State |
+| --- | --- |
+| Backend outbox → worker → notification row | **implemented and working** — 17/17 checks this stage |
+| `PUSH_SENDER` port and `FakePushSender` adapter | implemented |
+| `POST` / `DELETE /notifications/devices` | **implemented and routed** |
+| Notification preferences API | implemented |
+| Android in-app notification **centre** | implemented and working |
+| Android notification **preferences screen** | implemented, calls the preferences API |
+
+### What is missing
+
+Searched across `apps/android`:
+
+| Expected | Found |
+| --- | --- |
+| Push SDK dependency (Firebase/FCM) | **none** in `build.gradle.kts` or `libs.versions.toml` |
+| Device token acquisition | **none** |
+| Call to `POST /notifications/devices` | **none** — the endpoint exists and the app never calls it |
+| Token removal on logout (`DELETE`) | **none** |
+| Token refresh handling | **none** |
+| `POST_NOTIFICATIONS` permission | **not declared** |
+| Notification channel | **none** — no `NotificationChannel`, `NotificationManager` or `NotificationCompat` anywhere |
+| Incoming payload handling | **none** |
+| Deep link *from a notification* | **none** (in-app deep links exist) |
+
+Corroborated at runtime: `device_tokens` holds 8 rows, **every one created
+2026-09-05** by backend tests calling the endpoint directly. Nothing has been
+registered by the app in this stage, or by any app — because no code path can.
+
+The sharpest way to put it: **the app ships a screen for choosing which push
+notifications you want, and no ability to receive any of them.**
+
+### Severity — HIGH, and why not higher or lower
+
+NOTIF-FR-001 is a retained **Must**, and its entire client half is absent, so
+this is a core Must flow that does not exist rather than one that misbehaves.
+That is HIGH in this project's model.
+
+It is **not CRITICAL**: nothing is insecure, nothing leaks, no data is
+corrupted, and every other feature works — which is itself the requirement
+("declining degrades **only** notifications"). Today the app behaves exactly as
+a user who declined push would, without ever having asked.
+
+### Why it is not fixed in this stage
+
+Implementation needs the owner's Firebase project. The Android FCM SDK cannot
+initialise without `google-services.json` (or the equivalent `FirebaseOptions`
+— project id, application id, API key), and that configuration **is** DEP-003.
+
+Three things were considered and deliberately **not** done:
+
+1. **Requesting `POST_NOTIFICATIONS` anyway.** The requirement says the
+   permission is requested *contextually*. Asking for permission to post
+   notifications the app cannot receive is not context, it is a prompt with
+   nothing behind it — worse than absent.
+2. **A non-FCM token source behind a port.** The architecture names FCM
+   specifically; inventing a second mechanism to make a test go green would be
+   inventing architecture, which is out of scope for QA.
+3. **Calling it N/A.** That is the error being corrected here.
+
+### What the owner needs to supply
+
+A Firebase project and its `google-services.json` (**DEP-003**). With that, the
+client path is ordinary work: SDK, channel, contextual permission, token
+register/refresh/remove against endpoints that already exist, payload handling
+and deep links.
+
+### Verdicts, kept separate
+
+| | |
+| --- | --- |
+| **PUSH BACKEND PIPELINE** | **PASS** |
+| **IN-APP NOTIFICATION CENTRE** | **PASS** — 17/17 |
+| **PUSH CLIENT IMPLEMENTATION** | **FAIL — absent** |
+| **OS NOTIFICATION PERMISSION FLOW** | **NOT IMPLEMENTED** (consequence of the above) |
+| **REAL EXTERNAL PROVIDER DELIVERY** | **BLOCKED_EXTERNAL — DEP-003** |
+
+---
+
+## QA-010 — Stage 9 and Stage 10 documentation attributed push to the wrong dependency
+
+| | |
+| --- | --- |
+| **Severity** | LOW |
+| **Area** | Documentation — Stage 9 integration records, Stage 10 QA baseline |
+| **Requirement** | traceability |
+| **Status** | **CLOSED** |
+
+### The drift
+
+`14-infrastructure-environments.md` is the authoritative dependency register:
+
+| ID | Dependency | Owner |
+| --- | --- | --- |
+| **DEP-002** | **SMS / OTP provider** | Shehersaaz + technical owner |
+| **DEP-003** | **FCM** | Technical owner |
+
+Stage 9's integration records and the Stage 10 baseline both describe
+**DEP-002** as "the push provider credential". It is not; it is the SMS
+provider, and it is separately still open — it is what `FakeSmsProvider` stands
+in for, and OD-021 made it *"the single most important external dependency in
+the project"* by removing email registration as a fallback.
+
+### Which case this is
+
+Checked against §4's two options. **B — documentation drift.** No approved
+architecture renumbers these: `00-source-baseline.md`, `02-technology-stack.md`,
+`03-system-architecture.md`, `17-open-decisions.md`, `10-environment-variables.md`
+and `14-staging-deployment.md` all use DEP-002 for SMS consistently, and only
+`14-infrastructure-environments.md` mentions DEP-003, correctly as FCM.
+
+### Correction
+
+Stage 10 documents now cite **DEP-003** for push and **DEP-002** for SMS.
+
+Stage 9's records are **not rewritten** — they are frozen history, and silently
+editing them would hide the drift rather than record it. The Stage 9 completion
+record's push blocker should be read as DEP-003; that is noted here rather than
+patched into the file.
+
+Consequence worth stating: DEP-002 has been reported as "the one push blocker"
+since Stage 9, which obscured the fact that **two** separate external
+dependencies are open — SMS (DEP-002, blocking registration in any real
+environment) and FCM (DEP-003, blocking push).
