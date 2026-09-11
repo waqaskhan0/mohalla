@@ -22,7 +22,8 @@ the change and its reason are stated.*
 | --- | --- |
 | Branch | `feature/stage-10-qa-bugfix` |
 | Base | `a00597586b3877fdf2fc2c49f565c3154edab838` (Stage 9, PR #16) |
-| Head at report | `595df6b47f9e563c077049778dc91f8017b5b6bf` |
+| Head at first report | `595df6b47f9e563c077049778dc91f8017b5b6bf` |
+| Head after QA-009 closed | `2152e5c` |
 | PR | [#17](https://github.com/waqaskhan0/mohalla/pull/17) — **DRAFT, not merged** |
 
 ## 2. PR status
