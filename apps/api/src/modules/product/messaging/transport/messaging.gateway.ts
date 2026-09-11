@@ -177,8 +177,9 @@ export class MessagingGateway implements OnGatewayInit, OnGatewayConnection {
     if (result.status !== 'SENT') return { ok: false, error: result.status };
 
     // NO FAN-OUT HERE ANY MORE. `MessagingService` does it for every transport
-    // through `REALTIME_PUBLISHER`, which this class implements below — see
-    // `ports/realtime-publisher.port.ts` for why it moved (INTEGRATION-009).
+    // through `REALTIME_PUBLISHER`, whose adapter is `realtime-publisher.ts` in
+    // this directory — see `ports/realtime-publisher.port.ts` for why it moved
+    // (INTEGRATION-009).
     // The socket id travels with the send so the service can skip this socket,
     // which already has the acknowledgement.
     return { ok: true, message: result.message };
@@ -279,19 +280,6 @@ export class MessagingGateway implements OnGatewayInit, OnGatewayConnection {
     const result = await this.sessions.resolve(token);
     return result.status === 'AUTHENTICATED' ? result.principal : null;
   }
-}
-
-function serialize(m: MessageView): Record<string, unknown> {
-  return {
-    id: m.id,
-    clientMessageId: m.clientMessageId,
-    conversationId: m.conversationId,
-    senderId: m.senderId,
-    body: m.body,
-    mediaId: m.mediaId,
-    createdAt: m.createdAt.toISOString(),
-    readAt: m.readAt?.toISOString() ?? null,
-  };
 }
 
 /**

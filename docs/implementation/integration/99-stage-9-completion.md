@@ -106,7 +106,7 @@ content the owner has not written, the other a secret the owner holds.
 | --- | --- |
 | `npm run verify` | **16 passed · 0 failed · 3 blocked** |
 | API smoke (real HTTP) | **425 passed · 0 failed** |
-| API unit tests | **911 passed** |
+| API unit tests | **914 passed** |
 | Admin portal E2E | **12 passed · 0 failed · 0 blocked** |
 | Release gate criteria | 47 checks passed · 0 failed |
 | Android lint + unit tests | PASS |
