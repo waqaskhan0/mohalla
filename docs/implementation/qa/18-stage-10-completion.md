@@ -193,13 +193,49 @@ records are not rewritten; the correction is recorded.
 | | |
 | --- | --- |
 | CodeQL open alerts | **1** — #6, `js/xss-through-dom`, `docs/prototype.html` |
+| CodeQL alerts dismissed this stage | **1** — #16, `js/insufficient-password-hash`, `otp.ts` |
 | `npm audit --audit-level=high` | **0 vulnerabilities** |
-| Secret scan | clean, 848 files |
+| Secret scan | clean, 863 files |
 | Architecture guards | dependency direction clean; en/ur parity complete |
 
 CodeQL #6 is unchanged and **not dismissed**: no external input source exists
 in that file, GitHub Pages is not enabled, nothing serves it, and governance
 marks it *"KEEP — do not modify"*. Zero alerts is **not** claimed.
+
+### CodeQL #16 — raised by this stage's own work, and dismissed
+
+The QA-005 remediation introduced a `createHmac('sha256', key)` call in
+`otp.ts`, and CodeQL flagged it as **`js/insufficient-password-hash` (high)**:
+*"Password from an access to passwords is hashed insecurely."* It blocked PR #17
+— branch protection requires conversation resolution, and the alert arrives as a
+review thread — so it was investigated rather than waved through.
+
+**It is a false positive, and here is the check rather than the assertion.**
+
+| Question | Answer |
+| --- | --- |
+| What is actually hashed? | A six-digit OTP code. `OtpDigestInput` is `{challengeId, purpose, code}` and has no password field. |
+| Which callers? | `otp.service.ts:140,268`, `password.service.ts:132,223`, `register.service.ts:178` — every one passes `generateOtpCode()` output or the code the user typed. |
+| Then why did CodeQL say "password"? | Its taint heuristic follows values through `password.service.ts`, which is the password **reset** flow. The value digested there is still the reset *code*, not the new password. |
+| How are real passwords hashed? | **Argon2id** — `adapters/argon2-password-hasher.ts`, `m=98304, t=3, p=1`, ~236 ms. Already correct, and untouched by this stage. |
+
+**A work factor would also be the wrong tool here.** The rule exists to slow
+offline cracking of a leaked digest. This digest is **keyed** — HMAC-SHA256
+under a dedicated `OTP_HASH_KEY` the process refuses to start without, separate
+from the identifier pepper. An attacker holding the entire `otp_challenges`
+table cannot compute a single candidate digest without that key, so there is no
+offline attack to slow down; a KDF would cost every verification and buy
+nothing. That keyed construction **is** the QA-005 fix, replacing an unkeyed
+SHA-256 of six digits that the QA harness reversed in 554 ms every run.
+
+Dismissed as **false positive** on 2026-09-17. The dismissal note is capped at
+280 characters by the API, so the full argument lives on the PR #17 review
+thread (`discussion_r4033245125`) and in this section; the note points at both.
+
+Recorded here rather than left to the security tab, because an alert that was
+raised, argued and dismissed is a different thing from one that never existed,
+and the next person to touch `otp.ts` should find the reasoning before they find
+the alert again.
 
 ## 35. CI
 

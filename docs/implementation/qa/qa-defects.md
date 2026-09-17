@@ -563,6 +563,37 @@ database row yields nothing to a full sweep.
 Explicitly not used: a debug endpoint in the app, an admin route, a plaintext
 column, a log line containing a code, or a committed secret.
 
+### A CodeQL alert this fix raised, and why it was dismissed
+
+Adding the keyed digest made CodeQL flag `otp.ts:121` as
+**`js/insufficient-password-hash` (high)** — alert #16, *"Password from an
+access to passwords is hashed insecurely."* It blocked PR #17, because branch
+protection requires conversation resolution and the alert arrives as a review
+thread, so it was investigated rather than waved through.
+
+It is a **false positive**:
+
+- what is hashed is a six-digit OTP code, never a password — `OtpDigestInput`
+  is `{challengeId, purpose, code}` and every caller passes `generateOtpCode()`
+  output or the code the user typed;
+- CodeQL's "access to passwords" source is its taint heuristic following values
+  through `password.service.ts`, which is the password **reset** flow; the value
+  digested there is still the reset *code*;
+- real user passwords use **Argon2id** (`m=98304, t=3, p=1`, ~236 ms), untouched
+  by this fix;
+- and a work factor would protect nothing here anyway, because the digest is
+  **keyed**: without `OTP_HASH_KEY` an attacker holding the whole
+  `otp_challenges` table cannot compute a single candidate digest, so there is
+  no offline attack to slow down.
+
+Dismissed 2026-09-17 as *false positive*. The API caps the dismissal note at 280
+characters, so it summarises and points at the full argument on PR #17
+(`discussion_r4033245125`) and §33–34 of the completion report.
+
+Worth saying plainly, because it is the interesting part: the construction
+CodeQL objects to is the one that **fixed** this defect. The rule is a good rule
+reading the wrong function.
+
 ### Severity
 
 **MEDIUM**, unchanged. Exploitation needs database read access, so this is not
