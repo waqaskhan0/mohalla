@@ -8,13 +8,28 @@ name: Android
 # On-device RTL verification remains a manual gate before release. It is NOT
 # claimed to be covered by this workflow.
 
+# NO PATH FILTER, DELIBERATELY, AND IT COSTS ABOUT THREE AND A HALF MINUTES.
+#
+# `Assemble debug and test` is a REQUIRED status check on `main`. A required
+# check that is path-filtered never reports on a pull request outside those
+# paths, and GitHub does not treat "did not run" as "passed" - it waits for it
+# forever. So a documentation-only pull request became permanently unmergeable
+# except by administrator override, which is exactly the protection being
+# bypassed. PR #18 found this; every pull request before it happened to touch
+# `apps/android/**`, so nothing revealed it.
+#
+# The alternatives were worse. Dropping the check from the required list
+# weakens the gate for the changes that actually need it. Adding a second
+# workflow that reports the same check name as a no-op teaches the branch
+# protection to accept a green tick that tested nothing.
+#
+# Running it always is the honest option: the check reports on every pull
+# request, and it reports the truth.
 on:
   push:
     branches: [main]
-    paths: ['apps/android/**', '.github/workflows/android.yml']
   pull_request:
     branches: [main]
-    paths: ['apps/android/**', '.github/workflows/android.yml']
 
 # Least privilege (public repo): the default token is read-only for every job.
 # No job here needs write access - CI only builds and tests. A job that ever

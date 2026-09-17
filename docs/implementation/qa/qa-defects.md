@@ -1271,3 +1271,57 @@ at page 22 and terminate, so the loop is bounded and the assertion is not
 vacuous. Reverted.
 
 `422 passed · 0 failed · 422` after the fix, found on page 22.
+
+---
+
+## QA-013 — a required status check that could never report on most pull requests
+
+| | |
+| --- | --- |
+| **Severity** | LOW |
+| **Area** | CI configuration — `.github/workflows/android.yml`, branch protection on `main` |
+| **Requirement** | the merge gate is the executable evidence that `main` stays green |
+| **Status** | **CLOSED** |
+
+### What happened
+
+`Assemble debug and test` is one of seven **required** status checks on `main`.
+The Android workflow that produces it was path-filtered to
+`apps/android/**`, so on a pull request touching nothing under that path the
+check never ran — and GitHub does not read "did not run" as "passed". It waits.
+
+PR #18 is documentation only, so it sat at `BLOCKED` with every check that *did*
+run green, waiting for one that could never arrive.
+
+### Why it took this long to find
+
+Every pull request since branch protection was enabled happened to touch
+`apps/android/**`. PR #17 was a Stage 10 QA branch that included the push
+client, so the check ran and passed, and the configuration looked correct. The
+first pull request that did not touch Android was the first to hit it.
+
+That is the uncomfortable part: the protection was **verified once, against a
+case that could not fail**. A gate is not proven by the pull request that
+happens to satisfy it.
+
+### Severity
+
+**LOW.** Nothing insecure and nothing shipped wrong — the failure mode is a
+merge that cannot happen, which is the safe direction. It is recorded because
+the pressure it creates is not safe: the only ways past it are to weaken the
+required list or to use an administrator override, and a gate that routinely
+needs overriding stops being a gate.
+
+### The fix
+
+The path filter is removed, so the workflow runs on every pull request and the
+required check always reports. It costs about three and a half minutes per run.
+
+Two alternatives were rejected. Dropping the check from the required list
+weakens the gate for the changes that most need it. A second workflow reporting
+the same check name as a no-op would teach branch protection to accept a green
+tick that tested nothing — a false PASS, which this register exists to prevent.
+
+`.github/workflows/android.yml` is itself matched by the old filter, so the fix
+verifies itself: the workflow runs on the pull request that removes the filter.
+No other workflow was path-filtered; `ci.yml` was already unconditional.
