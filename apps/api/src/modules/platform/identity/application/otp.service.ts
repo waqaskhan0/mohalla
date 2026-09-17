@@ -7,9 +7,8 @@ import {
   checkOtpResendAllowed,
   checkOtpUsable,
   generateOtpCode,
-  hashOtpCode,
+  OtpDigest,
   otpExpiryFrom,
-  otpMatches,
   type OtpPurpose,
 } from '../domain/otp.js';
 import { tryNormalizePakistaniMobile } from '../domain/phone-number.js';
@@ -88,6 +87,7 @@ export class OtpService {
     private readonly db: DatabaseService,
     @Inject(IDENTITY_REPOSITORY) private readonly repo: IdentityRepository,
     private readonly identifierHasher: IdentifierHasher,
+    private readonly otpDigest: OtpDigest,
     @Inject(SMS_PROVIDER) private readonly sms: SmsProvider,
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly logger: StructuredLogger,
@@ -136,7 +136,12 @@ export class OtpService {
         // connection drops, the attempt is still spent — failing closed.
         const attempts = await this.repo.incrementOtpAttempts(challenge.id, client);
 
-        if (!otpMatches(cmd.code, challenge.codeHash)) {
+        if (
+          !this.otpDigest.matches(
+            { challengeId: challenge.id, purpose: challenge.purpose, code: cmd.code },
+            challenge.codeHash,
+          )
+        ) {
           this.logInternal('otp_verify_incorrect', cmd.purpose, cmd.correlationId, { attempts });
           return { status: 'REJECTED' } as const;
         }
@@ -254,12 +259,17 @@ export class OtpService {
         }
 
         const fresh = generateOtpCode();
+        const challengeId = randomUUID();
         await this.repo.replaceOtpChallenge(
           {
-            id: randomUUID(),
+            id: challengeId,
             identifierHash,
             purpose: cmd.purpose,
-            codeHash: hashOtpCode(fresh),
+            codeHash: this.otpDigest.digest({
+              challengeId,
+              purpose: cmd.purpose,
+              code: fresh,
+            }),
             expiresAt: otpExpiryFrom(this.clock.now()),
           },
           client,

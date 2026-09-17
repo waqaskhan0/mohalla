@@ -10,7 +10,7 @@ import {
   OTP_RESEND_COOLDOWN_MS,
   OTP_RESEND_MAX_PER_WINDOW,
   OTP_TTL_MS,
-  hashOtpCode,
+  OtpDigest,
   otpExpiryFrom,
 } from '../domain/otp.js';
 import { FixedClock } from '../ports/clock.port.js';
@@ -48,7 +48,9 @@ function build() {
     error: (m: unknown) => logs.push(String(m)),
   } as unknown as StructuredLogger;
 
-  const service = new OtpService(db, repo, hasher, sms, clock, logger);
+  // TEST-ONLY key. Not the development default, which production refuses.
+  const otpDigest = new OtpDigest('test-only-otp-key-0123456789abcdefghij');
+  const service = new OtpService(db, repo, hasher, otpDigest, sms, clock, logger);
   const identifierHash = hasher.hash(PHONE);
 
   return {
@@ -77,11 +79,12 @@ function build() {
         createdAt: clock.now(),
       });
       repo.identifiers.set(identifierHash.toString('hex'), userId);
+      const challengeId = randomUUID();
       await repo.replaceOtpChallenge({
-        id: randomUUID(),
+        id: challengeId,
         identifierHash,
         purpose,
-        codeHash: hashOtpCode(code),
+        codeHash: otpDigest.digest({ challengeId, purpose, code }),
         expiresAt: otpExpiryFrom(clock.now()),
       });
       return userId;

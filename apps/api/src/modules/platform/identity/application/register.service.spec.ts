@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { RegisterService, type RegisterCommand } from './register.service.js';
+import type { Env } from '../../../../config/env.js';
+import { OtpDigest } from '../domain/otp.js';
 import { IdentifierHasher } from '../domain/identifier-hash.js';
 import { FakeSmsProvider } from '../adapters/fake-sms-provider.js';
 import { InMemoryIdentityRepository } from '../testing/in-memory-identity.repository.js';
@@ -60,12 +62,22 @@ function build() {
     repo,
     hasher,
     new IdentifierHasher(PEPPER),
+    new OtpDigest(TEST_OTP_KEY),
+    TEST_ENV,
     sms,
     new SystemClock(),
     logger,
   );
   return { service, repo, sms, logs };
 }
+
+/** TEST-ONLY key, not the development default — production refuses both. */
+const TEST_OTP_KEY = 'test-only-otp-key-0123456789abcdefghij';
+
+/** Only the fields RegisterService reads. */
+const TEST_ENV = {
+  PUBLISHED_TERMS_VERSIONS: ['terms-2026-01'],
+} as unknown as Env;
 
 describe('RegisterService — enumeration resistance (SEC-006)', () => {
   let ctx: ReturnType<typeof build>;
@@ -176,6 +188,8 @@ describe('RegisterService — enumeration resistance (SEC-006)', () => {
         },
       },
       new IdentifierHasher(PEPPER),
+      new OtpDigest(TEST_OTP_KEY),
+      TEST_ENV,
       new FakeSmsProvider(),
       new SystemClock(),
       {
@@ -186,6 +200,53 @@ describe('RegisterService — enumeration resistance (SEC-006)', () => {
     );
     await expect(failing.register(VALID)).resolves.toEqual({ status: 'ACCEPTED' });
     expect(service).toBeDefined();
+  });
+});
+
+describe('RegisterService — QA-006, an unpublished Terms version is refused', () => {
+  let ctx: ReturnType<typeof build>;
+  beforeEach(() => {
+    ctx = build();
+  });
+
+  it('accepts a version this deployment publishes', async () => {
+    expect(await ctx.service.register({ ...VALID, termsVersion: 'terms-2026-01' })).toEqual({
+      status: 'ACCEPTED',
+    });
+  });
+
+  it('REFUSES a version nobody published, instead of recording it', async () => {
+    // The measured defect: `POST /register` answered 202 to
+    // `termsVersion: "not-a-real-version"` and stored it as the record of what
+    // the person agreed to.
+    expect(await ctx.service.register({ ...VALID, termsVersion: 'not-a-real-version' })).toEqual({
+      status: 'INVALID_INPUT',
+      field: 'termsVersion',
+      reason: 'TERMS_NOT_ACCEPTED',
+    });
+  });
+
+  it('refuses a plausible-looking but unpublished version', async () => {
+    // The dangerous shape is the one that looks right.
+    expect(await ctx.service.register({ ...VALID, termsVersion: 'terms-9999-99' })).toEqual({
+      status: 'INVALID_INPUT',
+      field: 'termsVersion',
+      reason: 'TERMS_NOT_ACCEPTED',
+    });
+  });
+
+  it('and nothing is written for a refused version', async () => {
+    await ctx.service.register({ ...VALID, termsVersion: 'terms-9999-99' });
+    expect(ctx.repo.users.size).toBe(0);
+    expect(ctx.sms.all()).toHaveLength(0);
+  });
+
+  it('gives the same refusal shape as an empty version, disclosing nothing extra', async () => {
+    // A caller must not be able to tell "you did not accept" from "that
+    // version is not one we publish" — the second would enumerate versions.
+    const empty = await ctx.service.register({ ...VALID, termsVersion: '' });
+    const unknown = await ctx.service.register({ ...VALID, termsVersion: 'terms-9999-99' });
+    expect(JSON.stringify(empty)).toBe(JSON.stringify(unknown));
   });
 });
 

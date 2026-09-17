@@ -36,6 +36,9 @@ captures/
 apps/android/build/
 apps/android/**/build/
 apps/android/build-log.txt
+# The Kotlin compiler's own scratch directory (session locks, daemon error
+# dumps). Created by any Gradle invocation and never useful to another machine.
+apps/android/.kotlin/
 
 # ---- IDE / editor ----
 .idea/

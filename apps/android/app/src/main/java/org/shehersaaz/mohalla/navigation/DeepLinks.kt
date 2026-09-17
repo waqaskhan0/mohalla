@@ -72,6 +72,47 @@ object DeepLinks {
      * matched by a URL somebody else published, and honouring it would let a
      * third party choose which of the reader's screens opens.
      */
+    /**
+     * Resolve a PATH to an internal route (QA-009).
+     *
+     * The push payload carries `deepLink` as a path — `/posts/{id}`,
+     * `/posts/{id}#{commentId}`, `/users/{id}`, `/events/{id}`,
+     * `/conversations/{id}` — never a URL, because ADR-014 keeps the payload to
+     * "the minimum needed for the deep link" and a host would be redundant.
+     *
+     * WHY THIS IS NOT `resolve` WITH A SYNTHESISED HOST. `resolve` refuses any
+     * host but the app's own, and the app's host is empty in a release build
+     * (DEP-007) — so routing a push through it would fail on exactly the builds
+     * that ship. Inventing a host to satisfy the check would defeat the check.
+     *
+     * The path still goes through the SAME allowlist: two segments, a known
+     * collection, no traversal. A payload is not trusted more than a link just
+     * because it arrived over FCM.
+     */
+    fun resolvePath(path: String?): String? {
+        if (path.isNullOrBlank()) return null
+        if (!path.startsWith("/")) return null
+
+        val withoutFragment = path.substringBefore('#')
+        val segments = withoutFragment.substringBefore('?').split('/').filter { it.isNotBlank() }
+        if (segments.size != 2) return null
+        if (segments.any { it == "." || it == ".." }) return null
+
+        val id = segments[1].takeIf { it.isNotBlank() } ?: return null
+
+        return when (segments[0]) {
+            POSTS -> Routes.post(id)
+            USERS -> Routes.profile(id)
+            EVENTS -> Routes.event(id)
+            CONVERSATIONS -> Routes.conversation(id)
+            // As in `resolve`: NOTIF-FR-005's broadcast has no screen yet, so
+            // the reader lands on their normal start destination rather than on
+            // a claim that the announcement was unavailable.
+            ANNOUNCEMENTS -> null
+            else -> null
+        }
+    }
+
     fun resolve(url: String?, host: String): String? {
         if (url.isNullOrBlank() || host.isBlank()) return null
 

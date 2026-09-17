@@ -9,9 +9,8 @@ import {
   checkOtpResendAllowed,
   checkOtpUsable,
   generateOtpCode,
-  hashOtpCode,
+  OtpDigest,
   otpExpiryFrom,
-  otpMatches,
 } from '../domain/otp.js';
 import { tryNormalizePakistaniMobile } from '../domain/phone-number.js';
 import { CLOCK, type Clock } from '../ports/clock.port.js';
@@ -82,6 +81,7 @@ export class PasswordService {
     @Inject(IDENTITY_REPOSITORY) private readonly repo: IdentityRepository,
     @Inject(PASSWORD_HASHER) private readonly hasher: PasswordHasher,
     private readonly identifierHasher: IdentifierHasher,
+    private readonly otpDigest: OtpDigest,
     @Inject(SMS_PROVIDER) private readonly sms: SmsProvider,
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly logger: StructuredLogger,
@@ -123,12 +123,17 @@ export class PasswordService {
         }
 
         const fresh = generateOtpCode();
+        const challengeId = randomUUID();
         await this.repo.replaceOtpChallenge(
           {
-            id: randomUUID(),
+            id: challengeId,
             identifierHash,
             purpose: 'PASSWORD_RESET',
-            codeHash: hashOtpCode(fresh),
+            codeHash: this.otpDigest.digest({
+              challengeId,
+              purpose: 'PASSWORD_RESET',
+              code: fresh,
+            }),
             expiresAt: otpExpiryFrom(this.clock.now()),
           },
           client,
@@ -214,7 +219,12 @@ export class PasswordService {
         // Spend the attempt before comparing, as in verification.
         await this.repo.incrementOtpAttempts(challenge.id, client);
 
-        if (!otpMatches(cmd.code, challenge.codeHash)) {
+        if (
+          !this.otpDigest.matches(
+            { challengeId: challenge.id, purpose: challenge.purpose, code: cmd.code },
+            challenge.codeHash,
+          )
+        ) {
           this.log('password_reset_incorrect_code', cmd.correlationId);
           return { status: 'REJECTED' } as const;
         }

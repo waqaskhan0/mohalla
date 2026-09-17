@@ -30,12 +30,28 @@ all.
 
 | | |
 |---|---|
-| Cookie name | `__Host-mohalla_admin_session` in production, unprefixed over plain HTTP locally |
+| Cookie name | `__Host-mohalla_admin_session` in a **production build**; the unprefixed name in a **development build** (`next dev`) only |
 | `maxAge` | derived from the API's own `expiresAt`, so the cookie cannot outlive the session it points at |
 | Already-expired session | refused rather than stored with a guessed lifetime |
 
 The `__Host-` prefix requires `Secure`, which is why HSTS matters here
 specifically: a downgrade to HTTP does not weaken the session, it breaks it.
+
+**The production Admin Portal requires HTTPS.** The two cookie names are a
+property of how the portal was *built*, not a runtime option, and there is no
+supported way to sign in to a production build over plain HTTP:
+
+| Build | Transport | Cookie |
+| --- | --- | --- |
+| `next dev` | plain `http://localhost` is fine | `mohalla_admin_session` |
+| `next build` + `next start` | **HTTPS required** | `__Host-mohalla_admin_session` |
+
+Next inlines `process.env.NODE_ENV` at build time, so a production bundle has
+the secure name constant-folded in and no environment variable can reach that
+decision. Verifying a production build locally therefore means putting TLS
+termination in front of it — not relaxing the cookie. QA-002 records the
+correction; the earlier wording implied a plain-HTTP production path that never
+worked and is not approved.
 
 ## 3. The mechanism, not the promise
 

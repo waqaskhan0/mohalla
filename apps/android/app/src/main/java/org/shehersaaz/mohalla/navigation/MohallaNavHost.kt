@@ -96,6 +96,7 @@ import org.shehersaaz.mohalla.feature.settings.DeleteAccountScreen
 import org.shehersaaz.mohalla.feature.settings.DeleteAccountViewModel
 import org.shehersaaz.mohalla.feature.settings.HelpScreen
 import org.shehersaaz.mohalla.feature.settings.LanguageSettingsScreen
+import org.shehersaaz.mohalla.core.push.RegisterForPushEffect
 import org.shehersaaz.mohalla.feature.settings.LegalDocumentScreen
 import org.shehersaaz.mohalla.feature.settings.SettingsScreen
 import org.shehersaaz.mohalla.feature.settings.SettingsViewModel
@@ -545,6 +546,10 @@ private fun ShellRoute(
         ),
     )
     val state by shell.state.collectAsState()
+
+    // QA-009. The contextual moment for the notification permission, and the
+    // one place every signed-in entry path converges.
+    RegisterForPushEffect(container)
 
     // The capability and both badges go stale while the app is away: a
     // suspension can be applied by a moderator, and messages and notifications
@@ -1007,7 +1012,14 @@ private fun SettingsRoute(
             signOutLocally = {
                 container.clearSession()
             },
-            signOutRemotely = { container.authRepository.logout() },
+            // QA-009: the token is retired BEFORE the session goes, because the
+            // endpoint needs that session to authorise the removal. On a shared
+            // handset this is what stops the departing account's notifications
+            // arriving for whoever signs in next.
+            signOutRemotely = {
+                container.pushTokenRegistrar.onLoggedOut()
+                container.authRepository.logout()
+            },
         ),
     )
     val state by vm.state.collectAsState()
@@ -1897,12 +1909,20 @@ internal fun NavGraphBuilder.authGraph(
         RegisterTermsScreen(
             state = state,
             onAcceptedChanged = vm::onTermsAcceptedChanged,
-            // OD-015: the documents do not exist yet. Nothing opens a browser
-            // at a URL that would 404, and nothing ships placeholder legal
-            // text — accepting terms that are not written is worse than a
-            // control that does nothing yet.
-            onOpenTerms = {},
-            onOpenGuidelines = {},
+            // OD-015: the documents do not exist yet, so nothing here opens a
+            // browser at a URL that would 404 and nothing ships placeholder
+            // legal text.
+            //
+            // BUT NOT NOTHING (QA-004). These were empty lambdas, which made
+            // both controls tappable and completely inert at the exact moment
+            // the reader is asked to affirm they have read them. The app
+            // already has the honest answer — `LegalDocumentScreen` says "This
+            // document is not available yet" and explains why — and Settings
+            // has been routing to it all along. Registration now does the same,
+            // so the two places give the same answer instead of one of them
+            // silently giving none.
+            onOpenTerms = { navController.navigate(Routes.legal(Routes.LEGAL_TERMS)) },
+            onOpenGuidelines = { navController.navigate(Routes.legal(Routes.LEGAL_GUIDELINES)) },
             onSubmit = vm::submit,
             onRegistered = { navController.navigate(Routes.OTP) },
             onBack = { navController.popBackStack() },

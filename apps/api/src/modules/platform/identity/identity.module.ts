@@ -4,6 +4,7 @@ import { ENV } from '../../../config/env.token.js';
 import type { Env } from '../../../config/env.js';
 import { AuditModule } from '../audit/audit.module.js';
 import { IdentifierHasher } from './domain/identifier-hash.js';
+import { OtpDigest } from './domain/otp.js';
 import { CLOCK, SystemClock } from './ports/clock.port.js';
 import { PASSWORD_HASHER } from './ports/password-hasher.port.js';
 import { SMS_PROVIDER } from './ports/sms-provider.port.js';
@@ -67,6 +68,14 @@ import { AdminSessionGuard } from './transport/admin-session.guard.js';
     {
       provide: IdentifierHasher,
       useFactory: (env: Env) => new IdentifierHasher(env.IDENTIFIER_HASH_PEPPER),
+      inject: [ENV],
+    },
+    {
+      // QA-005. A SEPARATE key from the identifier pepper, deliberately: one
+      // leaking must not compromise the other, and only this one may be
+      // rotated.
+      provide: OtpDigest,
+      useFactory: (env: Env) => new OtpDigest(env.OTP_HASH_KEY),
       inject: [ENV],
     },
     {

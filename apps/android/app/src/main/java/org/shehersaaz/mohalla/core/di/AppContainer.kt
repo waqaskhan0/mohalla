@@ -8,6 +8,12 @@ import org.shehersaaz.mohalla.core.config.BuildEnvironment
 import org.shehersaaz.mohalla.core.locale.AppLocale
 import org.shehersaaz.mohalla.core.locale.LocaleManager
 import org.shehersaaz.mohalla.core.locale.LocaleStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import org.shehersaaz.mohalla.core.push.FirebasePushTokenSource
+import org.shehersaaz.mohalla.core.push.PushTokenRegistrar
+import org.shehersaaz.mohalla.core.push.RetrofitDeviceTokenApi
 import org.shehersaaz.mohalla.core.logging.AndroidLogger
 import org.shehersaaz.mohalla.core.logging.Logger
 import org.shehersaaz.mohalla.core.network.AuthInterceptor
@@ -205,6 +211,30 @@ class AppContainer private constructor(
     val messagingRepository: MessagingRepository = MessagingRepository(api)
 
     val notificationRepository: NotificationRepository = NotificationRepository(api)
+
+    /**
+     * Push device-token lifecycle (QA-009 · NOTIF-FR-001).
+     *
+     * The language is read through a lambda rather than captured, because the
+     * reader can change it after this container is built and a token registered
+     * under the old one would render every push in a language they moved away
+     * from.
+     */
+    /**
+     * A scope that outlives any screen.
+     *
+     * Device registration must not be cancelled because the composable that
+     * started it left the tree — a half-finished registration leaves the server
+     * without a destination and the reader without notifications.
+     */
+    val applicationScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    val pushTokenRegistrar: PushTokenRegistrar = PushTokenRegistrar(
+        api = RetrofitDeviceTokenApi(api),
+        tokenSource = FirebasePushTokenSource(logger),
+        language = { localeManager.locale.value },
+        logger = logger,
+    )
 
     val profileRepository: ProfileRepository = ProfileRepository(api)
 
