@@ -16,7 +16,7 @@
     "react-dom": "19.2.8",
     "@mohalla/contracts": "*",
     "@mohalla/design-tokens": "*",
-    "zod": "4.5.4"
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "typescript": "6.0.3",
